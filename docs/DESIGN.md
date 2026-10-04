@@ -150,7 +150,11 @@ program (`LOADSEGS`, what `ASSOCIATE` does after `FOPEN`) and returns
 after an execution error, `LASTST = HALTINIT`), does the same for the
 caller with `PX_BACK`, which the next `GETCMD` clears. Nothing of the
 caller stays in memory while the program runs: `LOADSEGS` and the hook
-are in GETCMD's segment (2688 -> 3054 bytes, loaded only while GETCMD
-runs), the resident operating system is unchanged (the same 7840 bytes),
-and `tools/pexectest.py` checks that a program started by pexec has
-exactly the free memory it has when started with X(ecute.
+are in GETCMD's segment (2688 -> 3176 bytes, loaded only while GETCMD
+runs), the resident operating system did not grow (7756 bytes; 7840 when
+BINDER bound MYGOTOXY into 1.07 -- 1.08 has MYGOTOXY's FGOTOXY in its
+source, so SYSTEM.PASCAL is simply the compiled SYSTEM), and
+`tools/pexectest.py` checks that a program started by pexec has exactly
+the free memory it has when started with X(ecute. `$` at the Command:
+prompt (listed under `?`) runs `*SYSTEM.SHELL`, which `mkbiggy.py`
+builds from `examples/shell.c`.

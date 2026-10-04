@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """mkbiggy.py -- volumes/BIGGY.zip: the emulator's boot volume BIGGY:
 (data/Big_Disk.BLK in the P-Machine zip) with Tiny-C installed: TINYC.CODE,
-TCLIB.OBJ, TCMSGS.TEXT and the headers (NAME.H).  The base disk is the
+TCLIB.OBJ, TCMSGS.TEXT, the headers (NAME.H) and SYSTEM.SHELL (examples/shell.c,
+which the Command: prompt's $ runs).  The base disk is the
 reference Big_Disk.BLK of UCSD-Pascal-Volumes (Filer and Editor that take
 NAME.C / NAME.H workfiles); only files that differ are written, so with a
 current base the result is byte-identical to it.  Tiny-C looks for headers,
@@ -16,7 +17,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import ucsdvol
 from psys import ensure_setup
-from tcrun import build_lib, INC
+from tcrun import build_lib, compile_c, INC
 from buildtc import build
 
 def main():
@@ -43,6 +44,9 @@ def main():
     for f in sorted(os.listdir(INC)):
         if f.endswith('.h'):
             put(f.upper(), ucsdvol.text_to_ucsd(open(os.path.join(INC, f)).read()), 3)
+    # the Tiny-C shell, which the Command: prompt's $ runs (OS 1.08, BIGGY 1.10)
+    base, shell = compile_c(os.path.join(ROOT, 'examples', 'shell.c'), os.path.join(ROOT, 'build'), z80=True)
+    put('SYSTEM.SHELL', open(shell, 'rb').read(), 2)
     if changed:
         v.save()
         print('updated on BIGGY:', ', '.join(changed))

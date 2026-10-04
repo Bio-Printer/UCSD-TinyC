@@ -13,6 +13,8 @@ it (OS 1.08, BIGGY 1.10) with the mini-shell examples/shell.c:
                              the shell comes back with status -2
     *SYSTEM.FILER.           a Pascal program (status 0)
     bye                      back to the Command: prompt
+  ?, $                       the Command: prompt's $ starts the shell
+                             (*SYSTEM.SHELL), MEMFREE from it, bye
 
 Uses the mode of PSYS_MODE (native or z80) like the other tools.
 """
@@ -53,6 +55,14 @@ TYPE "Q"
 WAIT "shell> "
 TYPE "bye\r"
 WAIT "Command:"
+TYPE "?"
+WAIT "$(hell"
+TYPE "$"
+WAIT "shell> "
+TYPE "#5:MEMFREE\r"
+WAIT "shell> "
+TYPE "bye\r"
+WAIT "Command:"
 '''
 
 
@@ -71,10 +81,11 @@ def main():
     print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init', l)))
     checks = [
         ('the script completed', ok),
-        ('memfree ran twice', len(free) == 2),
-        ('same free memory from X(ecute and from the shell', len(free) == 2 and free[0] == free[1]),
-        ('the shell has less (its own code)', len(free) == 2 and len(shell) == 1 and int(shell[0]) < free[0]),
-        ('exit statuses 7, -2 (execution error), 0 (the Filer)', status == ['7', '-2', '0']),
+        ('memfree ran three times', len(free) == 3),
+        ('same free memory from X(ecute and from the shell', len(free) == 3 and free[0] == free[1] == free[2]),
+        ('the shell has less (its own code)', len(free) == 3 and len(shell) == 1 and int(shell[0]) < free[0]),
+        ('exit statuses 7, -2 (execution error), 0 (the Filer), 7 (from $)', status == ['7', '-2', '0', '7']),
+        ('the ? prompt offers $(hell', 'H(alt, $(hell' in tr),
         ('NOSUCH: no such program', 'NOSUCH: no such program' in tr),
     ]
     bad = [name for name, good in checks if not good]

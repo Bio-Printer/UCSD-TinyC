@@ -1,13 +1,13 @@
-BIGGY:  53 files  (the boot volume, with Tiny-C added)
+BIGGY:  54 files  (the boot volume, with Tiny-C added)
 
   Z80T.MICRO          19
   MYGOTOXY.CODE        2
-  VERSION.TEXT         4
   PSYS.H              10
+  VERSION.TEXT         6
   SYSORIG.EDITOR      45
   SYSTEM.LINKER       22
   SYSOLD.PASCAL       33
-  SYSTEM.PASCAL       33
+  SYSTEM.PASCAL       34
   SYSTEM.LIBRARY       8
   SYSTEM.SYNTAX       14
   SETUP.CODE          25
@@ -28,6 +28,7 @@ BIGGY:  53 files  (the boot volume, with Tiny-C added)
   LIBMAP.CODE          7
   NEW.PASCAL           2
   MYGOTOXY.TEXT        4
+  SYSTEM.SHELL        14
   132X45.PASCAL       34
   TINYC.CODE         108
   TCMSGS.TEXT          8
