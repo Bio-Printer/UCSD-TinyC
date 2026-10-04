@@ -8,6 +8,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 static void ask(char *prompt, char *buf)
 {
@@ -18,6 +19,8 @@ static void ask(char *prompt, char *buf)
     n = strlen(buf);
     while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r' || buf[n - 1] == ' '))
         buf[--n] = 0;
+    for (n = 0; buf[n]; n++)            /* UCSD names ignore case: tinyc.code is TINYC.CODE */
+        buf[n] = toupper(buf[n]);
 }
 
 int main(void)
