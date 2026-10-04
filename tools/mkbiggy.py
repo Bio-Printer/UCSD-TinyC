@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """mkbiggy.py -- volumes/BIGGY.zip: the emulator's boot volume BIGGY:
-(data/Big_Disk.BLK in the P-Machine zip) with Tiny-C installed: TINYC.CODE,
+(data/Big_Disk.BLK in the P-Machine zip) with Tiny-C's library and headers:
 TCLIB.OBJ, TCMSGS.TEXT, the headers (NAME.H) and SYSTEM.SHELL (examples/shell.c,
-which the Command: prompt's $ runs).  The base disk is the
+which the Command: prompt's $ runs).  The compiler itself is not on BIGGY
+(since 1.14): X(ecute TINY-C:TINYC; a TINYC.CODE on the base disk is removed.  The base disk is the
 reference Big_Disk.BLK of UCSD-Pascal-Volumes (Filer and Editor that take
 NAME.C / NAME.H workfiles); only files that differ are written, so with a
 current base the result is byte-identical to it.  Tiny-C looks for headers,
 TCLIB.OBJ and TCMSGS.TEXT on the boot volume (*) when they are not on the
-prefix volume, so programs on any volume compile with X *TINYC.
+prefix volume.
 The 8-byte doubles (CSP 100..137) are in the emulator itself (build it
 from UCSD-Pascal---P-Machine_work-v1.88.zip); nothing on the disk is needed
 for them."""
@@ -18,7 +19,6 @@ sys.path.insert(0, HERE)
 import ucsdvol
 from psys import ensure_setup
 from tcrun import build_lib, compile_c, INC
-from buildtc import build
 
 def main():
     ensure_setup()
@@ -37,8 +37,9 @@ def main():
         if not v.find(name) or v.read(name)[0] != data:
             v.write(name, data, kind)
             changed.append(name)
-    code, log = build()
-    put('TINYC.CODE', open(code, 'rb').read(), 2)
+    if v.find('TINYC.CODE'):            # the compiler is on TINY-C: only
+        v.remove('TINYC.CODE')
+        changed.append('-TINYC.CODE')
     put('TCLIB.OBJ', open(build_lib(True), 'rb').read(), 5)   # -z: works in Z80 mode too
     put('TCMSGS.TEXT', ucsdvol.text_to_ucsd(open(os.path.join(INC, 'tcmsgs.txt')).read()), 3)
     for f in sorted(os.listdir(INC)):

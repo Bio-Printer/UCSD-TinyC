@@ -16,8 +16,10 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
                              command line (none, ADD 2 3, MUL 6 7, REPEAT,
                              ECHO with extra blanks, unknown, 81 characters)
     args add 2 3             no volume: found on the one disk that has it
-    MEMFREE                  on two disks (#5 and #9): the shell asks, 2
-                             runs it, RETURN runs nothing
+    WHERE ECHO               WHERE (a copy of ARGS) on five disks (#5, #9,
+                             #10, #11, #12): the shell lists them, the key
+                             4 (no RETURN) runs #11's (argv[0] says so),
+                             another key runs nothing
     bye                      back to the Command: prompt
   X ARGS                     started by the OS afterwards: no arguments
   ?, $                       the Command: prompt's $ starts the shell
@@ -77,13 +79,13 @@ TYPE "#5:ARGS ECHO LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 WAIT "shell> "
 TYPE "args add 2 3\r"
 WAIT "shell> "
-TYPE "MEMFREE\r"
+TYPE "WHERE ECHO\r"
 WAIT "Which one"
-TYPE "2\r"
+TYPE "4"
 WAIT "shell> "
-TYPE "MEMFREE\r"
+TYPE "WHERE ECHO\r"
 WAIT "Which one"
-TYPE "\r"
+TYPE "x"
 WAIT "shell> "
 TYPE "bye\r"
 WAIT "Command:"
@@ -110,9 +112,19 @@ def main():
                 os.path.join(ROOT, 'examples', 'args.c'), crash):
         base, code = compile_c(src, ps.dir)
         ps.put(base + '.CODE', open(code, 'rb').read())
-    v = ucsdvol.Volume(ps.spare)        # MEMFREE on a second disk (#9) too
-    v.write('MEMFREE.CODE', open(os.path.join(ps.dir, 'MEMFREE.CODE'), 'rb').read(), 2)
-    v.save()
+    # WHERE (ARGS under another name) on five disks: #5, #9 and three more
+    where = open(os.path.join(ps.dir, 'ARGS.CODE'), 'rb').read()
+    ps.put('WHERE.CODE', where)
+    disks = [ps.spare]
+    for u in (10, 11, 12):
+        path = os.path.join(ps.dir, 'DISK%d.BLK' % u)
+        ucsdvol.main(['new', path, 'DISK%d' % u, '400'])
+        os.environ['VERIFY_UNIT%d' % u] = path
+        disks.append(path)
+    for path in disks:
+        v = ucsdvol.Volume(path)
+        v.write('WHERE.CODE', where, 2)
+        v.save()
     ok, tr, info = ps.run_script(SCRIPT, 600)
     tr = tr.replace('\r', '\n')
     free = [int(x) for x in re.findall(r'memfree: (\d+) words free', tr)]
@@ -121,12 +133,14 @@ def main():
     print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init|args:|too long', l)))
     checks = [
         ('the script completed', ok),
-        ('memfree ran four times', len(free) == 4),
-        ('same free memory from X(ecute and from the shell', len(free) == 4 and len(set(free)) == 1),
-        ('the shell has less (its own code)', len(free) == 4 and len(shell) == 1 and int(shell[0]) < free[0]),
-        ('exit statuses 7, -2 (execution error), 0 (the Filer), 1 5 42 0 4 2 (ARGS), 5 7 (searched), 7 (from $)',
-         status == ['7', '-2', '0', '1', '5', '42', '0', '4', '2', '5', '7', '7']),
-        ('MEMFREE on two disks: the shell lists both', 'WORK:MEMFREE  (#5:MEMFREE)' in tr and 'SPARE:MEMFREE  (#9:MEMFREE)' in tr),
+        ('memfree ran three times', len(free) == 3),
+        ('same free memory from X(ecute and from the shell', len(free) == 3 and len(set(free)) == 1),
+        ('the shell has less (its own code)', len(free) == 3 and len(shell) == 1 and int(shell[0]) < free[0]),
+        ('exit statuses 7, -2 (execution error), 0 (the Filer), 1 5 42 0 4 2 (ARGS), 5 2 (searched), 7 (from $)',
+         status == ['7', '-2', '0', '1', '5', '42', '0', '4', '2', '5', '2', '7']),
+        ('WHERE on five disks: all listed', all(('%s:WHERE  (#%d:WHERE)' % (v, u)) in tr for v, u in
+         (('WORK', 5), ('SPARE', 9), ('DISK10', 10), ('DISK11', 11), ('DISK12', 12)))),
+        ('key 4, no RETURN: #11 ran', 'argv[0] = "#11:WHERE"' in tr and tr.count('args: argc 2') == 1),
         ('ARGS with no arguments: argc 1 (shell, then X(ecute)', tr.count('args: no arguments (argc 1)') == 2),
         ('ARGS ADD 2 3, mul 6 7', 'args: 2 + 3 = 5' in tr and 'args: 6 * 7 = 42' in tr),
         ('ARGS REPEAT 2 HELLO', 'args: 1 HELLO\n' in tr and 'args: 2 HELLO\n' in tr),

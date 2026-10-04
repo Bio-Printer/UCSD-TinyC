@@ -1,11 +1,13 @@
 /* shell.c -- a mini-shell: runs programs with pexec() and comes back;
    NAME ARG1 ARG2 ... passes the arguments to NAME's main(argc, argv).
    A NAME without a volume (no ':', no '*') is looked for on every disk
-   on line: found once it runs, found more than once you choose. */
+   on line: found once it runs, found on several disks (up to 8) you
+   choose with one key, no RETURN. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <conio.h>
 #include <psys.h>
 
 #define MAXFOUND 8
@@ -64,8 +66,7 @@ int search(char *name)
 void run(char *name, char *args)
 {
     char cmd[130];
-    char answer[20];
-    int n, k;
+    int n, k, c;
     if (strchr(name, ':') || name[0] == '*')
         strcpy(cmd, name);              /* a volume given: just that one */
     else {
@@ -79,12 +80,14 @@ void run(char *name, char *args)
             printf("%s is on more than one disk:\n", name);
             for (k = 0; k < n; k++)
                 printf("  %d  %s:%s  (%s)\n", k + 1, vols[k], name, found[k]);
-            printf("Which one (1-%d, RETURN: none)? ", n);
-            if (!fgets(answer, sizeof answer, stdin))
+            printf("Which one (1-%d, any other key: none)? ", n);
+            c = getch();                /* one key: no RETURN needed */
+            if (c < '1' || c >= '1' + n) {
+                printf("\n");
                 return;
-            k = atoi(answer);
-            if (k < 1 || k > n)
-                return;
+            }
+            printf("%c\n", c);
+            k = c - '0';
         }
         strcpy(cmd, found[k - 1]);
     }
