@@ -15,8 +15,8 @@ Start here when picking the project up in a new session.
 | `tinyc/lib/*.c`, `libint.h` | the C library (joined into `TCLIB.OBJ`) |
 | `tinyc/include/*.h` | headers; `tcmsgs.txt` = the compiler's messages (TCMSGS.TEXT) |
 | `tests/NAME.c` + `.expect` (+ `.keys`, `.wait`) | test/demo programs and their expected output |
-| `examples/` | `shell.c` (a mini-shell built on `pexec()`; on BIGGY as SYSTEM.SHELL, which `$` at the Command: prompt runs) and `memfree.c` (a program's free memory); on TCEXTRA |
-| `volumes/` | **TINY-C.zip** (compiler, library, headers, all sources, BUILD/LIBS scripts) **TCEXTRA.zip** (tests/demos, CMPCODE) and **BIGGY.zip** (boot disk `Big_Disk.BLK` with Tiny-C ready to use; doubles need the v1.88 emulator's CSP 100..137); `*.txt` = file listings |
+| `examples/` | `shell.c` (a mini-shell built on `pexec()`; on BIGGY as SYSTEM.SHELL, which `$` at the Command: prompt runs) `memfree.c` (a program's free memory) and `args.c` (does what its `main(argc, argv)` arguments say: run it from the shell, e.g. `ARGS ADD 2 3`); on TCEXTRA |
+| `volumes/` | **TINY-C.zip** (compiler, library, headers, all sources, BUILD/LIBS scripts) **TCEXTRA.zip** (demos, the shell and its examples, CMPCODE), **TCTESTS.zip** (the test programs; three volumes because a UCSD directory holds 77 files and `@DEMOS`/`@TESTS` leave a NAME.OBJ per program) and **BIGGY.zip** (boot disk `Big_Disk.BLK` with Tiny-C ready to use; doubles need the v1.88 emulator's CSP 100..137); `*.txt` = file listings |
 | `verify/` | Tiny-C Verify pack: `TCVERIFY.SCRIPT` + `TCVERIFY.zip`, `cmpcode.c`, `rmfiles.c`, README |
 | `repro/` | engine bug repros (REAL compare, DEEPCXP: both fixed in the engine) |
 | `tools/` | host tools (below) |
@@ -39,10 +39,10 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `crosscheck.py` | compile each test **on the P-System** too; the code files must be identical |
 | `selfcompile.py [module]` | compile the compiler's modules on the P-System, link TINYC2.CODE, compare with the host build |
 | `buildtc.py` | host build of TINYC.CODE from the modules (`build/tcmod/`) |
-| `mkvolume.py` | build `volumes/` (TINY-C, TCEXTRA) with FILES.TEXT listings |
+| `mkvolume.py` | build `volumes/` (TINY-C, TCEXTRA, TCTESTS) with FILES.TEXT listings |
 | `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with TINYC.CODE, TCLIB.OBJ, TCMSGS.TEXT, the headers and SYSTEM.SHELL; only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; `$` at the Command: prompt |
-| `voltest.py` | on the volumes: `@LIBS`, `@BUILD`, `@DEMOS`, CMPCODE checks; reports least free memory |
+| `voltest.py` | on the volumes: `@LIBS`, `@BUILD`, `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
 | `mkverify.py`, `tcverify.py [native\|z80]` | build / run the Tiny-C Verify pack (`TCV_MAX=seconds` for Z80 mode) |
 | `modes.py prog.c` | run a program in Z80 and P-Code mode and compare (engine bug hunting) |
 | `pdis.py FILE.CODE` | P-code disassembler |

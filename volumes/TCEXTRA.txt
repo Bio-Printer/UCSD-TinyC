@@ -1,4 +1,4 @@
-TCEXTRA:  49 files  (a UCSD directory holds 77)
+TCEXTRA:  27 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -8,46 +8,24 @@ TCEXTRA:  49 files  (a UCSD directory holds 77)
   BOXES.CODE           4    (ready to run)
   CALC.C               6  a calculator: recursive descent over + - * / % ( ) ...
   CALC.CODE           15    (ready to run)
-  CONTROL.C            4  switch, goto, do/while, break/continue, ?:, comma ...
-  CONTROL.CODE        11    (ready to run)
   DEMO.C               4  the smallest program: no stdio.h (much less to link)
   DEMO.CODE            6    (ready to run)
-  DOUBLES.C           10  doubles (8 bytes: IEEE binary64, CSP 100..; P-Code mode ...
-  DOUBLES.CODE        22    (ready to run)
-  FCOMPARE.C           4  real comparisons, all six operators, signs, zero and ...
-  FCOMPARE.CODE       13    (ready to run)
-  FILEIO.C             4  files: stdio text files, then io.h / fcntl.h binary ...
-  FILEIO.CODE         17    (ready to run)
-  FLOATS.C             4  0.1 + 0.2 == 0.3 holds for the 24-bit II.0 real (not ...
-  FLOATS.CODE         16    (ready to run)
-  FUNCPTR.C            4  function pointers, qsort, arrays of function pointers
-  FUNCPTR.CODE        12    (ready to run)
-  FUNCSEG.C            6  function pointers across segments: CALLI to a function ...
-  FUNCSEG.CODE        13    (ready to run)
   GUESS.C              4  guess the number: rand, scanf
   GUESS.CODE          16    (ready to run)
   HANOI.C              4  Towers of Hanoi, recursion
   HANOI.CODE          11    (ready to run)
-  LONGS.C              4  32-bit long arithmetic
-  LONGS.CODE          13    (ready to run)
   PI.C                 6  Archimedes' method with doubles (P-Code mode only)
   PI.CODE             14    (ready to run)
   QUEENS.C             4  Eight queens: count all solutions, print the first
   QUEENS.CODE         11    (ready to run)
   SIEVE.C              4  Sieve of Eratosthenes: primes below 2000
   SIEVE.CODE          11    (ready to run)
-  STRCONST.C           8  string literals kept in pointers and arrays, across ...
-  STRCONST.CODE       14    (ready to run)
-  STRINGS.C            6  string.h, sprintf, sscanf, ctype, macros with arguments
-  STRINGS.CODE        17    (ready to run)
-  STRUCTS.C            6  structs, unions, pointers to structs, linked list ...
-  STRUCTS.CODE        13    (ready to run)
-  SYSCOM.C             6  <psys.h>: SYSCOM found from main, deep calls and ...
-  SYSCOM.CODE         13    (ready to run)
   CMPCODE.C            6  compare two code files byte by byte (Tiny-C Verify)
   CMPCODE.CODE        15    (ready to run)
+  ARGS.C               6  main(argc, argv): does what its arguments say (run it ...
+  ARGS.CODE           13    (ready to run)
   MEMFREE.C            4  prints the memory free to it (stack to heap) and exits ...
   MEMFREE.CODE        10    (ready to run)
   SHELL.C              6  a mini-shell: runs programs with pexec() and comes back
-  SHELL.CODE          14    (ready to run)
-  FILES.TEXT          10  this list
+  SHELL.CODE          15    (ready to run)
+  FILES.TEXT           6  this list

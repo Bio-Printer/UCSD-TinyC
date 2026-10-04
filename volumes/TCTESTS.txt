@@ -1,0 +1,31 @@
+TCTESTS:  27 files  (a UCSD directory holds 77)
+
+  FILE            BLOCKS  WHAT
+
+  README.TEXT          4  what is on this volume
+  TESTS.TEXT           4  X TINY-C:TINYC, @TESTS: rebuilds every program here
+  CONTROL.C            4  switch, goto, do/while, break/continue, ?:, comma ...
+  CONTROL.CODE        11    (ready to run)
+  DOUBLES.C           10  doubles (8 bytes: IEEE binary64, CSP 100..; P-Code mode ...
+  DOUBLES.CODE        22    (ready to run)
+  FCOMPARE.C           4  real comparisons, all six operators, signs, zero and ...
+  FCOMPARE.CODE       13    (ready to run)
+  FILEIO.C             4  files: stdio text files, then io.h / fcntl.h binary ...
+  FILEIO.CODE         17    (ready to run)
+  FLOATS.C             4  0.1 + 0.2 == 0.3 holds for the 24-bit II.0 real (not ...
+  FLOATS.CODE         16    (ready to run)
+  FUNCPTR.C            4  function pointers, qsort, arrays of function pointers
+  FUNCPTR.CODE        12    (ready to run)
+  FUNCSEG.C            6  function pointers across segments: CALLI to a function ...
+  FUNCSEG.CODE        13    (ready to run)
+  LONGS.C              4  32-bit long arithmetic
+  LONGS.CODE          13    (ready to run)
+  STRCONST.C           8  string literals kept in pointers and arrays, across ...
+  STRCONST.CODE       14    (ready to run)
+  STRINGS.C            6  string.h, sprintf, sscanf, ctype, macros with arguments
+  STRINGS.CODE        17    (ready to run)
+  STRUCTS.C            6  structs, unions, pointers to structs, linked list ...
+  STRUCTS.CODE        13    (ready to run)
+  SYSCOM.C             6  <psys.h>: SYSCOM found from main, deep calls and ...
+  SYSCOM.CODE         13    (ready to run)
+  FILES.TEXT           6  this list

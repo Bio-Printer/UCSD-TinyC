@@ -1,11 +1,12 @@
-/* shell.c -- a mini-shell: runs programs with pexec() and comes back */
+/* shell.c -- a mini-shell: runs programs with pexec() and comes back;
+   NAME ARG1 ARG2 ... passes the arguments to NAME's main(argc, argv) */
 #include <stdio.h>
 #include <string.h>
 #include <psys.h>
 
 int main(void)
 {
-    char line[80];
+    char line[130];                     /* more than pexec takes (80): it says so */
     char here;
     char *heaptop;
     int n;
@@ -30,6 +31,7 @@ int main(void)
         switch (pexec(line)) {          /* returns only when it cannot run it */
         case -1: printf("%s: no such program\n", line); break;
         case -2: printf("%s: not linked\n", line); break;
+        case -4: printf("command line too long (80 characters at most)\n"); break;
         default: printf("%s: cannot find the shell's own code file\n", line); break;
         }
     }

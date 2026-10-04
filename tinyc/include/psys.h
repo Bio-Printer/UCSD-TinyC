@@ -69,18 +69,27 @@ struct syscomrec {
 #define MI_IS_FLIPT   0x0200
 #define MI_WORD_MACH  0x0400
 
-/* pexec(name): run the program NAME (NAME.CODE; NAME. means exactly
+/* pexec(cmd): run the program NAME (NAME.CODE; NAME. means exactly
    NAME, as X(ecute), then start this program again from the beginning.
-   Nothing of this program stays in memory while NAME runs. Needs the
-   operating system of BIGGY 1.10 or later. Returns only when NAME
-   cannot be run: -1 no such code file, -2 not linked, -3 this program's
-   own code file not found. */
-int pexec(char *name);
+   cmd is "NAME" or "NAME ARG1 ARG2 ...": a program whose main is
+   main(int argc, char **argv) gets argv[0] = NAME, argv[1] = ARG1, ...
+   (words separated by blanks; started any other way, argc is 1 and
+   argv[0] is ""). Nothing of this program stays in memory while NAME
+   runs. Needs the operating system of BIGGY 1.10 or later. Returns only
+   when NAME cannot be run: -1 no such code file, -2 not linked, -3 this
+   program's own code file not found, -4 cmd longer than 80 characters. */
+int pexec(char *cmd);
 
 /* SYSCOM->expansion[0]: the operating system's pexec state */
 #define PX_RUN   25601
 #define PX_CHILD 25602
 #define PX_BACK  25603
+/* SYSCOM->expansion[6]: the command line is in the OS's prompt-line
+   string PL (OS global word 70, STRING[80]: nothing writes it between
+   two programs), [7] its checksum (__pxsum) */
+#define PX_ARGS  25604
+#define PX_PL    70
+int __pxsum(unsigned char *s);
 
 /* this run was started again by pexec, after the program it ran */
 #define pexec_returned() (SYSCOM->expansion[0] == PX_BACK)

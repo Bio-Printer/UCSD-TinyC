@@ -5,8 +5,13 @@
             TCLIB.OBJ, TCMSGS.TEXT, the headers, the compiler's and the
             library's sources, BUILD.TEXT (X TINYC, @BUILD rebuilds the
             compiler), README.TEXT, FILES.TEXT
-  TCEXTRA:  the test and demo programs (sources and ready-to-run code
-            files), CMPCODE, README.TEXT, FILES.TEXT
+  TCEXTRA:  the demo programs (DEMOS), the mini-shell and its examples
+            (examples/), CMPCODE: sources and ready-to-run code files,
+            README.TEXT, DEMOS.TEXT, FILES.TEXT
+  TCTESTS:  the test programs (tests/ that are not demos): sources and
+            ready-to-run code files, README.TEXT, TESTS.TEXT, FILES.TEXT
+  (Three volumes: a UCSD directory holds 77 files, and @DEMOS / @TESTS
+  leave a NAME.OBJ for every program they build.)
 
 FILES.TEXT lists every file on its volume with its size and what it is;
 the same listing is written next to the zips (volumes/NAME.txt).
@@ -54,12 +59,14 @@ LIBS.TEXT compiles the %d library modules and joins them (/J) into
 TCLIB2.OBJ, identical to TCLIB.OBJ (check it with CMPCODE).  To use it,
 remove TCLIB.OBJ and rename TCLIB2.OBJ to TCLIB.OBJ with the Filer.
 
-THE DEMO PROGRAMS: see DEMOS.TEXT on TCEXTRA: (@DEMOS).
+THE DEMO PROGRAMS are on TCEXTRA: (DEMOS.TEXT, @DEMOS), the test
+programs on TCTESTS: (TESTS.TEXT, @TESTS).
 
 RUNNING PROGRAMS FROM A PROGRAM: PSYS.H's pexec("NAME") runs NAME.CODE
 and then starts the calling program again from the beginning, with
 pexec_returned() and pexec_status() telling it so; nothing of the caller
-stays in memory meanwhile.  It needs the operating system of BIGGY 1.10
+stays in memory meanwhile.  pexec("NAME ARG1 ARG2") passes the words to
+NAME's main(int argc, char **argv) (80 characters at most).  It needs the operating system of BIGGY 1.10
 or later.  SHELL.C on TCEXTRA: is a small shell built on it.
 
 FUNCTION POINTERS: a call through a function pointer (qsort, bsearch and
@@ -88,8 +95,9 @@ README_TC = README_TC % len([f for f in os.listdir(os.path.join(ROOT, 'tinyc', '
 
 README_EX = """TINY-C EXTRAS                                     volume TCEXTRA:
 
-Test and demo programs for Tiny-C (the compiler is on TINY-C:).  Every
-program is here as source (NAME.C) and ready to run (NAME.CODE):
+Demo programs for Tiny-C (the compiler is on TINY-C:, the test programs
+on TCTESTS:).  Every program is here as source (NAME.C) and ready to run
+(NAME.CODE):
 X(ecute TCEXTRA:NAME.  To compile one yourself, set the prefix to
 TCEXTRA: and X(ecute TINY-C:TINYC, answer NAME.
 
@@ -97,11 +105,13 @@ REBUILDING THEM ALL:  set the prefix to TCEXTRA:, X(ecute TINY-C:TINYC,
 answer  @DEMOS.  DEMOS.TEXT compiles and links every program here (each
 leaves a NAME.OBJ as well; remove those with the Filer if you like).
 
-SHELL is a small shell: type a program's name (as for X(ecute) and it
-runs it, then comes back with its exit status; MEM shows the shell's
-free memory, BYE leaves it.  MEMFREE shows a program's free memory: run
-it with X(ecute and from SHELL, it is the same (pexec leaves nothing of
-the shell in memory).  Both need BIGGY 1.10 or later.
+SHELL is a small shell: type a program's name (as for X(ecute), with
+arguments if you like, and it runs it, then comes back with its exit
+status; MEM shows the shell's free memory, BYE leaves it.  MEMFREE shows
+a program's free memory: run it with X(ecute and from SHELL, it is the
+same (pexec leaves nothing of the shell in memory).  ARGS does what its
+arguments say: from SHELL try ARGS, ARGS ADD 2 3, ARGS MUL 6 7,
+ARGS REPEAT 3 HELLO, ARGS ECHO A B C.  They need BIGGY 1.10 or later.
 
 CMPCODE compares two files byte by byte (for .CODE files the program
 name in block 0 aside): after @BUILD on TINY-C:, compare
@@ -110,6 +120,24 @@ with TINY-C:TCLIB2.OBJ; it prints IDENTICAL.
 
 FILES.TEXT lists every file on this volume.
 """
+
+README_TS = """TINY-C TESTS                                      volume TCTESTS:
+
+Test programs for Tiny-C (the compiler is on TINY-C:, the demos on
+TCEXTRA:): each exercises a part of the language or the library and
+prints what it computed.  Every program is here as source (NAME.C) and
+ready to run (NAME.CODE): X(ecute TCTESTS:NAME.
+
+REBUILDING THEM ALL:  set the prefix to TCTESTS:, X(ecute TINY-C:TINYC,
+answer  @TESTS.  TESTS.TEXT compiles and links every program here (each
+leaves a NAME.OBJ as well; remove those with the Filer if you like).
+
+FILES.TEXT lists every file on this volume.
+"""
+
+# the demo programs (TCEXTRA:, with examples/ and CMPCODE); the other
+# tests/ programs go on TCTESTS:
+DEMOS = ('boxes', 'calc', 'demo', 'guess', 'hanoi', 'pi', 'queens', 'sieve')
 
 LIBMODS_ = sorted(f[:-2] for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c'))
 LIBS = """; LIBS -- rebuild the C library: X(ecute TINYC, answer @LIBS
@@ -253,26 +281,40 @@ def tiny_c():
     t.finish()
 
 
+def programs(vol, batch, progs, desc):
+    """sources, ready-to-run code files and the @BATCH file that rebuilds them"""
+    names = [os.path.splitext(os.path.basename(p))[0].upper()[:10] for p in progs]
+    vol.text(batch + '.TEXT', '; %s -- compile and link every program on %s:\n'
+             '; prefix %s:, X(ecute TINY-C:TINYC, answer @%s\n' % (batch, vol.name, vol.name, batch) +
+             ''.join('/Z %s\n' % n for n in names), desc)
+    for p in progs:
+        name = os.path.splitext(os.path.basename(p))[0].upper()[:10]
+        vol.textfile(name + '.C', p, describe(p))
+        vol.binary(name + '.CODE', compiled(p), '  (ready to run)')
+
+
 def extras():
     e = Vol('TCEXTRA', 4000)
     e.text('README.TEXT', README_EX, 'what is on this volume')
-    progs = [os.path.join(TESTS, f) for f in sorted(os.listdir(TESTS)) if f.endswith('.c')]
+    progs = [os.path.join(TESTS, d + '.c') for d in DEMOS]
     progs.append(os.path.join(ROOT, 'verify', 'cmpcode.c'))
     progs += [os.path.join(ROOT, 'examples', f) for f in sorted(os.listdir(os.path.join(ROOT, 'examples'))) if f.endswith('.c')]
-    names = [os.path.splitext(os.path.basename(p))[0].upper()[:10] for p in progs]
-    e.text('DEMOS.TEXT', '; DEMOS -- compile and link every program on TCEXTRA:\n'
-           '; prefix TCEXTRA:, X(ecute TINY-C:TINYC, answer @DEMOS\n' +
-           ''.join('/Z %s\n' % n for n in names), 'X TINY-C:TINYC, @DEMOS: rebuilds every program here')
-    for p in progs:
-        name = os.path.splitext(os.path.basename(p))[0].upper()[:10]
-        e.textfile(name + '.C', p, describe(p))
-        e.binary(name + '.CODE', compiled(p), '  (ready to run)')
+    programs(e, 'DEMOS', progs, 'X TINY-C:TINYC, @DEMOS: rebuilds every program here')
     e.finish()
+
+
+def tests():
+    t = Vol('TCTESTS', 4000)
+    t.text('README.TEXT', README_TS, 'what is on this volume')
+    progs = [os.path.join(TESTS, f) for f in sorted(os.listdir(TESTS)) if f.endswith('.c') and f[:-2] not in DEMOS]
+    programs(t, 'TESTS', progs, 'X TINY-C:TINYC, @TESTS: rebuilds every program here')
+    t.finish()
 
 
 def main():
     tiny_c()
     extras()
+    tests()
     old = os.path.join(ROOT, 'TinyC_Volume.zip')
     if os.path.exists(old):
         os.remove(old)

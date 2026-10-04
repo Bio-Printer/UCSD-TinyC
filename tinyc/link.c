@@ -81,6 +81,9 @@ static int curfilei;
 static int curmod;
 static int mainparmsz;          /* main's parameter words and result words */
 static int mainrw;
+static int cmparmsz;             /* __callmain's (main(argc, argv): pexec.c) */
+static int cmrw;
+static struct LProc *callmp;
 
 static int rd(void)
 {
@@ -339,6 +342,10 @@ static void pass1(void)
             mainparmsz = parmsz;
             mainrw = rw;
         }
+        if (strcmp(name, "__callmain") == 0) {
+            cmparmsz = parmsz;
+            cmrw = rw;
+        }
         h = hashstr(name) & (LHASH - 1);
         p->hnext = lhash[h];
         lhash[h] = p;
@@ -524,11 +531,17 @@ static void makeentry(struct LProc *mainp, struct LProc *exitp)
     for (i = 0; i < nprocs; i++)
         if (procs[i]->live && (procs[i]->flags & 1))
             ecall(procs[i]);
-    for (i = 0; i < mainparmsz / 2; i++)
-        eb(0);
-    ecall(mainp);
+    if (callmp) {                       /* main(argc, argv): __callmain calls it */
+        for (i = 0; i < cmparmsz / 2; i++)
+            eb(0);
+        ecall(callmp);
+    } else {
+        for (i = 0; i < mainparmsz / 2; i++)
+            eb(0);
+        ecall(mainp);
+    }
     if (exitp) {
-        if (mainrw == 0)
+        if ((callmp ? cmrw : mainrw) == 0)
             eb(0);
         ecall(exitp);
     }
@@ -676,6 +689,12 @@ int link(char **objs, int nobjs, char *code, char *progname)
         return 0;
     }
     mainp->live = 1;
+    callmp = 0;
+    if (mainparmsz >= 4) {              /* main has parameters: argc, argv */
+        callmp = findproc("__callmain");
+        if (callmp)
+            callmp->live = 1;
+    }
     exitp = findproc("exit");
     if (exitp)
         exitp->live = 1;

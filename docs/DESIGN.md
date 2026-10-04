@@ -156,6 +156,20 @@ runs), the resident operating system did not grow (7840 bytes, as in
 1.07), and `tools/pexectest.py` checks that a program started by pexec
 has exactly the free memory it has when started with X(ecute.
 
+`main(int argc, char **argv)` gets the command line given to `pexec`:
+`pexec("ARGS ADD 2 3")` runs ARGS.CODE with argv `ARGS`, `ADD`, `2`, `3`
+(blank-separated words; started any other way argc is 1 and `argv[0]`
+is ""). The line is kept in the operating system's prompt-line string
+`PL` (OS global word 70, `STRING[80]`, so 80 characters at most:
+`pexec` returns -4 for longer), which nothing writes between two
+programs; `EXPANSION[6]` = `PX_ARGS` and `[7]` = a checksum of it. When
+`main` has parameters the linker's startup code calls the library's
+`__callmain` (pexec.c) instead of `main`: it takes the line only while
+the program is the one pexec started (`EXPANSION[0]` = `PX_CHILD`) and
+the checksum matches, copies and splits it on the heap, clears `[6]`,
+and calls `main(argc, argv)`. No OS change; a program whose `main` has
+no parameters links none of it.
+
 BIGGY 1.11 (U134.4_OS_SOURCE_v1.11) adds `$` at the Command: prompt
 (listed under `?`): it runs `*SYSTEM.SHELL`, which `mkbiggy.py` builds
 from `examples/shell.c` (GETCMD's segment: 3176 bytes). Its FGOTOXY is

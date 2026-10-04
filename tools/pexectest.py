@@ -12,7 +12,11 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
     CRASH                    an execution error: the system re-initializes,
                              the shell comes back with status -2
     *SYSTEM.FILER.           a Pascal program (status 0)
+    ARGS ...                 examples/args.c: main(argc, argv) gets the
+                             command line (none, ADD 2 3, MUL 6 7, REPEAT,
+                             ECHO with extra blanks, unknown, 81 characters)
     bye                      back to the Command: prompt
+  X ARGS                     started by the OS afterwards: no arguments
   ?, $                       the Command: prompt's $ starts the shell
                              (*SYSTEM.SHELL), MEMFREE from it, bye
 
@@ -53,7 +57,25 @@ TYPE "*SYSTEM.FILER.\r"
 WAIT "Filer:"
 TYPE "Q"
 WAIT "shell> "
+TYPE "#5:ARGS\r"
+WAIT "shell> "
+TYPE "#5:ARGS ADD 2 3\r"
+WAIT "shell> "
+TYPE "#5:ARGS mul 6 7\r"
+WAIT "shell> "
+TYPE "#5:ARGS REPEAT 2 HELLO\r"
+WAIT "shell> "
+TYPE "  #5:ARGS   ECHO  A   B  \r"
+WAIT "shell> "
+TYPE "#5:ARGS FOO\r"
+WAIT "shell> "
+TYPE "#5:ARGS ECHO LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\r"
+WAIT "shell> "
 TYPE "bye\r"
+WAIT "Command:"
+TYPE "X"
+WAIT "Execute what file?"
+TYPE "#5:ARGS\r"
 WAIT "Command:"
 TYPE "?"
 WAIT "$(hell"
@@ -70,7 +92,8 @@ def main():
     ps = PSystem()
     crash = os.path.join(ps.dir, 'crash.c')
     open(crash, 'w').write(CRASH)
-    for src in (os.path.join(ROOT, 'examples', 'shell.c'), os.path.join(ROOT, 'examples', 'memfree.c'), crash):
+    for src in (os.path.join(ROOT, 'examples', 'shell.c'), os.path.join(ROOT, 'examples', 'memfree.c'),
+                os.path.join(ROOT, 'examples', 'args.c'), crash):
         base, code = compile_c(src, ps.dir)
         ps.put(base + '.CODE', open(code, 'rb').read())
     ok, tr, info = ps.run_script(SCRIPT, 600)
@@ -78,13 +101,21 @@ def main():
     free = [int(x) for x in re.findall(r'memfree: (\d+) words free', tr)]
     shell = re.findall(r'shell: (\d+) words free', tr)
     status = re.findall(r'\[exit status (-?\d+)\]', tr)
-    print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init', l)))
+    print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init|args:|too long', l)))
     checks = [
         ('the script completed', ok),
         ('memfree ran three times', len(free) == 3),
         ('same free memory from X(ecute and from the shell', len(free) == 3 and free[0] == free[1] == free[2]),
         ('the shell has less (its own code)', len(free) == 3 and len(shell) == 1 and int(shell[0]) < free[0]),
-        ('exit statuses 7, -2 (execution error), 0 (the Filer), 7 (from $)', status == ['7', '-2', '0', '7']),
+        ('exit statuses 7, -2 (execution error), 0 (the Filer), 1 5 42 0 4 2 (ARGS), 7 (from $)',
+         status == ['7', '-2', '0', '1', '5', '42', '0', '4', '2', '7']),
+        ('ARGS with no arguments: argc 1 (shell, then X(ecute)', tr.count('args: no arguments (argc 1)') == 2),
+        ('ARGS ADD 2 3, mul 6 7', 'args: 2 + 3 = 5' in tr and 'args: 6 * 7 = 42' in tr),
+        ('ARGS REPEAT 2 HELLO', 'args: 1 HELLO\n' in tr and 'args: 2 HELLO\n' in tr),
+        ('ARGS ECHO: words, extra blanks dropped', 'args: argc 4' in tr and 'argv[0] = "#5:ARGS"' in tr
+         and 'argv[1] = "ECHO"' in tr and 'argv[2] = "A"' in tr and 'argv[3] = "B"' in tr),
+        ('ARGS FOO: unknown', "args: don't know FOO with 1 arguments" in tr),
+        ('81 characters: too long', 'command line too long' in tr),
         ('the ? prompt offers $(hell', 'H(alt, $(hell' in tr),
         ('NOSUCH: no such program', 'NOSUCH: no such program' in tr),
     ]
