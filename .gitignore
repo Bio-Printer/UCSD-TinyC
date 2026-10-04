@@ -10,3 +10,7 @@ tests/*.code
 tinyc/*.i
 tinyc/*.ir
 tinyc/*.obj
+examples/*.i
+examples/*.ir
+examples/*.obj
+examples/*.code
