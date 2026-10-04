@@ -26,6 +26,6 @@ TCEXTRA:  27 files  (a UCSD directory holds 77)
   ARGS.CODE           13    (ready to run)
   MEMFREE.C            4  prints the memory free to it (stack to heap) and exits ...
   MEMFREE.CODE        10    (ready to run)
-  SHELL.C              6  a mini-shell: runs programs with pexec() and comes back
-  SHELL.CODE          15    (ready to run)
+  SHELL.C             10  a mini-shell: runs programs with pexec() and comes back
+  SHELL.CODE          18    (ready to run)
   FILES.TEXT           6  this list

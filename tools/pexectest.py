@@ -15,6 +15,9 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
     ARGS ...                 examples/args.c: main(argc, argv) gets the
                              command line (none, ADD 2 3, MUL 6 7, REPEAT,
                              ECHO with extra blanks, unknown, 81 characters)
+    args add 2 3             no volume: found on the one disk that has it
+    MEMFREE                  on two disks (#5 and #9): the shell asks, 2
+                             runs it, RETURN runs nothing
     bye                      back to the Command: prompt
   X ARGS                     started by the OS afterwards: no arguments
   ?, $                       the Command: prompt's $ starts the shell
@@ -27,6 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from psys import PSystem
+import ucsdvol
 from tcrun import compile_c
 
 CRASH = '''#include <stdio.h>
@@ -71,6 +75,16 @@ TYPE "#5:ARGS FOO\r"
 WAIT "shell> "
 TYPE "#5:ARGS ECHO LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL\r"
 WAIT "shell> "
+TYPE "args add 2 3\r"
+WAIT "shell> "
+TYPE "MEMFREE\r"
+WAIT "Which one"
+TYPE "2\r"
+WAIT "shell> "
+TYPE "MEMFREE\r"
+WAIT "Which one"
+TYPE "\r"
+WAIT "shell> "
 TYPE "bye\r"
 WAIT "Command:"
 TYPE "X"
@@ -96,6 +110,9 @@ def main():
                 os.path.join(ROOT, 'examples', 'args.c'), crash):
         base, code = compile_c(src, ps.dir)
         ps.put(base + '.CODE', open(code, 'rb').read())
+    v = ucsdvol.Volume(ps.spare)        # MEMFREE on a second disk (#9) too
+    v.write('MEMFREE.CODE', open(os.path.join(ps.dir, 'MEMFREE.CODE'), 'rb').read(), 2)
+    v.save()
     ok, tr, info = ps.run_script(SCRIPT, 600)
     tr = tr.replace('\r', '\n')
     free = [int(x) for x in re.findall(r'memfree: (\d+) words free', tr)]
@@ -104,11 +121,12 @@ def main():
     print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init|args:|too long', l)))
     checks = [
         ('the script completed', ok),
-        ('memfree ran three times', len(free) == 3),
-        ('same free memory from X(ecute and from the shell', len(free) == 3 and free[0] == free[1] == free[2]),
-        ('the shell has less (its own code)', len(free) == 3 and len(shell) == 1 and int(shell[0]) < free[0]),
-        ('exit statuses 7, -2 (execution error), 0 (the Filer), 1 5 42 0 4 2 (ARGS), 7 (from $)',
-         status == ['7', '-2', '0', '1', '5', '42', '0', '4', '2', '7']),
+        ('memfree ran four times', len(free) == 4),
+        ('same free memory from X(ecute and from the shell', len(free) == 4 and len(set(free)) == 1),
+        ('the shell has less (its own code)', len(free) == 4 and len(shell) == 1 and int(shell[0]) < free[0]),
+        ('exit statuses 7, -2 (execution error), 0 (the Filer), 1 5 42 0 4 2 (ARGS), 5 7 (searched), 7 (from $)',
+         status == ['7', '-2', '0', '1', '5', '42', '0', '4', '2', '5', '7', '7']),
+        ('MEMFREE on two disks: the shell lists both', 'WORK:MEMFREE  (#5:MEMFREE)' in tr and 'SPARE:MEMFREE  (#9:MEMFREE)' in tr),
         ('ARGS with no arguments: argc 1 (shell, then X(ecute)', tr.count('args: no arguments (argc 1)') == 2),
         ('ARGS ADD 2 3, mul 6 7', 'args: 2 + 3 = 5' in tr and 'args: 6 * 7 = 42' in tr),
         ('ARGS REPEAT 2 HELLO', 'args: 1 HELLO\n' in tr and 'args: 2 HELLO\n' in tr),

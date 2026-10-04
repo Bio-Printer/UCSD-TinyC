@@ -126,11 +126,14 @@ leaves a NAME.OBJ as well; remove those with the Filer if you like).
 
 SHELL is a small shell: type a program's name (as for X(ecute), with
 arguments if you like, and it runs it, then comes back with its exit
-status; MEM shows the shell's free memory, BYE leaves it.  MEMFREE shows
-a program's free memory: run it with X(ecute and from SHELL, it is the
-same (pexec leaves nothing of the shell in memory).  ARGS does what its
-arguments say: from SHELL try ARGS, ARGS ADD 2 3, ARGS MUL 6 7,
-ARGS REPEAT 3 HELLO, ARGS ECHO A B C.  They need BIGGY 1.10 or later.
+status.  A name without a volume (ARGS rather than TCEXTRA:ARGS) is
+looked for on every disk on line; when several have it, SHELL lists them
+and asks which one; MEM shows the shell's free memory, BYE leaves it.
+MEMFREE shows a program's free memory: run it with X(ecute and from
+SHELL, it is the same (pexec leaves nothing of the shell in memory).
+ARGS does what its arguments say: from SHELL try ARGS, ARGS ADD 2 3,
+ARGS MUL 6 7, ARGS REPEAT 3 HELLO, ARGS ECHO A B C.  They need BIGGY 1.10
+or later.
 
 CMPCODE compares two files byte by byte (for .CODE files the program
 name in block 0 aside): after @BUILD on TCSRC:, compare
