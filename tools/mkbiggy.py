@@ -44,7 +44,7 @@ def main():
     for f in sorted(os.listdir(INC)):
         if f.endswith('.h'):
             put(f.upper(), ucsdvol.text_to_ucsd(open(os.path.join(INC, f)).read()), 3)
-    # the Tiny-C shell, which the Command: prompt's $ runs (OS 1.08, BIGGY 1.10)
+    # the Tiny-C shell, which the Command: prompt's $ runs (BIGGY 1.11)
     base, shell = compile_c(os.path.join(ROOT, 'examples', 'shell.c'), os.path.join(ROOT, 'build'), z80=True)
     put('SYSTEM.SHELL', open(shell, 'rb').read(), 2)
     if changed:

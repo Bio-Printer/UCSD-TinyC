@@ -135,7 +135,8 @@ stores it in SYSCOM; -1 could not start, -2 execution error). A program
 cannot call another and continue: both are segment 1 (and 7..15), and
 those numbers are compiled into their code. So `pexec` only records two
 code files in SYSCOM's unused `EXPANSION` words and exits; the operating
-system does the rest (OS 1.08, `GETCMD` in SYSSEGS.B.TEXT, BIGGY 1.10):
+system does the rest (`GETCMD` in SYSSEGS.B.TEXT of UCSD-Pascal-Volumes'
+U134.4_OS_SOURCE_v1.10, on BIGGY 1.10 and later):
 
 * `[0]` state: `PX_RUN` (set by pexec), `PX_CHILD`, `PX_BACK`
 * `[1]`,`[2]` unit and first block of the program to run (from the FIB
@@ -150,11 +151,14 @@ program (`LOADSEGS`, what `ASSOCIATE` does after `FOPEN`) and returns
 after an execution error, `LASTST = HALTINIT`), does the same for the
 caller with `PX_BACK`, which the next `GETCMD` clears. Nothing of the
 caller stays in memory while the program runs: `LOADSEGS` and the hook
-are in GETCMD's segment (2688 -> 3176 bytes, loaded only while GETCMD
-runs), the resident operating system did not grow (7756 bytes; 7840 when
-BINDER bound MYGOTOXY into 1.07 -- 1.08 has MYGOTOXY's FGOTOXY in its
-source, so SYSTEM.PASCAL is simply the compiled SYSTEM), and
-`tools/pexectest.py` checks that a program started by pexec has exactly
-the free memory it has when started with X(ecute. `$` at the Command:
-prompt (listed under `?`) runs `*SYSTEM.SHELL`, which `mkbiggy.py`
-builds from `examples/shell.c`.
+are in GETCMD's segment (2688 -> 3068 bytes, loaded only while GETCMD
+runs), the resident operating system did not grow (7840 bytes, as in
+1.07), and `tools/pexectest.py` checks that a program started by pexec
+has exactly the free memory it has when started with X(ecute.
+
+BIGGY 1.11 (U134.4_OS_SOURCE_v1.11) adds `$` at the Command: prompt
+(listed under `?`): it runs `*SYSTEM.SHELL`, which `mkbiggy.py` builds
+from `examples/shell.c` (GETCMD's segment: 3176 bytes). Its FGOTOXY is
+MYGOTOXY.TEXT's, in the source, so SYSTEM.PASCAL is simply the compiled
+SYSTEM (no BINDER), and the resident operating system is smaller: 7756
+bytes.

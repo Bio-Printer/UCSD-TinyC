@@ -2,7 +2,7 @@
 #include "libint.h"
 #include <psys.h>
 
-/* The operating system (1.08 and later, GETCMD) does the work when this
+/* The operating system (BIGGY 1.10 and later, GETCMD) does the work when this
    program has ended: it starts the code file at SYSCOM->expansion[1],[2]
    (unit, first block), and when that one ends, the one at [3],[4] -- this
    program, from the beginning. Nothing of this program stays in memory

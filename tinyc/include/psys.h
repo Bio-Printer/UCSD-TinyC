@@ -72,7 +72,7 @@ struct syscomrec {
 /* pexec(name): run the program NAME (NAME.CODE; NAME. means exactly
    NAME, as X(ecute), then start this program again from the beginning.
    Nothing of this program stays in memory while NAME runs. Needs the
-   operating system 1.08 or later (BIGGY 1.10). Returns only when NAME
+   operating system of BIGGY 1.10 or later. Returns only when NAME
    cannot be run: -1 no such code file, -2 not linked, -3 this program's
    own code file not found. */
 int pexec(char *name);

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """pexectest.py -- test pexec() (psys.h) and the operating system's part of
-it (OS 1.08, BIGGY 1.10) with the mini-shell examples/shell.c:
+it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
 
   X MEMFREE                  free memory of a program started by the OS
   X SHELL, then in the shell
