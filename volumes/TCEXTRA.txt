@@ -1,8 +1,8 @@
-TCEXTRA:  45 files  (a UCSD directory holds 77)
+TCEXTRA:  49 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
-  README.TEXT          4  what is on this volume
+  README.TEXT          6  what is on this volume
   DEMOS.TEXT           4  X TINY-C:TINYC, @DEMOS: rebuilds every program here
   BOXES.C              4  conio.h: clear the screen, draw boxes with gotoxy ...
   BOXES.CODE           4    (ready to run)
@@ -46,4 +46,8 @@ TCEXTRA:  45 files  (a UCSD directory holds 77)
   SYSCOM.CODE         13    (ready to run)
   CMPCODE.C            6  compare two code files byte by byte (Tiny-C Verify)
   CMPCODE.CODE        15    (ready to run)
-  FILES.TEXT           8  this list
+  MEMFREE.C            4  prints the memory free to it (stack to heap) and exits ...
+  MEMFREE.CODE        10    (ready to run)
+  SHELL.C              6  a mini-shell: runs programs with pexec() and comes back
+  SHELL.CODE          14    (ready to run)
+  FILES.TEXT          10  this list

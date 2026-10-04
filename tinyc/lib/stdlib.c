@@ -1,5 +1,6 @@
 /* stdlib.c -- Tiny-C library: the code behind <stdlib.h> */
 #include "libint.h"
+#include <psys.h>
 #pragma nofltused
 unsigned *__freelist;
 void *malloc(size_t n)
@@ -288,6 +289,7 @@ void __heaprestore(void)
 
 void exit(int status)
 {
+    SYSCOM->expansion[5] = status;      /* pexec_status() */
     __stdio_exit();
     __exitprog();
 }

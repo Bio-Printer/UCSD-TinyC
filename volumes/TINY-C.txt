@@ -1,11 +1,11 @@
-TINY-C:  48 files  (a UCSD directory holds 77)
+TINY-C:  49 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
   TINYC.CODE         108  the Tiny-C compiler: X(ecute TINYC
-  TCLIB.OBJ           50  the C library (built with /Z), linked into every program
+  TCLIB.OBJ           51  the C library (built with /Z), linked into every program
   TCMSGS.TEXT          8  the compiler's messages (line n = message n)
-  README.TEXT          8  how to use and rebuild Tiny-C
+  README.TEXT         10  how to use and rebuild Tiny-C
   BUILD.TEXT           4  X TINYC, @BUILD: rebuilds the compiler -> TINYC2.CODE
   LIBS.TEXT            4  X TINYC, @LIBS: rebuilds the library -> TCLIB2.OBJ
   ASSERT.H             4  header: assert()
@@ -16,7 +16,7 @@ TINY-C:  48 files  (a UCSD directory holds 77)
   IO.H                 4  header: open, read, write, lseek, close, unlink
   LIMITS.H             4  header: INT_MAX, LONG_MAX, ... (16-bit int, 32-bit long)
   MATH.H               4  header: sqrt, sin, cos, atan, exp, log, pow, fabs, ...
-  PSYS.H               8  header: SYSCOM: the P-System's SYSCOM record (SYSCOM->memtop, ...)
+  PSYS.H              10  header: SYSCOM: the P-System's SYSCOM record (SYSCOM->memtop, ...)
   STDARG.H             4  header: va_list, va_start, va_arg, va_end
   STDDEF.H             4  header: size_t, NULL, offsetof
   STDIO.H             10  header: printf, scanf, FILE, fopen, fgets, fprintf, ...
@@ -43,6 +43,7 @@ TINY-C:  48 files  (a UCSD directory holds 77)
   FLTFMT.C             8  library: printf's %f %e %g (linked only when floats are used)
   IO.C                 6  library: <io.h>
   MATH.C               6  library: <math.h>
+  PEXEC.C              8  library: <pexec.h>
   STDIO.C             44  library: <stdio.h>
   STDLIB.C            14  library: <stdlib.h>
   STRING.C             8  library: <string.h>

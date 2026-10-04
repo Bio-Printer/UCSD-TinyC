@@ -50,11 +50,17 @@ which is identical to TINYC.CODE apart from its name (check it with
 CMPCODE on TCEXTRA:).  To use it, rename it with the Filer.
 
 REBUILDING THE LIBRARY:  X(ecute TINYC, answer  @LIBS
-LIBS.TEXT compiles the 11 library modules and joins them (/J) into
+LIBS.TEXT compiles the %d library modules and joins them (/J) into
 TCLIB2.OBJ, identical to TCLIB.OBJ (check it with CMPCODE).  To use it,
 remove TCLIB.OBJ and rename TCLIB2.OBJ to TCLIB.OBJ with the Filer.
 
 THE DEMO PROGRAMS: see DEMOS.TEXT on TCEXTRA: (@DEMOS).
+
+RUNNING PROGRAMS FROM A PROGRAM: PSYS.H's pexec("NAME") runs NAME.CODE
+and then starts the calling program again from the beginning, with
+pexec_returned() and pexec_status() telling it so; nothing of the caller
+stays in memory meanwhile.  It needs the operating system of BIGGY 1.10
+or later.  SHELL.C on TCEXTRA: is a small shell built on it.
 
 FUNCTION POINTERS: a call through a function pointer (qsort, bsearch and
 printf's floating-point formatting use them) is by default compiled to
@@ -78,6 +84,8 @@ Filer's T(ransfer copies a text file to such a name as it is.
 FILES.TEXT lists every file on this volume.
 """
 
+README_TC = README_TC % len([f for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c')])
+
 README_EX = """TINY-C EXTRAS                                     volume TCEXTRA:
 
 Test and demo programs for Tiny-C (the compiler is on TINY-C:).  Every
@@ -88,6 +96,12 @@ TCEXTRA: and X(ecute TINY-C:TINYC, answer NAME.
 REBUILDING THEM ALL:  set the prefix to TCEXTRA:, X(ecute TINY-C:TINYC,
 answer  @DEMOS.  DEMOS.TEXT compiles and links every program here (each
 leaves a NAME.OBJ as well; remove those with the Filer if you like).
+
+SHELL is a small shell: type a program's name (as for X(ecute) and it
+runs it, then comes back with its exit status; MEM shows the shell's
+free memory, BYE leaves it.  MEMFREE shows a program's free memory: run
+it with X(ecute and from SHELL, it is the same (pexec leaves nothing of
+the shell in memory).  Both need BIGGY 1.10 or later.
 
 CMPCODE compares two files byte by byte (for .CODE files the program
 name in block 0 aside): after @BUILD on TINY-C:, compare
@@ -244,6 +258,7 @@ def extras():
     e.text('README.TEXT', README_EX, 'what is on this volume')
     progs = [os.path.join(TESTS, f) for f in sorted(os.listdir(TESTS)) if f.endswith('.c')]
     progs.append(os.path.join(ROOT, 'verify', 'cmpcode.c'))
+    progs += [os.path.join(ROOT, 'examples', f) for f in sorted(os.listdir(os.path.join(ROOT, 'examples'))) if f.endswith('.c')]
     names = [os.path.splitext(os.path.basename(p))[0].upper()[:10] for p in progs]
     e.text('DEMOS.TEXT', '; DEMOS -- compile and link every program on TCEXTRA:\n'
            '; prefix TCEXTRA:, X(ecute TINY-C:TINYC, answer @DEMOS\n' +

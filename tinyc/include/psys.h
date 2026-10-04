@@ -69,4 +69,24 @@ struct syscomrec {
 #define MI_IS_FLIPT   0x0200
 #define MI_WORD_MACH  0x0400
 
+/* pexec(name): run the program NAME (NAME.CODE; NAME. means exactly
+   NAME, as X(ecute), then start this program again from the beginning.
+   Nothing of this program stays in memory while NAME runs. Needs the
+   operating system 1.08 or later (BIGGY 1.10). Returns only when NAME
+   cannot be run: -1 no such code file, -2 not linked, -3 this program's
+   own code file not found. */
+int pexec(char *name);
+
+/* SYSCOM->expansion[0]: the operating system's pexec state */
+#define PX_RUN   25601
+#define PX_CHILD 25602
+#define PX_BACK  25603
+
+/* this run was started again by pexec, after the program it ran */
+#define pexec_returned() (SYSCOM->expansion[0] == PX_BACK)
+/* and that program's exit status: exit(n) or main's result (0 for a
+   program that is not Tiny-C), -1 when it could not be started, -2 when
+   it stopped with an execution error */
+#define pexec_status() (SYSCOM->expansion[5])
+
 #endif

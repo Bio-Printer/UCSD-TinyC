@@ -127,3 +127,30 @@ II.0 compiler's layout: names declared together (`A,B,C: T`) are laid
 out last first (LOWTIME before HIGHTIME, JTAB/SEG/MEMTOP), and packed
 fields fill each word from bit 0 (`MI_` bits of `miscinfo`).
 `tests/syscom.c` checks it from `main`, nested calls and another segment.
+
+`pexec(name)` (also `psys.h`) runs another program and then starts the
+caller again from the beginning; `pexec_returned()` and `pexec_status()`
+tell it so, and the exit status (`exit(n)` or `main`'s result: `exit()`
+stores it in SYSCOM; -1 could not start, -2 execution error). A program
+cannot call another and continue: both are segment 1 (and 7..15), and
+those numbers are compiled into their code. So `pexec` only records two
+code files in SYSCOM's unused `EXPANSION` words and exits; the operating
+system does the rest (OS 1.08, `GETCMD` in SYSSEGS.B.TEXT, BIGGY 1.10):
+
+* `[0]` state: `PX_RUN` (set by pexec), `PX_CHILD`, `PX_BACK`
+* `[1]`,`[2]` unit and first block of the program to run (from the FIB
+  that `FOPEN` fills: `FUNIT` word 7, `FHEADER.DFIRSTBLK` word 16)
+* `[3]`,`[4]` the caller's code file: the directory entry of its unit
+  that holds `SEGTABLE[1].DISKADDR`
+* `[5]` the exit status
+
+At the start of `GETCMD`, `PX_RUN` points `SEGTABLE` 1 and 7..15 at the
+program (`LOADSEGS`, what `ASSOCIATE` does after `FOPEN`) and returns
+`SYSPROG`, as X(ecute does; `PX_CHILD`, when it has ended (normally or
+after an execution error, `LASTST = HALTINIT`), does the same for the
+caller with `PX_BACK`, which the next `GETCMD` clears. Nothing of the
+caller stays in memory while the program runs: `LOADSEGS` and the hook
+are in GETCMD's segment (2688 -> 3054 bytes, loaded only while GETCMD
+runs), the resident operating system is unchanged (the same 7840 bytes),
+and `tools/pexectest.py` checks that a program started by pexec has
+exactly the free memory it has when started with X(ecute.

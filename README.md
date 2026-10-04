@@ -15,6 +15,7 @@ Start here when picking the project up in a new session.
 | `tinyc/lib/*.c`, `libint.h` | the C library (joined into `TCLIB.OBJ`) |
 | `tinyc/include/*.h` | headers; `tcmsgs.txt` = the compiler's messages (TCMSGS.TEXT) |
 | `tests/NAME.c` + `.expect` (+ `.keys`, `.wait`) | test/demo programs and their expected output |
+| `examples/` | `shell.c` (a mini-shell built on `pexec()`) and `memfree.c` (a program's free memory); on TCEXTRA |
 | `volumes/` | **TINY-C.zip** (compiler, library, headers, all sources, BUILD/LIBS scripts) **TCEXTRA.zip** (tests/demos, CMPCODE) and **BIGGY.zip** (boot disk `Big_Disk.BLK` with Tiny-C ready to use; doubles need the v1.88 emulator's CSP 100..137); `*.txt` = file listings |
 | `verify/` | Tiny-C Verify pack: `TCVERIFY.SCRIPT` + `TCVERIFY.zip`, `cmpcode.c`, `rmfiles.c`, README |
 | `repro/` | engine bug repros (REAL compare, DEEPCXP: both fixed in the engine) |
@@ -40,6 +41,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `buildtc.py` | host build of TINYC.CODE from the modules (`build/tcmod/`) |
 | `mkvolume.py` | build `volumes/` (TINY-C, TCEXTRA) with FILES.TEXT listings |
 | `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with TINYC.CODE, TCLIB.OBJ, TCMSGS.TEXT and the headers; only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
+| `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors |
 | `voltest.py` | on the volumes: `@LIBS`, `@BUILD`, `@DEMOS`, CMPCODE checks; reports least free memory |
 | `mkverify.py`, `tcverify.py [native\|z80]` | build / run the Tiny-C Verify pack (`TCV_MAX=seconds` for Z80 mode) |
 | `modes.py prog.c` | run a program in Z80 and P-Code mode and compare (engine bug hunting) |
@@ -55,7 +57,8 @@ Host compiler: `build/tc [-c] [-z] [-I dir] [-L lib.obj] [-o out] files` (built 
 `TINYC_MAP=1` (linker prints procedure addresses).
 
 Before committing a compiler change, run: `runtests.py`, `crosscheck.py`,
-`selfcompile.py`, `mkvolume.py` + `voltest.py`, `mkverify.py` + `tcverify.py`.
+`selfcompile.py`, `mkvolume.py` + `voltest.py`, `mkverify.py` + `tcverify.py`,
+`pexectest.py`.
 
 ## On the P-System
 
