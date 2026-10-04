@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """mkvolume.py -- build the two Tiny-C volumes (volumes/*.zip):
 
-  TINY-C:   everything needed to use Tiny-C and to rebuild it: TINYC.CODE,
-            TCLIB.OBJ, TCMSGS.TEXT, the headers, the compiler's and the
-            library's sources, BUILD.TEXT (X TINYC, @BUILD rebuilds the
-            compiler), README.TEXT, FILES.TEXT
+  TINY-C:   everything needed to use Tiny-C: TINYC.CODE, TCLIB.OBJ,
+            TCMSGS.TEXT, the headers, README.TEXT, FILES.TEXT (the name
+            TINY-C: is built into the compiler: it finds TCLIB.OBJ,
+            TCMSGS.TEXT and headers there)
+  TCSRC:    everything needed to rebuild it: the compiler's and the
+            library's sources, BUILD.TEXT (@BUILD), LIBS.TEXT (@LIBS),
+            README.TEXT, FILES.TEXT
   TCEXTRA:  the demo programs (DEMOS), the mini-shell and its examples
             (examples/), CMPCODE: sources and ready-to-run code files,
             README.TEXT, DEMOS.TEXT, FILES.TEXT
   TCTESTS:  the test programs (tests/ that are not demos): sources and
             ready-to-run code files, README.TEXT, TESTS.TEXT, FILES.TEXT
-  (Three volumes: a UCSD directory holds 77 files, and @DEMOS / @TESTS
-  leave a NAME.OBJ for every program they build.)
+  (Four volumes: a UCSD directory holds 77 files, and @BUILD, @LIBS,
+  @DEMOS and @TESTS leave a NAME.OBJ for every module or program.)
 
 FILES.TEXT lists every file on its volume with its size and what it is;
 the same listing is written next to the zips (volumes/NAME.txt).
@@ -49,15 +52,8 @@ compiles with that volume as the prefix: headers, TCLIB.OBJ and
 TCMSGS.TEXT are found on TINY-C: when they are not on the prefix volume
 or the boot volume.  Temporary files: TCTEMP.TEXT, TCTEMP.IR.
 
-REBUILDING THE COMPILER:  X(ecute TINYC, answer  @BUILD
-BUILD.TEXT compiles the compiler's 12 modules and links TINYC2.CODE,
-which is identical to TINYC.CODE apart from its name (check it with
-CMPCODE on TCEXTRA:).  To use it, rename it with the Filer.
-
-REBUILDING THE LIBRARY:  X(ecute TINYC, answer  @LIBS
-LIBS.TEXT compiles the %d library modules and joins them (/J) into
-TCLIB2.OBJ, identical to TCLIB.OBJ (check it with CMPCODE).  To use it,
-remove TCLIB.OBJ and rename TCLIB2.OBJ to TCLIB.OBJ with the Filer.
+THE SOURCES of the compiler and the library, and the batch files that
+rebuild them (@BUILD, @LIBS), are on TCSRC: (see its README.TEXT).
 
 THE DEMO PROGRAMS are on TCEXTRA: (DEMOS.TEXT, @DEMOS), the test
 programs on TCTESTS: (TESTS.TEXT, @TESTS).
@@ -91,7 +87,30 @@ Filer's T(ransfer copies a text file to such a name as it is.
 FILES.TEXT lists every file on this volume.
 """
 
-README_TC = README_TC % len([f for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c')])
+README_SRC = """TINY-C SOURCES                                    volume TCSRC:
+
+The sources of the Tiny-C compiler (12 modules, TC.H, PARSE.H) and of its
+library (%d modules, LIBINT.H), and the batch files that rebuild them.
+Mount TINY-C: as well: the compiler, the headers, TCLIB.OBJ and
+TCMSGS.TEXT come from there.
+
+REBUILDING THE COMPILER:  set the prefix to TCSRC:, X(ecute
+TINY-C:TINYC, answer  @BUILD.  BUILD.TEXT compiles the compiler's modules
+and links TCSRC:TINYC2.CODE, identical to TINY-C:TINYC.CODE apart from its
+name (check it with TCEXTRA:CMPCODE).  To use it, transfer it to
+TINY-C:TINYC.CODE with the Filer.
+
+REBUILDING THE LIBRARY:  set the prefix to TCSRC:, X(ecute TINY-C:TINYC,
+answer  @LIBS.  LIBS.TEXT compiles the library modules and joins them
+(/J) into TCSRC:TCLIB2.OBJ, identical to TINY-C:TCLIB.OBJ (check it with
+CMPCODE).  To use it, transfer it to TINY-C:TCLIB.OBJ with the Filer.
+
+Each module leaves a NAME.OBJ; remove those with the Filer if you like.
+
+FILES.TEXT lists every file on this volume.
+"""
+
+README_SRC = README_SRC % len([f for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c')])
 
 README_EX = """TINY-C EXTRAS                                     volume TCEXTRA:
 
@@ -114,9 +133,9 @@ arguments say: from SHELL try ARGS, ARGS ADD 2 3, ARGS MUL 6 7,
 ARGS REPEAT 3 HELLO, ARGS ECHO A B C.  They need BIGGY 1.10 or later.
 
 CMPCODE compares two files byte by byte (for .CODE files the program
-name in block 0 aside): after @BUILD on TINY-C:, compare
-TINY-C:TINYC.CODE with TINY-C:TINYC2.CODE, after @LIBS TINY-C:TCLIB.OBJ
-with TINY-C:TCLIB2.OBJ; it prints IDENTICAL.
+name in block 0 aside): after @BUILD on TCSRC:, compare
+TINY-C:TINYC.CODE with TCSRC:TINYC2.CODE, after @LIBS TINY-C:TCLIB.OBJ
+with TCSRC:TCLIB2.OBJ; it prints IDENTICAL.
 
 FILES.TEXT lists every file on this volume.
 """
@@ -140,12 +159,12 @@ FILES.TEXT lists every file on this volume.
 DEMOS = ('boxes', 'calc', 'demo', 'guess', 'hanoi', 'pi', 'queens', 'sieve')
 
 LIBMODS_ = sorted(f[:-2] for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c'))
-LIBS = """; LIBS -- rebuild the C library: X(ecute TINYC, answer @LIBS
+LIBS = """; LIBS -- rebuild the C library: prefix TCSRC:, X(ecute TINY-C:TINYC, answer @LIBS
 ; Compiles every library module, then joins them into TCLIB2.OBJ.
 """ + ''.join('/Z /C %s\n' % m.upper() for m in LIBMODS_) + \
     '/J TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
 
-BUILD = """; BUILD -- rebuild the Tiny-C compiler: X(ecute TINYC, answer @BUILD
+BUILD = """; BUILD -- rebuild the Tiny-C compiler: prefix TCSRC:, X(ecute TINY-C:TINYC, answer @BUILD
 ; Compiles every module, then links them into TINYC2.CODE.
 """ + ''.join('/C %s\n' % m.upper() for m in MODULES) + \
     '/L TINYC2=%s\n' % ','.join(m.upper() for m in MODULES)
@@ -261,12 +280,18 @@ def tiny_c():
     t.binary('TINYC.CODE', open(code, 'rb').read(), 'the Tiny-C compiler: X(ecute TINYC')
     t.binary('TCLIB.OBJ', open(build_lib(True), 'rb').read(), 'the C library (built with /Z), linked into every program')
     t.textfile('TCMSGS.TEXT', os.path.join(INC, 'tcmsgs.txt'), "the compiler's messages (line n = message n)")
-    t.text('README.TEXT', README_TC, 'how to use and rebuild Tiny-C')
-    t.text('BUILD.TEXT', BUILD, 'X TINYC, @BUILD: rebuilds the compiler -> TINYC2.CODE')
-    t.text('LIBS.TEXT', LIBS, 'X TINYC, @LIBS: rebuilds the library -> TCLIB2.OBJ')
+    t.text('README.TEXT', README_TC, 'how to use Tiny-C')
     for f in sorted(os.listdir(INC)):
         if f.endswith('.h'):
             t.textfile(f.upper(), os.path.join(INC, f), 'header: ' + describe(os.path.join(INC, f)))
+    t.finish()
+
+
+def sources():
+    t = Vol('TCSRC', 4000)
+    t.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C')
+    t.text('BUILD.TEXT', BUILD, 'X TINY-C:TINYC, @BUILD: rebuilds the compiler -> TINYC2.CODE')
+    t.text('LIBS.TEXT', LIBS, 'X TINY-C:TINYC, @LIBS: rebuilds the library -> TCLIB2.OBJ')
     for m in MODULES:
         p = os.path.join(SRC, m + '.c')
         t.textfile(m.upper() + '.C', p, 'compiler: ' + describe(p))
@@ -313,6 +338,7 @@ def tests():
 
 def main():
     tiny_c()
+    sources()
     extras()
     tests()
     old = os.path.join(ROOT, 'TinyC_Volume.zip')

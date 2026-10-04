@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""voltest.py -- test the three volumes (build/TINY-C.BLK, build/TCEXTRA.BLK,
-build/TCTESTS.BLK, made by mkvolume.py) on the P-System: TINY-C: on unit #5,
-TCEXTRA: on #9, TCTESTS: on #10.
+"""voltest.py -- test the four volumes (build/TINY-C.BLK, TCSRC.BLK,
+TCEXTRA.BLK, TCTESTS.BLK, made by mkvolume.py) on the P-System: TINY-C: on
+unit #5, TCSRC: on #9, TCEXTRA: on #10, TCTESTS: on #11.
 
-  @LIBS    on TINY-C:  -> TCLIB2.OBJ (/Z /C), CMPCODE: IDENTICAL to TCLIB.OBJ
-  @BUILD   on TINY-C:  -> TINYC2.CODE, CMPCODE: IDENTICAL to TINYC.CODE
+  @LIBS    on TCSRC: (X TINY-C:TINYC) -> TCLIB2.OBJ (/Z /C), CMPCODE:
+           IDENTICAL to TINY-C:TCLIB.OBJ
+  @BUILD   on TCSRC:  -> TINYC2.CODE, CMPCODE: IDENTICAL to TINY-C:TINYC.CODE
   @DEMOS   on TCEXTRA: (compiler and headers from TINY-C:), then QUEENS runs
   @TESTS   on TCTESTS: (likewise), then LONGS runs
 
@@ -38,11 +39,11 @@ def cmpcode(a, b):
 
 
 def script():
-    L = ['WAIT "Command:"'] + prefix('TINY-C:')
-    L += tinyc('TINYC', '@LIBS', ['> /Z /C ASSERT', '> /Z /C TCRT', 'Joining TCLIB2.OBJ'])
-    L += cmpcode('TCLIB.OBJ', 'TCLIB2.OBJ')
-    L += tinyc('TINYC', '@BUILD', ['> /C MAIN', '> /L TINYC2='])
-    L += cmpcode('TINYC.CODE', 'TINYC2.CODE')
+    L = ['WAIT "Command:"'] + prefix('TCSRC:')
+    L += tinyc('TINY-C:TINYC', '@LIBS', ['> /Z /C ASSERT', '> /Z /C TCRT', 'Joining TCLIB2.OBJ'])
+    L += cmpcode('TINY-C:TCLIB.OBJ', 'TCSRC:TCLIB2.OBJ')
+    L += tinyc('TINY-C:TINYC', '@BUILD', ['> /C MAIN', '> /L TINYC2='])
+    L += cmpcode('TINY-C:TINYC.CODE', 'TCSRC:TINYC2.CODE')
     L += prefix('TCEXTRA:')
     L += tinyc('TINY-C:TINYC', '@DEMOS', ['> /Z BOXES', '> /Z CMPCODE', '> /Z SHELL'])
     L += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "QUEENS\\r"', 'WAIT "92"', 'WAIT "Command:"']
@@ -55,13 +56,14 @@ def script():
 def main():
     ensure_setup()
     d = tempfile.mkdtemp(prefix='voltest_')
-    for v in ('TINY-C', 'TCEXTRA', 'TCTESTS'):
+    for v in ('TINY-C', 'TCSRC', 'TCEXTRA', 'TCTESTS'):
         shutil.copy(os.path.join(ROOT, 'build', v + '.BLK'), d)
     sp = os.path.join(d, 'voltest.script')
     open(sp, 'w').write(script())
-    env = dict(os.environ, VERIFY_RECLAIM='1', VERIFY_UNIT10=os.path.join(d, 'TCTESTS.BLK'))
+    env = dict(os.environ, VERIFY_RECLAIM='1', VERIFY_UNIT10=os.path.join(d, 'TCEXTRA.BLK'),
+               VERIFY_UNIT11=os.path.join(d, 'TCTESTS.BLK'))
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
-                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCEXTRA.BLK'), sp, 'native',
+                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), sp, 'native',
                         os.path.join(d, 'out'), '', '600'], capture_output=True, text=True, env=env)
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout
     tr = open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read()

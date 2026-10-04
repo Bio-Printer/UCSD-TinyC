@@ -1,13 +1,11 @@
-TINY-C:  49 files  (a UCSD directory holds 77)
+TINY-C:  20 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
   TINYC.CODE         110  the Tiny-C compiler: X(ecute TINYC
   TCLIB.OBJ           52  the C library (built with /Z), linked into every program
   TCMSGS.TEXT          8  the compiler's messages (line n = message n)
-  README.TEXT         10  how to use and rebuild Tiny-C
-  BUILD.TEXT           4  X TINYC, @BUILD: rebuilds the compiler -> TINYC2.CODE
-  LIBS.TEXT            4  X TINYC, @LIBS: rebuilds the library -> TCLIB2.OBJ
+  README.TEXT          8  how to use Tiny-C
   ASSERT.H             4  header: assert()
   CONIO.H              4  header: console: getch, putch, cputs, kbhit, gotoxy, clrscr
   CTYPE.H              4  header: isdigit, isalpha, toupper, ...
@@ -23,31 +21,4 @@ TINY-C:  49 files  (a UCSD directory holds 77)
   STDLIB.H             6  header: malloc, free, atoi, rand, qsort, exit, ...
   STRING.H             4  header: strcpy, strcmp, strlen, memcpy, memset, ...
   TCRT.H               6  header: runtime helpers the compiler calls (reference only)
-  MAIN.C              22  compiler: the driver: commands, @FILE, the passes
-  UTIL.C              14  compiler: messages, output helpers, memory pools
-  TYPES.C              6  compiler: type predicates
-  PP.C                48  compiler: pass 1: the preprocessor
-  LEX.C               32  compiler: pass 2: the tokenizer
-  PSYM.C              18  compiler: parser: types and symbols
-  EXPR.C              58  compiler: parser: expressions
-  DECL.C              22  compiler: parser: declarations and initializers
-  STMT.C              38  compiler: parser: statements, functions, pragmas
-  IR.C                24  compiler: the intermediate file between parser and code generator
-  GEN.C               72  compiler: pass 3: P-code generation, object files
-  LINK.C              44  compiler: the linker: object files -> code file
-  TC.H                26  compiler: shared declarations (every module)
-  PARSE.H             12  compiler: the parser modules' shared declarations
-  ASSERT.C             4  library: <assert.h>
-  CONIO.C              4  library: <conio.h>
-  CTYPE.C              4  library: <ctype.h>
-  FLTFMT.C             8  library: printf's %f %e %g (linked only when floats are used)
-  IO.C                 6  library: <io.h>
-  MATH.C               6  library: <math.h>
-  PEXEC.C             12  library: <pexec.h>
-  STDIO.C             44  library: <stdio.h>
-  STDLIB.C            14  library: <stdlib.h>
-  STRING.C             8  library: <string.h>
-  STRTOLD.C            4  library: <strtold.h>
-  TCRT.C              18  library: runtime helpers: C division, shifts, unsigned, longs
-  LIBINT.H             6  library: the library modules' shared declarations
-  FILES.TEXT          10  this list
+  FILES.TEXT           6  this list
