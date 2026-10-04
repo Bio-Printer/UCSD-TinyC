@@ -1,0 +1,7 @@
+main: address ok, sysunit 4, OS on unit 4, memtop above it yes
+deep: address ok, sysunit 4, OS on unit 4, memtop above it yes
+segment 7: address ok, sysunit 4, OS on unit 4, memtop above it yes
+offsets: memtop 20 lowtime 54 miscinfo 58 crtctrl 62 crtinfo 74 eof 82 segtable 96
+sizeof: crtctrl 12 crtinfo 22 syscom 192
+keys: eof 3 stop 19 flush 6 chardel 8 badch '?' linedel 127 altmode 27 etx 3
+clearscreen 12 backspace 8 xy crt yes lower case yes

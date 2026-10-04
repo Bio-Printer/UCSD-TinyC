@@ -118,6 +118,7 @@ WHAT = {
     'io.h': 'open, read, write, lseek, close, unlink',
     'limits.h': 'INT_MAX, LONG_MAX, ... (16-bit int, 32-bit long)',
     'math.h': 'sqrt, sin, cos, atan, exp, log, pow, fabs, ...',
+    'psys.h': 'SYSCOM: the P-System\'s SYSCOM record (SYSCOM->memtop, ...)',
     'stdarg.h': 'va_list, va_start, va_arg, va_end',
     'stddef.h': 'size_t, NULL, offsetof',
     'stdio.h': 'printf, scanf, FILE, fopen, fgets, fprintf, ...',

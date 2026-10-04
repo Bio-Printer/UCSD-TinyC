@@ -1,4 +1,4 @@
-TCEXTRA:  43 files  (a UCSD directory holds 77)
+TCEXTRA:  45 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -42,6 +42,8 @@ TCEXTRA:  43 files  (a UCSD directory holds 77)
   STRINGS.CODE        17    (ready to run)
   STRUCTS.C            6  structs, unions, pointers to structs, linked list ...
   STRUCTS.CODE        13    (ready to run)
+  SYSCOM.C             6  <psys.h>: SYSCOM found from main, deep calls and ...
+  SYSCOM.CODE         13    (ready to run)
   CMPCODE.C            6  compare two code files byte by byte (Tiny-C Verify)
   CMPCODE.CODE        15    (ready to run)
   FILES.TEXT           8  this list

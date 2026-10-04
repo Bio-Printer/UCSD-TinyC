@@ -1,8 +1,9 @@
-BIGGY:  52 files  (the boot volume, with Tiny-C added)
+BIGGY:  53 files  (the boot volume, with Tiny-C added)
 
   Z80T.MICRO          19
   MYGOTOXY.CODE        2
   VERSION.TEXT         4
+  PSYS.H               8
   SYSORIG.EDITOR      45
   SYSTEM.LINKER       22
   SYSTEM.LIBRARY       8

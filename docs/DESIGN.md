@@ -114,3 +114,16 @@ operating system's own `FINIT/FOPEN/FCLOSE/FBLOCKIO` (`CXP 0,3/5/6/28`)
 with Tiny-C doing the buffering and the UCSD text format (2-block header,
 DLE blank compression, CR line ends, 1K pages) itself; the console uses
 `UNITREAD/UNITWRITE` on units 1/2.
+
+`psys.h` gives programs the operating system's SYSCOM record:
+`SYSCOM->memtop`, `SYSCOM->crtinfo.width`, `SYSCOM->segtable[n]`, ...
+`SYSCOM` is `(struct syscomrec *)__osvar(1)`: SYSCOM is the OS's first
+global (the `^SYSCOMREC` the boot passes), and `__osvar(n)` loads OS
+global word *n* with one `LOD 2,n` (C functions are lex level 1, the OS
+is two static levels up). Its address differs between engine layouts
+(0x02E4, or 0x0164 in P-Code mode with reclaimed memory), so it is never
+a constant. The struct follows `SYSCOMREC` in the 1.07 OS source with the
+II.0 compiler's layout: names declared together (`A,B,C: T`) are laid
+out last first (LOWTIME before HIGHTIME, JTAB/SEG/MEMTOP), and packed
+fields fill each word from bit 0 (`MI_` bits of `miscinfo`).
+`tests/syscom.c` checks it from `main`, nested calls and another segment.
