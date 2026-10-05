@@ -1,4 +1,4 @@
-TCEXTRA:  27 files  (a UCSD directory holds 77)
+TCEXTRA:  29 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -26,6 +26,8 @@ TCEXTRA:  27 files  (a UCSD directory holds 77)
   ARGS.CODE           13    (ready to run)
   MEMFREE.C            4  prints the memory free to it (stack to heap) and exits ...
   MEMFREE.CODE        10    (ready to run)
+  MEMMARK.C            6  the least free memory of another program
+  MEMMARK.CODE        12    (ready to run)
   SHELL.C             12  a mini-shell: runs programs with pexec() and comes back
   SHELL.CODE          17    (ready to run)
   FILES.TEXT           6  this list

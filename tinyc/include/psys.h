@@ -98,4 +98,17 @@ int __pxsum(unsigned char *s);
    it stopped with an execution error */
 #define pexec_status() (SYSCOM->expansion[5])
 
+/* memfill() fills the free memory (between the heap and the stack) with
+   a pattern and returns how many words.  The pattern stays after the
+   program ends: memgap() in a program run later returns the longest run
+   of it still intact -- roughly the least free memory of the programs
+   run in between.  Only roughly: heap a program allocated but never
+   wrote still counts as free, so does memory its stack reached at one
+   time and its heap at another, and the operating system writes its
+   2 KB directory buffer above the heap whenever a file is opened.  For
+   an exact figure use the emulator's Options > Track Least Free Memory.
+   MEMMARK on TCEXTRA: is the program for it. */
+unsigned memfill(void);
+unsigned memgap(void);
+
 #endif

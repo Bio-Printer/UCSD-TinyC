@@ -1,4 +1,4 @@
-TCSRC:  33 files  (a UCSD directory holds 77)
+TCSRC:  34 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -27,6 +27,7 @@ TCSRC:  33 files  (a UCSD directory holds 77)
   FLTFMT.C             8  library: printf's %f %e %g (linked only when floats are used)
   IO.C                 6  library: <io.h>
   MATH.C               6  library: <math.h>
+  MEMSCAN.C            6  library: <memscan.h>
   PEXEC.C             12  library: <pexec.h>
   STDIO.C             44  library: <stdio.h>
   STDLIB.C            14  library: <stdlib.h>

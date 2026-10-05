@@ -10,7 +10,9 @@ unit #5, TCSRC: on #9, TCEXTRA: on #10, TCTESTS: on #11.
   @DEMOS   on TCEXTRA: (compiler and headers from TINY-C:), then QUEENS runs
   @TESTS   on TCTESTS: (likewise), then LONGS runs
 
-Prints the result and the least free memory seen, and where.  PSYS_MODE
+Prints the result, the least "words free" CC printed (at the end of a
+pass), and the least free memory the emulator tracked (SP - NP at every
+P-code instruction: the true worst case, emulator 1.97 or later).  PSYS_MODE
 picks the mode, as for the other tools: native (default; P-Code mode with
 the Z80 interpreter's memory reclaimed) or z80 (Z80 mode, normal layout:
 the least memory of all).
@@ -68,7 +70,7 @@ def main():
     open(sp, 'w').write(script())
     mode = os.environ.get('PSYS_MODE', 'native')
     env = dict(os.environ, VERIFY_UNIT10=os.path.join(d, 'TCEXTRA.BLK'),
-               VERIFY_UNIT11=os.path.join(d, 'TCTESTS.BLK'))
+               VERIFY_UNIT11=os.path.join(d, 'TCTESTS.BLK'), VERIFY_LOWWATER='1')
     if mode == 'native':
         env['VERIFY_RECLAIM'] = '1'
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
@@ -91,6 +93,9 @@ def main():
         ok = False
     print([l for l in r.stdout.split('\n') if 'VERIFY' in l][-1:])
     print('least memory: %s words free (%s)' % (least, where))
+    lw = [l for l in r.stdout.split('\n') if l.startswith('least free memory')]
+    if lw:                              # the emulator's tracking (engine 1.97): the true worst case
+        print('tracked ' + lw[0])
     print('volume test: %s   (work: %s)' % ('PASSED' if ok else 'FAILED', d))
     return 0 if ok else 1
 

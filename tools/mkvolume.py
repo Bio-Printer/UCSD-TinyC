@@ -142,6 +142,11 @@ SHELL, it is the same (pexec leaves nothing of the shell in memory).
 ARGS does what its arguments say: from SHELL try ARGS, ARGS ADD 2 3,
 ARGS MUL 6 7, ARGS REPEAT 3 HELLO, ARGS ECHO A B C.  They need BIGGY 1.10
 or later.
+MEMMARK estimates another program's least free memory: MEMMARK FILL
+fills the free memory with a pattern, run the program, MEMMARK SCAN
+reports how much of the pattern is still intact (from X(ecute it asks
+F or S).  Only an estimate (see memgap in PSYS.H); the emulator's
+Options > Track Least Free Memory gives the exact figure.
 
 CMPCODE compares two files byte by byte (for .CODE files the program
 name in block 0 aside): after @BUILD on TCSRC:, compare

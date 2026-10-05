@@ -15,7 +15,7 @@ Start here when picking the project up in a new session.
 | `tinyc/lib/*.c`, `libint.h` | the C library (joined into `TCLIB.OBJ`) |
 | `tinyc/include/*.h` | headers; `tcmsgs.txt` = the compiler's messages (TCMSGS.TEXT) |
 | `tests/NAME.c` + `.expect` (+ `.keys`, `.wait`) | test/demo programs and their expected output |
-| `examples/` | `shell.c` (a mini-shell built on `pexec()`: a program name without a volume is looked for on every disk on line, and when several have it the shell asks which; on BIGGY as SYSTEM.SHELL, which `$` at the Command: prompt runs) `memfree.c` (a program's free memory) and `args.c` (does what its `main(argc, argv)` arguments say: run it from the shell, e.g. `ARGS ADD 2 3`); on TCEXTRA |
+| `examples/` | `shell.c` (a mini-shell built on `pexec()`: a program name without a volume is looked for on every disk on line, and when several have it the shell asks which; on BIGGY as SYSTEM.SHELL, which `$` at the Command: prompt runs) `memfree.c` (a program's free memory), `memmark.c` (`MEMMARK FILL`, run a program, `MEMMARK SCAN`: an estimate of that program's least free memory, from `memfill()`/`memgap()` in `psys.h`) and `args.c` (does what its `main(argc, argv)` arguments say: run it from the shell, e.g. `ARGS ADD 2 3`); on TCEXTRA |
 | `volumes/` | **TINY-C.zip** (what is needed to use Tiny-C: compiler, library, messages, headers; the compiler looks for them on `TINY-C:`) **TCSRC.zip** (the compiler's and the library's sources, BUILD/LIBS scripts), **TCEXTRA.zip** (demos, the shell and its examples, CMPCODE), **TCTESTS.zip** (the test programs; four volumes because a UCSD directory holds 77 files and `@BUILD`/`@LIBS`/`@DEMOS`/`@TESTS` leave a NAME.OBJ per module or program) and **BIGGY.zip** (boot disk `Big_Disk.BLK` with Tiny-C ready to use; doubles need the v1.88 emulator's CSP 100..137); `*.txt` = file listings |
 | `volumes/*---8_byte_floats.BLK` | the user's own working copies of the volumes: **frozen** -- no tool writes them, and changes to the generated volumes are not copied into them any more (only on request) |
 | `verify/` | Tiny-C Verify pack: `TCVERIFY.SCRIPT` + `TCVERIFY.zip`, `cmpcode.c`, `rmfiles.c`, README |
@@ -102,6 +102,14 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   (the Compiling pass ran out of stack in Z80 mode, and in P-Code mode
   without reclaimed memory), so it is split into `gen.c` and `genx.c`;
   `PSYS_MODE=z80 voltest.py` runs `@BUILD @LIBS @DEMOS @TESTS` in Z80 mode.
+* Least free memory (SP - NP at every P-code instruction, tracked by the
+  emulator 1.97: Options > Track Least Free Memory, run_verify
+  `VERIFY_LOWWATER`), compiling each compiler module in Z80 mode (the
+  normal layout; the same in P-Code mode without reclaim): STMT.C 324
+  words, EXPR.C and GENX.C 394, PP.C and LINK.C 838, the others 908 (the
+  Compiling pass: the PARSE segment and TC.H), linking CC2.CODE 1,278.
+  The unsplit GEN.C ran out at 347.  With reclaimed memory each is 3,915
+  words more.  `voltest.py` prints the run's least.
 * The Z80 interpreter on the boot disk has no SIN/COS/EXP/ATAN/SQT/LOG/LN
   (assembled with NOFPT): before engine 1.93 `math.h` functions stopped there
   with "Unimplemented instruction"; from 1.93 the engine's Z80-mode
