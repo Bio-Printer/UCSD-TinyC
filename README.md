@@ -11,7 +11,7 @@ Start here when picking the project up in a new session.
 
 | Path | What |
 |---|---|
-| `tinyc/*.c`, `tc.h`, `parse.h` | the compiler: `main` (driver, `@FILE` batches), `util`, `types`, `pp` (preprocessor), `lex`, `psym`/`expr`/`decl`/`stmt` (parser), `ir` (intermediate file), `gen` (P-code), `link` (linker, `/J` join) |
+| `tinyc/*.c`, `tc.h`, `parse.h`, `gen.h` | the compiler: `main` (driver, `@FILE` batches), `util`, `types`, `pp` (preprocessor), `lex`, `psym`/`expr`/`decl`/`stmt` (parser), `ir` (intermediate file), `gen`/`genx` (P-code: emitter and object file / expressions; split so that each compiles in Z80 mode), `link` (linker, `/J` join) |
 | `tinyc/lib/*.c`, `libint.h` | the C library (joined into `TCLIB.OBJ`) |
 | `tinyc/include/*.h` | headers; `tcmsgs.txt` = the compiler's messages (TCMSGS.TEXT) |
 | `tests/NAME.c` + `.expect` (+ `.keys`, `.wait`) | test/demo programs and their expected output |
@@ -98,8 +98,10 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
 ## Status (September 2026)
 
 * Self-hosting, byte-identical, in P-Code mode and in **Z80 mode** (Z80 mode
-  has 3,915 words less memory; tightest: code generation of STMT/GEN, ~165
-  words to spare — the driver's 1 KB stack saving since then adds to that).
+  has 3,915 words less memory, and is the tightest).  GEN.C outgrew it
+  (the Compiling pass ran out of stack in Z80 mode, and in P-Code mode
+  without reclaimed memory), so it is split into `gen.c` and `genx.c`;
+  `PSYS_MODE=z80 voltest.py` runs `@BUILD @LIBS @DEMOS @TESTS` in Z80 mode.
 * The Z80 interpreter on the boot disk has no SIN/COS/EXP/ATAN/SQT/LOG/LN
   (assembled with NOFPT): before engine 1.93 `math.h` functions stopped there
   with "Unimplemented instruction"; from 1.93 the engine's Z80-mode

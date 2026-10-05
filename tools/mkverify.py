@@ -10,7 +10,7 @@
 The script, on the P-System itself:
   1. compiles every test program with CC and runs it; every line of its
      expected output (tests/NAME.expect) must appear, in order
-  2. compiles the compiler's 12 modules with CC, links them to
+  2. compiles the compiler's 13 modules with CC, links them to
      CC2.CODE and checks (with CMPCODE, a Tiny-C program) that it is
      identical to CC.CODE
   3. compiles and runs a test with CC2
@@ -102,7 +102,7 @@ def volume(path):
     src = os.path.join(ROOT, 'tinyc')
     for m in MODULES:
         v.write(m.upper() + '.C', ucsdvol.text_to_ucsd(open(os.path.join(src, m + '.c')).read()), 3)
-    for h in ('tc.h', 'parse.h'):
+    for h in ('tc.h', 'parse.h', 'gen.h'):
         v.write(h.upper(), ucsdvol.text_to_ucsd(open(os.path.join(src, h)).read()), 3)
     tmp = os.path.join(ROOT, 'build', 'verify_tmp')
     os.makedirs(tmp, exist_ok=True)

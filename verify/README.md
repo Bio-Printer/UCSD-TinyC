@@ -5,7 +5,7 @@ TYPE) that checks Tiny-C on the P-System itself:
 
 1. every test program in `tests/` is compiled with CC and run; each
    line of its expected output (`tests/NAME.expect`) must appear, in order
-2. the compiler compiles its own 12 modules and links them to CC2.CODE;
+2. the compiler compiles its own 13 modules and links them to CC2.CODE;
    CMPCODE (a Tiny-C program, `cmpcode.c`) must report it IDENTICAL to
    CC.CODE (block 0's program-name bytes aside)
 3. CC2 compiles and runs HANOI
@@ -27,8 +27,8 @@ On Linux, `tools/tcverify.py [native|z80]` runs the pack through
 ## Requirements
 
 * **Any execution mode.** P-Code mode (with or without the reclaimed
-  memory) and Z80 mode both run it; Z80 mode is the tightest (about 165
-  words to spare while generating code for STMT or GEN).  In Z80 mode
+  memory) and Z80 mode both run it; Z80 mode is the tightest (GEN.C is
+  split into GEN.C and GENX.C so that each compiles there).  In Z80 mode
   the FLOATS test stops with "Unimplemented instruction": the Z80
   interpreter on the boot disk was assembled with NOFPT, so SIN, COS,
   EXP, ATAN, SQT, LOG and LN are not implemented there (P-Code mode has

@@ -10,7 +10,10 @@ unit #5, TCSRC: on #9, TCEXTRA: on #10, TCTESTS: on #11.
   @DEMOS   on TCEXTRA: (compiler and headers from TINY-C:), then QUEENS runs
   @TESTS   on TCTESTS: (likewise), then LONGS runs
 
-Prints the result and the least free memory seen, and where.
+Prints the result and the least free memory seen, and where.  PSYS_MODE
+picks the mode, as for the other tools: native (default; P-Code mode with
+the Z80 interpreter's memory reclaimed) or z80 (Z80 mode, normal layout:
+the least memory of all).
 """
 import os, sys, re, shutil, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -63,11 +66,14 @@ def main():
         shutil.copy(os.path.join(ROOT, 'build', v + '.BLK'), d)
     sp = os.path.join(d, 'voltest.script')
     open(sp, 'w').write(script())
-    env = dict(os.environ, VERIFY_RECLAIM='1', VERIFY_UNIT10=os.path.join(d, 'TCEXTRA.BLK'),
+    mode = os.environ.get('PSYS_MODE', 'native')
+    env = dict(os.environ, VERIFY_UNIT10=os.path.join(d, 'TCEXTRA.BLK'),
                VERIFY_UNIT11=os.path.join(d, 'TCTESTS.BLK'))
+    if mode == 'native':
+        env['VERIFY_RECLAIM'] = '1'
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
-                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), sp, 'native',
-                        os.path.join(d, 'out'), '', '600'], capture_output=True, text=True, env=env)
+                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), sp, mode,
+                        os.path.join(d, 'out'), '', '600' if mode == 'native' else '1800'], capture_output=True, text=True, env=env)
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout
     tr = open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read()
     least, where, cmd, step = None, '', '', ''

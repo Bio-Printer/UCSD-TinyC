@@ -10,5 +10,6 @@
 #include "stmt.c"
 #include "ir.c"
 #include "gen.c"
+#include "genx.c"
 #include "link.c"
 #include "main.c"

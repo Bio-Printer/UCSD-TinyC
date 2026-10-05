@@ -93,8 +93,9 @@ FILES.TEXT lists every file on this volume.
 
 README_SRC = """TINY-C SOURCES                                    volume TCSRC:
 
-The sources of the Tiny-C compiler (12 modules, TC.H, PARSE.H) and of its
-library (%d modules, LIBINT.H), and the batch files that rebuild them.
+The sources of the Tiny-C compiler (13 modules, TC.H, PARSE.H, GEN.H)
+and of its library (%d modules, LIBINT.H), and the batch files that
+rebuild them.
 Mount TINY-C: as well: the compiler, the headers, TCLIB.OBJ and
 TCMSGS.TEXT come from there.
 
@@ -206,10 +207,12 @@ WHAT = {
     'decl.c': 'parser: declarations and initializers',
     'stmt.c': 'parser: statements, functions, pragmas',
     'ir.c': 'the intermediate file between parser and code generator',
-    'gen.c': 'pass 3: P-code generation, object files',
+    'gen.c': 'pass 3: P-code generation: emitter, object files',
+    'genx.c': 'pass 3: P-code for expressions, calls, switch',
     'link.c': 'the linker: object files -> code file',
     'tc.h': 'shared declarations (every module)',
     'parse.h': "the parser modules' shared declarations",
+    'gen.h': "gen.c and genx.c's shared declarations",
     'libint.h': "the library modules' shared declarations",
     'fltfmt.c': "printf's %f %e %g (linked only when floats are used)",
     'tcrt.c': 'runtime helpers: C division, shifts, unsigned, longs',
@@ -305,7 +308,7 @@ def sources():
     for m in MODULES:
         p = os.path.join(SRC, m + '.c')
         t.textfile(m.upper() + '.C', p, 'compiler: ' + describe(p))
-    for h in ('tc.h', 'parse.h'):
+    for h in ('tc.h', 'parse.h', 'gen.h'):
         p = os.path.join(SRC, h)
         t.textfile(h.upper(), p, 'compiler: ' + describe(p))
     for m in LIBMODS:
