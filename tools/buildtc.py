@@ -7,7 +7,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from tcrun import build_lib, TC, INC
 
-MODULES = ['main', 'util', 'types', 'pp', 'lex', 'psym', 'expr', 'decl', 'stmt', 'ir', 'gen', 'genx', 'link']
+MODULES = ['main', 'util', 'types', 'pp', 'lex', 'psym', 'expr', 'decl', 'stmt', 'compile', 'ir', 'gen', 'genx', 'link']
 
 
 def build(outdir=None):

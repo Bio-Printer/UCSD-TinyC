@@ -229,12 +229,14 @@ static int command(char *s, char *lib)
 /* @FILE: the commands in FILE.TEXT.  The file is not kept open (its
    buffer would take memory from every pass): before each command it is
    opened, the lines already done are skipped, the next one is read and
-   the file is closed again. */
-static int batch(char *name, char *lib)
+   the file is closed again.  line is the caller's command buffer
+   (BATCHLINE bytes), which name may point into: name is copied first,
+   and no buffer of its own stays on the stack through every pass. */
+#define BATCHLINE 150
+static int batch(char *name, char *lib, char *line)
 {
     FILE *f;
     char path[25];
-    char line[200];
     int done;
     int k;
     int n;
@@ -251,7 +253,7 @@ static int batch(char *name, char *lib)
             return 0;
         }
         for (k = 0; k <= done; k++)
-            if (!fgets(line, 180, f))
+            if (!fgets(line, BATCHLINE, f))
                 break;
         fclose(f);
         if (k <= done)
@@ -280,7 +282,7 @@ int main(int argc, char **argv)
 #ifdef __TINYC__
     /* UCSD file names are short: small buffers save 1 KB of stack; the
        command line (e.g. /L CC2=MAIN,UTIL,...) needs more */
-    char out[30]; char src[30]; char tmpi[30]; char tmpr[30]; char obj[30]; char lib[30]; char line[150];
+    char out[30]; char src[30]; char tmpi[30]; char tmpr[30]; char obj[30]; char lib[30]; char line[BATCHLINE];
 #else
     char out[200]; char src[200]; char tmpi[200]; char tmpr[200]; char obj[200]; char lib[200]; char line[200];
 #endif
@@ -327,7 +329,7 @@ int main(int argc, char **argv)
             say("> ");
             say(line);
             say("\n");
-            if (!(line[0] == '@' ? batch(line + 1, lib) : command(line, lib)))
+            if (!(line[0] == '@' ? batch(line + 1, lib, line) : command(line, lib)))
                 return 1;
         }
         say("Done.\n");
@@ -346,7 +348,7 @@ int main(int argc, char **argv)
     if (!*s)
         return 1;
     if (*s == '@')
-        n = batch(s + 1, lib);
+        n = batch(s + 1, lib, line);
     else
         n = command(s, lib);
     if (!n)

@@ -10,7 +10,7 @@
 The script, on the P-System itself:
   1. compiles every test program with CC and runs it; every line of its
      expected output (tests/NAME.expect) must appear, in order
-  2. compiles the compiler's 13 modules with CC, links them to
+  2. compiles the compiler's 14 modules with CC, links them to
      CC2.CODE and checks (with CMPCODE, a Tiny-C program) that it is
      identical to CC.CODE
   3. compiles and runs a test with CC2

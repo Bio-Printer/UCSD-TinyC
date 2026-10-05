@@ -93,7 +93,7 @@ FILES.TEXT lists every file on this volume.
 
 README_SRC = """TINY-C SOURCES                                    volume TCSRC:
 
-The sources of the Tiny-C compiler (13 modules, TC.H, PARSE.H, GEN.H)
+The sources of the Tiny-C compiler (14 modules, TC.H, PARSE.H, GEN.H)
 and of its library (%d modules, LIBINT.H), and the batch files that
 rebuild them.
 Mount TINY-C: as well: the compiler, the headers, TCLIB.OBJ and
@@ -210,7 +210,8 @@ WHAT = {
     'psym.c': 'parser: types and symbols',
     'expr.c': 'parser: expressions',
     'decl.c': 'parser: declarations and initializers',
-    'stmt.c': 'parser: statements, functions, pragmas',
+    'stmt.c': 'parser: statements, functions, declarations',
+    'compile.c': "parser: the pass, helpers' and #pragma declarations",
     'ir.c': 'the intermediate file between parser and code generator',
     'gen.c': 'pass 3: P-code generation: emitter, object files',
     'genx.c': 'pass 3: P-code for expressions, calls, switch',

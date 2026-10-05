@@ -1,4 +1,4 @@
-TCSRC:  34 files  (a UCSD directory holds 77)
+TCSRC:  35 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -13,7 +13,8 @@ TCSRC:  34 files  (a UCSD directory holds 77)
   PSYM.C              18  compiler: parser: types and symbols
   EXPR.C              58  compiler: parser: expressions
   DECL.C              22  compiler: parser: declarations and initializers
-  STMT.C              38  compiler: parser: statements, functions, pragmas
+  STMT.C              30  compiler: parser: statements, functions, declarations
+  COMPILE.C           12  compiler: parser: the pass, helpers' and #pragma declarations
   IR.C                24  compiler: the intermediate file between parser and code generator
   GEN.C               24  compiler: pass 3: P-code generation: emitter, object files
   GENX.C              48  compiler: pass 3: P-code for expressions, calls, switch

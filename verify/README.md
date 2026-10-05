@@ -5,7 +5,7 @@ TYPE) that checks Tiny-C on the P-System itself:
 
 1. every test program in `tests/` is compiled with CC and run; each
    line of its expected output (`tests/NAME.expect`) must appear, in order
-2. the compiler compiles its own 13 modules and links them to CC2.CODE;
+2. the compiler compiles its own 14 modules and links them to CC2.CODE;
    CMPCODE (a Tiny-C program, `cmpcode.c`) must report it IDENTICAL to
    CC.CODE (block 0's program-name bytes aside)
 3. CC2 compiles and runs HANOI

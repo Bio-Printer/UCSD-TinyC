@@ -11,7 +11,7 @@ Start here when picking the project up in a new session.
 
 | Path | What |
 |---|---|
-| `tinyc/*.c`, `tc.h`, `parse.h`, `gen.h` | the compiler: `main` (driver, `@FILE` batches), `util`, `types`, `pp` (preprocessor), `lex`, `psym`/`expr`/`decl`/`stmt` (parser), `ir` (intermediate file), `gen`/`genx` (P-code: emitter and object file / expressions; split so that each compiles in Z80 mode), `link` (linker, `/J` join) |
+| `tinyc/*.c`, `tc.h`, `parse.h`, `gen.h` | the compiler: `main` (driver, `@FILE` batches), `util`, `types`, `pp` (preprocessor), `lex`, `psym`/`expr`/`decl`/`stmt`/`compile` (parser; `compile` is its pass, split from `stmt`), `ir` (intermediate file), `gen`/`genx` (P-code: emitter and object file / expressions; split so that each compiles in Z80 mode), `link` (linker, `/J` join) |
 | `tinyc/lib/*.c`, `libint.h` | the C library (joined into `TCLIB.OBJ`) |
 | `tinyc/include/*.h` | headers; `tcmsgs.txt` = the compiler's messages (TCMSGS.TEXT) |
 | `tests/NAME.c` + `.expect` (+ `.keys`, `.wait`) | test/demo programs and their expected output |
@@ -105,9 +105,12 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
 * Least free memory (SP - NP at every P-code instruction, tracked by the
   emulator 1.97: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`), compiling each compiler module in Z80 mode (the
-  normal layout; the same in P-Code mode without reclaim): STMT.C 324
-  words, EXPR.C and GENX.C 394, PP.C and LINK.C 838, the others 908 (the
-  Compiling pass: the PARSE segment and TC.H), linking CC2.CODE 1,278.
+  normal layout; the same in P-Code mode without reclaim), from X(ecute:
+  EXPR.C, STMT.C and GENX.C 397 words, PP.C and LINK.C 841, the others
+  911, linking CC2.CODE 1,273; `cc @build @libs` from the shell 352 (its
+  batch path is deeper).  The Compiling pass's memory goes by the
+  declarations a file uses (held 1 KB at a time), not by its function
+  sizes: STMT.C was 324 until its pass and set-up moved to `compile.c`.
   The unsplit GEN.C ran out at 347.  With reclaimed memory each is 3,915
   words more.  `voltest.py` prints the run's least.
 * The Z80 interpreter on the boot disk has no SIN/COS/EXP/ATAN/SQT/LOG/LN

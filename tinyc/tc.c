@@ -8,6 +8,7 @@
 #include "expr.c"
 #include "decl.c"
 #include "stmt.c"
+#include "compile.c"
 #include "ir.c"
 #include "gen.c"
 #include "genx.c"
