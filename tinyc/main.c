@@ -109,6 +109,7 @@ static int linkall(char **objs, int n, char *out)
     passbegin(1000);
     r = link(objs, n, out, prog);
     passend();
+    say("\n");
     return r;
 }
 

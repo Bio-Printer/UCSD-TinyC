@@ -79,6 +79,10 @@ def main():
         m = re.search(r'\((\d+) words free\)', l)
         if m and (least is None or int(m.group(1)) < least):
             least, where = int(m.group(1)), '%s, %s' % (cmd, step)
+    glued = re.findall(r'words free\) +(?:> |Done).*', tr)   # a pass's last line runs into the next one
+    if glued:
+        print('not on a line of its own: %s' % glued[0])
+        ok = False
     print([l for l in r.stdout.split('\n') if 'VERIFY' in l][-1:])
     print('least memory: %s words free (%s)' % (least, where))
     print('volume test: %s   (work: %s)' % ('PASSED' if ok else 'FAILED', d))
