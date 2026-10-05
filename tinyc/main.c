@@ -16,6 +16,9 @@
  *              @FILE            run the commands in FILE.TEXT, one per line
  *                               (blank lines and lines starting ';' skipped),
  *                               stopping at the first that fails
+ *            or give the commands as arguments (from the shell, pexec):
+ *              CC @BUILD @LIBS, CC /Z HANOI SIEVE: options and the word after
+ *              them make one command; they run in turn, no prompt
  *
  * Calls through function pointers: by default they use CSP 138 (CALLI), which
  * the native P-Code engine implements and the Z80 interpreter does not. -z (/Z)
@@ -291,6 +294,44 @@ int main(int argc, char **argv)
     out[0] = 0;
     lib[0] = 0;
 #ifdef __TINYC__
+    strcpy(lib, "TCLIB.OBJ");
+    if (!exists(lib))
+        strcpy(lib, "*TCLIB.OBJ");
+    if (!exists(lib))
+        strcpy(lib, "TINY-C:TCLIB.OBJ");
+    /* looked for once: fopen outside a pass would leak its buffer (the
+       free list is dropped when a pass gives its memory back) */
+    if (!exists(lib))
+        lib[0] = 0;
+    if (argc > 1) {
+        /* the commands as arguments (from the shell: CC @BUILD @LIBS,
+           CC /Z HANOI SIEVE): each is its options (/Z, /C, /L, /J) and the
+           word after them; they run in turn, the first that fails stops */
+        i = 1;
+        while (i < argc) {
+            line[0] = 0;
+            while (i < argc) {
+                if (strlen(line) + strlen(argv[i]) + 2 > sizeof line) {
+                    say("command too long\n");
+                    return 1;
+                }
+                strcat(line, argv[i]);
+                strcat(line, " ");
+                if (argv[i++][0] != '/')
+                    break;
+            }
+            n = strlen(line);
+            line[n - 1] = 0;
+            upper(line);
+            say("> ");
+            say(line);
+            say("\n");
+            if (!(line[0] == '@' ? batch(line + 1, lib) : command(line, lib)))
+                return 1;
+        }
+        say("Done.\n");
+        return 0;
+    }
     say("Compile what file? ");
     if (!fgets(line, 80, stdin))
         return 1;
@@ -303,15 +344,6 @@ int main(int argc, char **argv)
         s++;
     if (!*s)
         return 1;
-    strcpy(lib, "TCLIB.OBJ");
-    if (!exists(lib))
-        strcpy(lib, "*TCLIB.OBJ");
-    if (!exists(lib))
-        strcpy(lib, "TINY-C:TCLIB.OBJ");
-    /* looked for once: fopen outside a pass would leak its buffer (the
-       free list is dropped when a pass gives its memory back) */
-    if (!exists(lib))
-        lib[0] = 0;
     if (*s == '@')
         n = batch(s + 1, lib);
     else
@@ -319,8 +351,6 @@ int main(int argc, char **argv)
     if (!n)
         return 1;
     say("Done.\n");
-    argc = 0;
-    argv = 0;
     return 0;
 #else
     for (i = 1; i < argc; i++) {

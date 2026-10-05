@@ -47,6 +47,10 @@ answer "Compile what file?" with
     /J LIB=A,B,...       join A.OBJ, B.OBJ, ... into the library LIB.OBJ
     @FILE                run the commands in FILE.TEXT, one per line
                          (blank lines and lines starting with ; skipped)
+The same commands can be arguments instead (from the shell: $ at the
+Command: prompt): CC @BUILD @LIBS, CC /Z HANOI SIEVE.  Options and the
+word after them make one command; they run in turn, no prompt, and the
+first that fails stops CC.
 X(ecute NAME runs a program.  A program on another volume (e.g. TCEXTRA:)
 compiles with that volume as the prefix: headers, TCLIB.OBJ and
 TCMSGS.TEXT are found on TINY-C: when they are not on the prefix volume
@@ -93,6 +97,9 @@ The sources of the Tiny-C compiler (12 modules, TC.H, PARSE.H) and of its
 library (%d modules, LIBINT.H), and the batch files that rebuild them.
 Mount TINY-C: as well: the compiler, the headers, TCLIB.OBJ and
 TCMSGS.TEXT come from there.
+
+REBUILDING EVERYTHING:  set the prefix to TCSRC:, then from the shell
+($ at the Command: prompt) type  CC @BUILD @LIBS.
 
 REBUILDING THE COMPILER:  set the prefix to TCSRC:, X(ecute
 TINY-C:CC, answer  @BUILD.  BUILD.TEXT compiles the compiler's modules

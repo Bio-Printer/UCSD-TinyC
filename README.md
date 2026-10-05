@@ -67,6 +67,10 @@ Before committing a compiler change, run: `runtests.py`, `crosscheck.py`,
 `NAME` (compile NAME.C, or NAME.TEXT, and link), `/C NAME`, `/L OUT=A,B`,
 `/J LIB=A,B` (join objects into a library), `@FILE` (commands from FILE.TEXT);
 `/Z NAME` and `/Z /C NAME` are `NAME` and `/C NAME` with `-z` (below).
+The same commands can be given as arguments instead, e.g. from the shell
+`cc @build @libs` or `cc /z hanoi sieve`: options and the word after them make
+one command, they run in turn without a prompt, and the first that fails stops CC
+(exit status 1).
 Sources are `NAME.C`, headers `NAME.H` (UCSD text format, text kind).
 With the prefix on TCSRC: (and TINY-C: mounted), `X(ecute TINY-C:CC`
 `@BUILD` rebuilds the compiler (CC2.CODE), `@LIBS` the library (TCLIB2.OBJ);
