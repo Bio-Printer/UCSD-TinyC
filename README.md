@@ -49,6 +49,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `pdis.py FILE.CODE` | P-code disassembler |
 | `pcensus.py FILE.CODE\|VOL.BLK` | static P-code census: instructions, and the inline constants/tables (`LSA LPA LDC XJP`), `--check` validates every jump target, `--selfpatch` lists the old self-modifying indirect calls |
 | `f12test.py` | test the double (8-byte floating point) CSPs 100..137 (P-Code mode; see `docs/DOUBLES.md`) |
+| `pchunk.py [SIZE ...]` | the compiler's least free memory (emulator-tracked, every @BUILD and @LIBS command) against PCHUNK, the block size of its permanent pool (`util.c`) |
 | `ucsdvol.py` | read/write UCSD volume images (`ls`, `get`, `put`, `rm`, `new`) |
 | `psys.py`, `tcrun.py`, `selfhost.py` | library code used by the above |
 
@@ -106,11 +107,15 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   emulator 1.97: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`), compiling each compiler module in Z80 mode (the
   normal layout; the same in P-Code mode without reclaim), from X(ecute:
-  EXPR.C, STMT.C and GENX.C 397 words, PP.C and LINK.C 841, the others
-  911, linking CC2.CODE 1,273; `cc @build @libs` from the shell 352 (its
-  batch path is deeper).  The Compiling pass's memory goes by the
-  declarations a file uses (held 1 KB at a time), not by its function
-  sizes: STMT.C was 324 until its pass and set-up moved to `compile.c`.
+  EXPR.C, STMT.C and GENX.C 1,069 words, PP.C, LINK.C and the library's
+  STDIO.C 1,199, the others more; `cc @build @libs` from the shell 1,024.
+  The passes' memory goes by the declarations a file uses, held in
+  blocks of PCHUNK bytes (util.c), not by its function sizes:
+  `tools/pchunk.py` measures the least against PCHUNK (256 is near the
+  best; 1024 gave 691).  Files CC opens between passes (to see whether
+  NAME.C exists, the @FILE batch) are opened inside a heap mark of their
+  own, or their buffer would sit unused under every pass (about 300
+  words).  STMT.C was 324 until its pass and set-up moved to `compile.c`.
   The unsplit GEN.C ran out at 347.  With reclaimed memory each is 3,915
   words more.  `voltest.py` prints the run's least.
 * The Z80 interpreter on the boot disk has no SIN/COS/EXP/ATAN/SQT/LOG/LN

@@ -169,7 +169,7 @@ void fatal(int n, char *arg)
     exit(2);
 }
 
-#define PCHUNK 1024
+#define PCHUNK 256           /* tools/pchunk.py: the least free memory against PCHUNK */
 static char *pcur;
 static int pleft;
 

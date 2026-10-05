@@ -8,7 +8,7 @@ TCSRC:  35 files  (a UCSD directory holds 77)
   MAIN.C              24  compiler: the driver: commands, @FILE, the passes
   UTIL.C              14  compiler: messages, output helpers, memory pools
   TYPES.C              6  compiler: type predicates
-  PP.C                48  compiler: pass 1: the preprocessor
+  PP.C                50  compiler: pass 1: the preprocessor
   LEX.C               32  compiler: pass 2: the tokenizer
   PSYM.C              18  compiler: parser: types and symbols
   EXPR.C              58  compiler: parser: expressions

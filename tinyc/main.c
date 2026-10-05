@@ -113,14 +113,22 @@ static int linkall(char **objs, int n, char *out)
     return r;
 }
 
+/* A file opened outside a pass is opened inside a heap mark of its own:
+   fclose would put its buffer (about 300 words) on the free list below
+   the next pass's mark, where it would stay unused through that pass. */
 static int exists(char *name)
 {
     FILE *f;
+#ifdef __TINYC__
+    __heapsave();
+#endif
     f = fopen(name, "rb");
-    if (!f)
-        return 0;
-    fclose(f);
-    return 1;
+    if (f)
+        fclose(f);
+#ifdef __TINYC__
+    __heaprestore();
+#endif
+    return f != 0;
 }
 
 static void upper(char *s)
@@ -245,17 +253,22 @@ static int batch(char *name, char *lib, char *line)
     if (n <= 5 || strcmp(path + n - 5, ".TEXT") != 0)
         strcat(path, ".TEXT");
     for (done = 0;; done++) {
+        __heapsave();                       /* the file's buffer: see exists */
         f = fopen(path, "r");
+        k = 0;
+        if (f) {
+            for (; k <= done; k++)
+                if (!fgets(line, BATCHLINE, f))
+                    break;
+            fclose(f);
+        }
+        __heaprestore();
         if (!f) {
             say("cannot open ");
             say(path);
             say("\n");
             return 0;
         }
-        for (k = 0; k <= done; k++)
-            if (!fgets(line, BATCHLINE, f))
-                break;
-        fclose(f);
         if (k <= done)
             return 1;                       /* the end of the file */
         n = strlen(line);
@@ -302,8 +315,6 @@ int main(int argc, char **argv)
         strcpy(lib, "*TCLIB.OBJ");
     if (!exists(lib))
         strcpy(lib, "TINY-C:TCLIB.OBJ");
-    /* looked for once: fopen outside a pass would leak its buffer (the
-       free list is dropped when a pass gives its memory back) */
     if (!exists(lib))
         lib[0] = 0;
     if (argc > 1) {
@@ -336,7 +347,7 @@ int main(int argc, char **argv)
         return 0;
     }
     say("Compile what file? ");
-    if (!fgets(line, 80, stdin))
+    if (!fgets(line, BATCHLINE, stdin))
         return 1;
     n = strlen(line);
     while (n > 0 && (line[n - 1] == '\n' || line[n - 1] == ' '))

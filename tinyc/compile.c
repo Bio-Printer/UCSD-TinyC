@@ -1,7 +1,7 @@
 /* compile.c -- the parser's pass: compile(), the runtime helpers' and
    #pragma declarations.  Split from stmt.c so that each compiles in less
    memory on the P-System (the declarations a file uses take its memory,
-   1 KB at a time); same segments (CINIT, PARSE). */
+   in blocks of PCHUNK bytes); same segments (CINIT, PARSE). */
 #include "tc.h"
 #include "parse.h"
 

@@ -43,7 +43,7 @@ static int nexpanding;
 static int outline;             /* line number the compiler will assume for the next output line */
 static char *outfile;
 static char *incdir;
-static char *openedpath;        /* [200] */
+static char *openedpath;        /* [INCPATH] */
 
 static char *line;              /* both MAXEXP bytes, allocated per run */
 static char *ebuf;
@@ -128,26 +128,41 @@ static char *skiplit(char *s)
 
 /* ---- reading source lines ---- */
 
+#ifdef __TINYC__
+#define INCPATH 30          /* VOLNAME:NAME.TEXT -- see openinc */
+#else
+#define INCPATH 200
+#endif
+
 static FILE *openinc(char *name, int sys)
 {
     FILE *fp;
-    char path[200];
+    char path[INCPATH];
     char *p;
 #ifdef __TINYC__
     /* P-System: file names are upper case; "x.h" is X.H (or X.H.TEXT);
        <x.h> is searched on the default volume, then on the boot volume,
-       then on TINY-C: */
+       then on TINY-C:.  A UCSD file name has at most 15 characters, a
+       volume name 7: a name with its own volume (or *) is tried only as
+       it is, so the longest path is TINY-C: + 15 + .TEXT (28) or
+       VOLNAME: + 15 + .TEXT (28); a longer name is no file at all. */
     int i;
     int v;
-    char u[MAXNAME + 1];
-    for (i = 0; name[i] && i < MAXNAME; i++) {
+    int vol;
+    char u[24];
+    vol = 0;
+    for (i = 0; name[i] && i < 23; i++) {
         u[i] = name[i];
         if (u[i] >= 'a' && u[i] <= 'z')
             u[i] = u[i] - 32;
+        if (u[i] == ':' || u[i] == '*')
+            vol = 1;
     }
     u[i] = 0;
     fp = 0;
-    for (v = 0; !fp && v < (sys ? 3 : 1); v++) {
+    if (name[i] || (!vol && i > 15))
+        return 0;                   /* cannot be a file name */
+    for (v = 0; !fp && v < (sys && !vol ? 3 : 1); v++) {
         strcpy(path, v == 0 ? "" : (v == 1 ? "*" : "TINY-C:"));
         strcat(path, u);
         fp = fopen(path, "r");
@@ -1171,7 +1186,7 @@ int preprocess(char *src, char *out)
     ifstate = (int *)malloc(MAXIF * sizeof(int));
     ifparent = (int *)malloc(MAXIF * sizeof(int));
     expanding = (struct Macro **)malloc(32 * sizeof(struct Macro *));
-    openedpath = malloc(200);
+    openedpath = malloc(INCPATH);
     pragbuf = malloc(MAXLINE);
     if (!line || !ebuf || !mtab || !istack || !ifstate || !ifparent || !expanding || !openedpath || !pragbuf)
         fatal(2 /* out of memory */, 0);
