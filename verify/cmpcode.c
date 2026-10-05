@@ -1,7 +1,7 @@
 /* cmpcode.c -- compare two code files byte by byte (Tiny-C Verify).
  *
  * In a code file block 0 names segment 1 after the program (bytes 72..79),
- * so a compiler linked as TINYC2 differs from TINYC there only: for .CODE
+ * so a compiler linked as CC2 differs from CC there only: for .CODE
  * files those bytes are skipped.  Other files (e.g. libraries) are
  * compared in full.
  * Prints IDENTICAL or the first differences.
@@ -19,7 +19,7 @@ static void ask(char *prompt, char *buf)
     n = strlen(buf);
     while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r' || buf[n - 1] == ' '))
         buf[--n] = 0;
-    for (n = 0; buf[n]; n++)            /* UCSD names ignore case: tinyc.code is TINYC.CODE */
+    for (n = 0; buf[n]; n++)            /* UCSD names ignore case: cc.code is CC.CODE */
         buf[n] = toupper(buf[n]);
 }
 

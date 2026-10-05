@@ -7,7 +7,7 @@
  *            -z: calls through function pointers for the Z80 interpreter
  *            (see below); for Z80 mode every object linked, the library too,
  *            must be built with it.
- * P-System:  X(ecute TINYC, then answer "Compile what file?" with
+ * P-System:  X(ecute CC, then answer "Compile what file?" with
  *              NAME             compile NAME.C (or NAME.TEXT), link with TCLIB.OBJ -> NAME.CODE
  *              /C NAME          compile only -> NAME.OBJ
  *              /L OUT=A,B,...   link A.OBJ, B.OBJ ... and TCLIB.OBJ -> OUT.CODE
@@ -275,7 +275,7 @@ int main(int argc, char **argv)
     int nobjs;
 #ifdef __TINYC__
     /* UCSD file names are short: small buffers save 1 KB of stack; the
-       command line (e.g. /L TINYC2=MAIN,UTIL,...) needs more */
+       command line (e.g. /L CC2=MAIN,UTIL,...) needs more */
     char out[30]; char src[30]; char tmpi[30]; char tmpr[30]; char obj[30]; char lib[30]; char line[150];
 #else
     char out[200]; char src[200]; char tmpi[200]; char tmpr[200]; char obj[200]; char lib[200]; char line[200];

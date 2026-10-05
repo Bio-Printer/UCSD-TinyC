@@ -3,7 +3,7 @@ TCTESTS:  27 files  (a UCSD directory holds 77)
   FILE            BLOCKS  WHAT
 
   README.TEXT          4  what is on this volume
-  TESTS.TEXT           4  X TINY-C:TINYC, @TESTS: rebuilds every program here
+  TESTS.TEXT           4  X TINY-C:CC, @TESTS: rebuilds every program here
   CONTROL.C            4  switch, goto, do/while, break/continue, ?:, comma ...
   CONTROL.CODE        11    (ready to run)
   DOUBLES.C           10  doubles (8 bytes: IEEE binary64, CSP 100..; P-Code mode ...

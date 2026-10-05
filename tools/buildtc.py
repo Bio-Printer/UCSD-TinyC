@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""buildtc.py -- build TINYC.CODE (the compiler, P-code) from its modules
+"""buildtc.py -- build CC.CODE (the compiler, P-code) from its modules
 with the host Tiny-C: each tinyc/*.c module -> .obj, linked with tclib."""
 import os, sys, subprocess
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -11,7 +11,7 @@ MODULES = ['main', 'util', 'types', 'pp', 'lex', 'psym', 'expr', 'decl', 'stmt',
 
 
 def build(outdir=None):
-    lib = build_lib(True)               # the library of the shipped volumes (-z): TINYC.CODE is the same either way
+    lib = build_lib(True)               # the library of the shipped volumes (-z): CC.CODE is the same either way
     outdir = outdir or os.path.join(ROOT, 'build', 'tcmod')
     os.makedirs(outdir, exist_ok=True)
     objs = []
@@ -22,7 +22,7 @@ def build(outdir=None):
         if r.returncode:
             raise SystemExit('%s: %s' % (m, r.stdout + r.stderr))
         objs.append(obj)
-    code = os.path.join(outdir, 'TINYC.CODE')
+    code = os.path.join(outdir, 'CC.CODE')
     r = subprocess.run([TC, '-L', lib] + objs + ['-o', code], capture_output=True, text=True)
     if r.returncode:
         raise SystemExit(r.stdout + r.stderr)

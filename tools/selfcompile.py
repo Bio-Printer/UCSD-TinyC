@@ -16,7 +16,7 @@ def main(mods):
     code, log = build()
     hostdir = os.path.dirname(code)
     ps = PSystem(blocks=6000)
-    ps.put('TINYC.CODE', open(code, 'rb').read())
+    ps.put('CC.CODE', open(code, 'rb').read())
     put_headers(ps)
     ps.put('TC.H.TEXT', open(os.path.join(ROOT, 'tinyc', 'tc.h')).read())
     ps.put('PARSE.H.TEXT', open(os.path.join(ROOT, 'tinyc', 'parse.h')).read())
@@ -26,11 +26,11 @@ def main(mods):
     script = ['WAIT "Command:"', 'TYPE "F"', 'WAIT "Filer:"', 'TYPE "P"', 'WAIT "Prefix"',
               'TYPE "#5:\\r"', 'WAIT "Filer:"', 'TYPE "Q"', 'WAIT "Command:"']
     for m in todo:
-        script += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINYC\\r"',
+        script += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "CC\\r"',
                    'WAIT "Compile what file?"', 'TYPE "/C %s\\r"' % m.upper(), 'WAIT "Command:"']
     if not mods:
-        script += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINYC\\r"',
-                   'WAIT "Compile what file?"', 'TYPE "/L TINYC2=%s\\r"' % ','.join(m.upper() for m in MODULES),
+        script += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "CC\\r"',
+                   'WAIT "Compile what file?"', 'TYPE "/L CC2=%s\\r"' % ','.join(m.upper() for m in MODULES),
                    'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 3000)
     for l in tr.split('\n'):
@@ -49,11 +49,11 @@ def main(mods):
         same += p == h
     if not mods:
         try:
-            p = ps.get('TINYC2.CODE')
+            p = ps.get('CC2.CODE')
             h = open(code, 'rb').read()
-            # block 0 names segment 1 after the program: TINYC2 here, TINYC on the host
-            h = h[:72] + b'TINYC2  ' + h[80:]
-            print('TINYC2.CODE', 'IDENTICAL to the host-built TINYC.CODE (apart from its name)' if p == h
+            # block 0 names segment 1 after the program: CC2 here, CC on the host
+            h = h[:72] + b'CC2     ' + h[80:]
+            print('CC2.CODE', 'IDENTICAL to the host-built CC.CODE (apart from its name)' if p == h
                   else 'DIFFERENT', len(p), len(h))
         except SystemExit as e:
             print(e)

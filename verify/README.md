@@ -3,12 +3,12 @@
 A keyboard script in the Verify P-System format (`PSystemVerify.h`: WAIT /
 TYPE) that checks Tiny-C on the P-System itself:
 
-1. every test program in `tests/` is compiled with TINYC and run; each
+1. every test program in `tests/` is compiled with CC and run; each
    line of its expected output (`tests/NAME.expect`) must appear, in order
-2. the compiler compiles its own 12 modules and links them to TINYC2.CODE;
+2. the compiler compiles its own 12 modules and links them to CC2.CODE;
    CMPCODE (a Tiny-C program, `cmpcode.c`) must report it IDENTICAL to
-   TINYC.CODE (block 0's program-name bytes aside)
-3. TINYC2 compiles and runs HANOI
+   CC.CODE (block 0's program-name bytes aside)
+3. CC2 compiles and runs HANOI
 
 If an expected text never appears, the run stops at the next prompt with
 "expected ... but the system is waiting for input", like the P-code Verify.

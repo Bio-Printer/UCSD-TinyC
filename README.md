@@ -38,10 +38,10 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 |---|---|
 | `runtests.py [name]` | compile each test with the host compiler, run it on the P-System, compare with `.expect` |
 | `crosscheck.py` | compile each test **on the P-System** too; the code files must be identical |
-| `selfcompile.py [module]` | compile the compiler's modules on the P-System, link TINYC2.CODE, compare with the host build |
-| `buildtc.py` | host build of TINYC.CODE from the modules (`build/tcmod/`) |
+| `selfcompile.py [module]` | compile the compiler's modules on the P-System, link CC2.CODE, compare with the host build |
+| `buildtc.py` | host build of CC.CODE from the modules (`build/tcmod/`) |
 | `mkvolume.py` | build `volumes/` (TINY-C, TCSRC, TCEXTRA, TCTESTS) with FILES.TEXT listings |
-| `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with TCLIB.OBJ, TCMSGS.TEXT, the headers and SYSTEM.SHELL (not the compiler: `X TINY-C:TINYC`; since BIGGY 1.14); only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
+| `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with SYSTEM.SHELL (the Tiny-C shell); Tiny-C itself is only on TINY-C: (`X TINY-C:CC`; since BIGGY 1.15); only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; `$` at the Command: prompt |
 | `voltest.py` | on the four volumes: `@LIBS`, `@BUILD` (on TCSRC:), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
 | `mkverify.py`, `tcverify.py [native\|z80]` | build / run the Tiny-C Verify pack (`TCV_MAX=seconds` for Z80 mode) |
@@ -63,13 +63,13 @@ Before committing a compiler change, run: `runtests.py`, `crosscheck.py`,
 
 ## On the P-System
 
-`X(ecute TINYC`, then at "Compile what file?":
+`X(ecute TINY-C:CC` (the compiler is CC.CODE on TINY-C:), then at "Compile what file?":
 `NAME` (compile NAME.C, or NAME.TEXT, and link), `/C NAME`, `/L OUT=A,B`,
 `/J LIB=A,B` (join objects into a library), `@FILE` (commands from FILE.TEXT);
 `/Z NAME` and `/Z /C NAME` are `NAME` and `/C NAME` with `-z` (below).
 Sources are `NAME.C`, headers `NAME.H` (UCSD text format, text kind).
-With the prefix on TCSRC: (and TINY-C: mounted), `X(ecute TINY-C:TINYC`
-`@BUILD` rebuilds the compiler (TINYC2.CODE), `@LIBS` the library (TCLIB2.OBJ);
+With the prefix on TCSRC: (and TINY-C: mounted), `X(ecute TINY-C:CC`
+`@BUILD` rebuilds the compiler (CC2.CODE), `@LIBS` the library (TCLIB2.OBJ);
 `@DEMOS` (on TCEXTRA:) and `@TESTS` (on TCTESTS:) every program there.
 
 ## Calls through function pointers (`-z` / `/Z`)

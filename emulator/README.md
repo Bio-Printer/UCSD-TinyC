@@ -56,7 +56,7 @@ the tools).
 What the CSPs do (format, stack effects): `docs/DOUBLES.md`.
 Test: `tools/f12test.py` (51 checks).
 
-Quick check after rebuilding: boot BIGGY, prefix TCEXTRA:, `X` `*TINYC`
+Quick check after rebuilding: boot BIGGY, prefix TCEXTRA:, `X` `TINY-C:CC`
 (banner `[0.4]`), compile `DOUBLES`, then `X` `DOUBLES`: it prints `8` for
 `sizeof(double)` and ends with `X=3.141592654 X=3.14159 X=3.1416`.
 

@@ -8,12 +8,12 @@
                            compiler's own sources, CMPCODE)
 
 The script, on the P-System itself:
-  1. compiles every test program with TINYC and runs it; every line of its
+  1. compiles every test program with CC and runs it; every line of its
      expected output (tests/NAME.expect) must appear, in order
-  2. compiles the compiler's 12 modules with TINYC, links them to
-     TINYC2.CODE and checks (with CMPCODE, a Tiny-C program) that it is
-     identical to TINYC.CODE
-  3. compiles and runs a test with TINYC2
+  2. compiles the compiler's 12 modules with CC, links them to
+     CC2.CODE and checks (with CMPCODE, a Tiny-C program) that it is
+     identical to CC.CODE
+  3. compiles and runs a test with CC2
 A step whose text never appears stops the run at the next prompt.
 """
 import os, sys, zipfile
@@ -67,7 +67,7 @@ def script():
         keys_path = os.path.join(TESTS, t + '.keys')
         keys = open(keys_path, newline='').read() if os.path.exists(keys_path) else ''
         L.append('# ---- test %s' % name)
-        compile_step(L, 'TINYC', '/Z ' + name)      # /Z: the pack runs in Z80 mode too
+        compile_step(L, 'CC', '/Z ' + name)      # /Z: the pack runs in Z80 mode too
         # NAME.wait: the texts to wait for instead of NAME.expect (for output
         # with cursor addressing, whose raw bytes the transcript shows differently)
         wait = os.path.join(TESTS, t + '.wait')
@@ -76,13 +76,13 @@ def script():
         remove(L, [name + '.OBJ', name + '.CODE'])     # the directory holds 77 files
     L.append('# ---- the compiler compiles itself')
     for m in MODULES:
-        compile_step(L, 'TINYC', '/C ' + m.upper())
-    compile_step(L, 'TINYC', '/L TINYC2=' + ','.join(m.upper() for m in MODULES))
+        compile_step(L, 'CC', '/C ' + m.upper())
+    compile_step(L, 'CC', '/L CC2=' + ','.join(m.upper() for m in MODULES))
     L += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "CMPCODE\\r"',
-          'WAIT "First file?"', 'TYPE "TINYC.CODE\\r"', 'WAIT "Second file?"', 'TYPE "TINYC2.CODE\\r"',
+          'WAIT "First file?"', 'TYPE "CC.CODE\\r"', 'WAIT "Second file?"', 'TYPE "CC2.CODE\\r"',
           'WAIT "IDENTICAL"', 'WAIT "Command:"']
     L.append('# ---- and the compiler it built works')
-    compile_step(L, 'TINYC2', '/Z HANOI')
+    compile_step(L, 'CC2', '/Z HANOI')
     run_program(L, 'HANOI', open(os.path.join(TESTS, 'hanoi.expect')).read())
     return '\n'.join(L) + '\n'
 
@@ -91,7 +91,7 @@ def volume(path):
     ucsdvol.main(['new', path, 'TINYCV', '4000'])
     v = ucsdvol.Volume(path)
     code, log = build()
-    v.write('TINYC.CODE', open(code, 'rb').read(), 2)
+    v.write('CC.CODE', open(code, 'rb').read(), 2)
     v.write('TCLIB.OBJ', open(build_lib(True), 'rb').read(), 5)   # -z: works in Z80 mode too
     v.write('TCMSGS.TEXT', ucsdvol.text_to_ucsd(open(os.path.join(INC, 'tcmsgs.txt')).read()), 3)
     for f in sorted(os.listdir(INC)):

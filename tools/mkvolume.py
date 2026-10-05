@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mkvolume.py -- build the two Tiny-C volumes (volumes/*.zip):
 
-  TINY-C:   everything needed to use Tiny-C: TINYC.CODE, TCLIB.OBJ,
+  TINY-C:   everything needed to use Tiny-C: CC.CODE, TCLIB.OBJ,
             TCMSGS.TEXT, the headers, README.TEXT, FILES.TEXT (the name
             TINY-C: is built into the compiler: it finds TCLIB.OBJ,
             TCMSGS.TEXT and headers there)
@@ -36,7 +36,7 @@ LIBMODS = sorted(f[:-2] for f in os.listdir(LIB) if f.endswith('.c'))
 
 README_TC = """TINY-C for UCSD Pascal II.0                        volume TINY-C:
 
-Use: set the prefix to TINY-C: (F(iler, P(refix), then X(ecute TINYC and
+Use: set the prefix to TINY-C: (F(iler, P(refix), then X(ecute CC and
 answer "Compile what file?" with
     NAME                 compile NAME.C (or NAME.TEXT), link with
                          TCLIB.OBJ -> NAME.CODE  (NAME.C works too)
@@ -95,12 +95,12 @@ Mount TINY-C: as well: the compiler, the headers, TCLIB.OBJ and
 TCMSGS.TEXT come from there.
 
 REBUILDING THE COMPILER:  set the prefix to TCSRC:, X(ecute
-TINY-C:TINYC, answer  @BUILD.  BUILD.TEXT compiles the compiler's modules
-and links TCSRC:TINYC2.CODE, identical to TINY-C:TINYC.CODE apart from its
+TINY-C:CC, answer  @BUILD.  BUILD.TEXT compiles the compiler's modules
+and links TCSRC:CC2.CODE, identical to TINY-C:CC.CODE apart from its
 name (check it with TCEXTRA:CMPCODE).  To use it, transfer it to
-TINY-C:TINYC.CODE with the Filer.
+TINY-C:CC.CODE with the Filer.
 
-REBUILDING THE LIBRARY:  set the prefix to TCSRC:, X(ecute TINY-C:TINYC,
+REBUILDING THE LIBRARY:  set the prefix to TCSRC:, X(ecute TINY-C:CC,
 answer  @LIBS.  LIBS.TEXT compiles the library modules and joins them
 (/J) into TCSRC:TCLIB2.OBJ, identical to TINY-C:TCLIB.OBJ (check it with
 CMPCODE).  To use it, transfer it to TINY-C:TCLIB.OBJ with the Filer.
@@ -118,9 +118,9 @@ Demo programs for Tiny-C (the compiler is on TINY-C:, the test programs
 on TCTESTS:).  Every program is here as source (NAME.C) and ready to run
 (NAME.CODE):
 X(ecute TCEXTRA:NAME.  To compile one yourself, set the prefix to
-TCEXTRA: and X(ecute TINY-C:TINYC, answer NAME.
+TCEXTRA: and X(ecute TINY-C:CC, answer NAME.
 
-REBUILDING THEM ALL:  set the prefix to TCEXTRA:, X(ecute TINY-C:TINYC,
+REBUILDING THEM ALL:  set the prefix to TCEXTRA:, X(ecute TINY-C:CC,
 answer  @DEMOS.  DEMOS.TEXT compiles and links every program here (each
 leaves a NAME.OBJ as well; remove those with the Filer if you like).
 
@@ -137,7 +137,7 @@ or later.
 
 CMPCODE compares two files byte by byte (for .CODE files the program
 name in block 0 aside): after @BUILD on TCSRC:, compare
-TINY-C:TINYC.CODE with TCSRC:TINYC2.CODE, after @LIBS TINY-C:TCLIB.OBJ
+TINY-C:CC.CODE with TCSRC:CC2.CODE, after @LIBS TINY-C:TCLIB.OBJ
 with TCSRC:TCLIB2.OBJ; it prints IDENTICAL.
 
 FILES.TEXT lists every file on this volume.
@@ -150,7 +150,7 @@ TCEXTRA:): each exercises a part of the language or the library and
 prints what it computed.  Every program is here as source (NAME.C) and
 ready to run (NAME.CODE): X(ecute TCTESTS:NAME.
 
-REBUILDING THEM ALL:  set the prefix to TCTESTS:, X(ecute TINY-C:TINYC,
+REBUILDING THEM ALL:  set the prefix to TCTESTS:, X(ecute TINY-C:CC,
 answer  @TESTS.  TESTS.TEXT compiles and links every program here (each
 leaves a NAME.OBJ as well; remove those with the Filer if you like).
 
@@ -162,15 +162,15 @@ FILES.TEXT lists every file on this volume.
 DEMOS = ('boxes', 'calc', 'demo', 'guess', 'hanoi', 'pi', 'queens', 'sieve')
 
 LIBMODS_ = sorted(f[:-2] for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c'))
-LIBS = """; LIBS -- rebuild the C library: prefix TCSRC:, X(ecute TINY-C:TINYC, answer @LIBS
+LIBS = """; LIBS -- rebuild the C library: prefix TCSRC:, X(ecute TINY-C:CC, answer @LIBS
 ; Compiles every library module, then joins them into TCLIB2.OBJ.
 """ + ''.join('/Z /C %s\n' % m.upper() for m in LIBMODS_) + \
     '/J TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
 
-BUILD = """; BUILD -- rebuild the Tiny-C compiler: prefix TCSRC:, X(ecute TINY-C:TINYC, answer @BUILD
-; Compiles every module, then links them into TINYC2.CODE.
+BUILD = """; BUILD -- rebuild the Tiny-C compiler: prefix TCSRC:, X(ecute TINY-C:CC, answer @BUILD
+; Compiles every module, then links them into CC2.CODE.
 """ + ''.join('/C %s\n' % m.upper() for m in MODULES) + \
-    '/L TINYC2=%s\n' % ','.join(m.upper() for m in MODULES)
+    '/L CC2=%s\n' % ','.join(m.upper() for m in MODULES)
 
 
 WHAT = {
@@ -280,7 +280,7 @@ def compiled(path):
 def tiny_c():
     t = Vol('TINY-C', 4000)
     code, log = build()
-    t.binary('TINYC.CODE', open(code, 'rb').read(), 'the Tiny-C compiler: X(ecute TINYC')
+    t.binary('CC.CODE', open(code, 'rb').read(), 'the Tiny-C compiler: X(ecute CC')
     t.binary('TCLIB.OBJ', open(build_lib(True), 'rb').read(), 'the C library (built with /Z), linked into every program')
     t.textfile('TCMSGS.TEXT', os.path.join(INC, 'tcmsgs.txt'), "the compiler's messages (line n = message n)")
     t.text('README.TEXT', README_TC, 'how to use Tiny-C')
@@ -293,8 +293,8 @@ def tiny_c():
 def sources():
     t = Vol('TCSRC', 4000)
     t.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C')
-    t.text('BUILD.TEXT', BUILD, 'X TINY-C:TINYC, @BUILD: rebuilds the compiler -> TINYC2.CODE')
-    t.text('LIBS.TEXT', LIBS, 'X TINY-C:TINYC, @LIBS: rebuilds the library -> TCLIB2.OBJ')
+    t.text('BUILD.TEXT', BUILD, 'X TINY-C:CC, @BUILD: rebuilds the compiler -> CC2.CODE')
+    t.text('LIBS.TEXT', LIBS, 'X TINY-C:CC, @LIBS: rebuilds the library -> TCLIB2.OBJ')
     for m in MODULES:
         p = os.path.join(SRC, m + '.c')
         t.textfile(m.upper() + '.C', p, 'compiler: ' + describe(p))
@@ -313,7 +313,7 @@ def programs(vol, batch, progs, desc):
     """sources, ready-to-run code files and the @BATCH file that rebuilds them"""
     names = [os.path.splitext(os.path.basename(p))[0].upper()[:10] for p in progs]
     vol.text(batch + '.TEXT', '; %s -- compile and link every program on %s:\n'
-             '; prefix %s:, X(ecute TINY-C:TINYC, answer @%s\n' % (batch, vol.name, vol.name, batch) +
+             '; prefix %s:, X(ecute TINY-C:CC, answer @%s\n' % (batch, vol.name, vol.name, batch) +
              ''.join('/Z %s\n' % n for n in names), desc)
     for p in progs:
         name = os.path.splitext(os.path.basename(p))[0].upper()[:10]
@@ -327,7 +327,7 @@ def extras():
     progs = [os.path.join(TESTS, d + '.c') for d in DEMOS]
     progs.append(os.path.join(ROOT, 'verify', 'cmpcode.c'))
     progs += [os.path.join(ROOT, 'examples', f) for f in sorted(os.listdir(os.path.join(ROOT, 'examples'))) if f.endswith('.c')]
-    programs(e, 'DEMOS', progs, 'X TINY-C:TINYC, @DEMOS: rebuilds every program here')
+    programs(e, 'DEMOS', progs, 'X TINY-C:CC, @DEMOS: rebuilds every program here')
     e.finish()
 
 
@@ -335,7 +335,7 @@ def tests():
     t = Vol('TCTESTS', 4000)
     t.text('README.TEXT', README_TS, 'what is on this volume')
     progs = [os.path.join(TESTS, f) for f in sorted(os.listdir(TESTS)) if f.endswith('.c') and f[:-2] not in DEMOS]
-    programs(t, 'TESTS', progs, 'X TINY-C:TINYC, @TESTS: rebuilds every program here')
+    programs(t, 'TESTS', progs, 'X TINY-C:CC, @TESTS: rebuilds every program here')
     t.finish()
 
 
