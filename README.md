@@ -18,6 +18,7 @@ Start here when picking the project up in a new session.
 | `examples/` | `shell.c` (a mini-shell built on `pexec()`: a program name without a volume is looked for on every disk on line, and when several have it the shell asks which; on BIGGY as SYSTEM.SHELL, which `$` at the Command: prompt runs) `memfree.c` (a program's free memory), `memmark.c` (`MEMMARK FILL`, run a program, `MEMMARK SCAN`: an estimate of that program's least free memory, from `memfill()`/`memgap()` in `psys.h`) and `args.c` (does what its `main(argc, argv)` arguments say: run it from the shell, e.g. `ARGS ADD 2 3`); on TCEXTRA |
 | `volumes/` | **TINY-C.zip** (what is needed to use Tiny-C: compiler, library, messages, headers; the compiler looks for them on `TINY-C:`) **TCSRC.zip** (the compiler's and the library's sources, BUILD/LIBS scripts), **TCEXTRA.zip** (demos, the shell and its examples, CMPCODE), **TCTESTS.zip** (the test programs; four volumes because a UCSD directory holds 77 files and `@BUILD`/`@LIBS`/`@DEMOS`/`@TESTS` leave a NAME.OBJ per module or program) and **BIGGY.zip** (boot disk `Big_Disk.BLK` with Tiny-C ready to use; doubles need the v1.88 emulator's CSP 100..137); `*.txt` = file listings |
 | `volumes/*---8_byte_floats.BLK` | the user's own working copies of the volumes: **frozen** -- no tool writes them, and changes to the generated volumes are not copied into them any more (only on request) |
+| `ports/vi/` | **vi** (the BusyBox-derived tiny vi) ported to the P-System: `vi.c` (still builds on Linux) + `viucsd.h` (the P-System side); work in progress, see its README |
 | `verify/` | Tiny-C Verify pack: `TCVERIFY.SCRIPT` + `TCVERIFY.zip`, `cmpcode.c`, `rmfiles.c`, README |
 | `repro/` | engine bug repros (REAL compare, DEEPCXP: both fixed in the engine) |
 | `tools/` | host tools (below) |
@@ -45,6 +46,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; `$` at the Command: prompt |
 | `voltest.py` | on the four volumes: `@LIBS`, `@BUILD` (on TCSRC:), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
 | `mkverify.py`, `tcverify.py [native\|z80]` | build / run the Tiny-C Verify pack (`TCV_MAX=seconds` for Z80 mode) |
+| `vitest.py` | `ports/vi`: the same 60-command editing session on Linux and on the P-System (from the shell); the saved files must be identical |
 | `modes.py prog.c` | run a program in Z80 and P-Code mode and compare (engine bug hunting) |
 | `pdis.py FILE.CODE` | P-code disassembler |
 | `pcensus.py FILE.CODE\|VOL.BLK` | static P-code census: instructions, and the inline constants/tables (`LSA LPA LDC XJP`), `--check` validates every jump target, `--selfpatch` lists the old self-modifying indirect calls |
