@@ -7,7 +7,16 @@ on Linux (`gcc -DSTANDALONE vi.c`). `viucsd.h` holds everything that is P-System
 specific.
 
 Build (host): `build/tc -z -I tinyc/include -L tinyc/include/tclibz.obj ports/vi/vi.c -o VI.CODE`
-(`-z` and `tclibz.obj` so that it also runs in Z80 mode).
+(`-z` and `tclibz.obj` so that it also runs in Z80 mode); `tools/mkvolume.py` puts VI.CODE
+on TOOLS: and the sources on TOOLSRC:. On the P-System, `@TOOLS` on TOOLSRC: rebuilds it
+(the same VI.CODE byte for byte) -- for now only in P-Code mode with the Harvard layout
+(Options > Reclaim Z80 Interpreter and BIOS Memory, Options > Harvard Mode), where the
+compiler's code takes no data memory: in the normal layout and in Z80 mode its compile pass
+runs out of memory on vi.c (the declarations of ~200 functions plus the compiler's
+segments).
+
+Later: split vi.c into modules compiled separately (/C) and linked (/L), as the compiler
+itself is, so that Z80 mode and the normal layout can build it too.
 
 Run: from the shell, `VI NAME.C` (the name as typed: `.C`, `.H` and `.TEXT` files are
 UCSD text files); from X(ecute) it asks for the file.

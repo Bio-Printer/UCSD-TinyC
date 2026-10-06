@@ -161,22 +161,33 @@ void statement(int brk, int cont)
         next();
         break;
     case K_IF:
-        next();
-        n = condparen();
-        l1 = ir_newlabel();
-        ir_branch(n, l1, 0);
-        xrelease(m);
-        curlocal = save;
-        statement(brk, cont);
-        if (tok == K_ELSE) {
+        /* if ... else if ... else if ...: a loop, not a statement() per
+           else if -- a long chain would need a stack frame per link */
+        l2 = -1;
+        for (;;) {
             next();
-            l2 = ir_newlabel();
+            n = condparen();
+            l1 = ir_newlabel();
+            ir_branch(n, l1, 0);
+            xrelease(m);
+            curlocal = save;
+            statement(brk, cont);
+            if (tok != K_ELSE) {
+                ir_setlabel(l1);
+                break;
+            }
+            next();
+            if (l2 < 0)
+                l2 = ir_newlabel();
             ir_jump(l2);
             ir_setlabel(l1);
-            statement(brk, cont);
+            if (tok != K_IF) {
+                statement(brk, cont);
+                break;
+            }
+        }
+        if (l2 >= 0)
             ir_setlabel(l2);
-        } else
-            ir_setlabel(l1);
         break;
     case K_WHILE:
         next();

@@ -1,4 +1,4 @@
-TCTESTS:  35 files  (a UCSD directory holds 77)
+TCTESTS:  37 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -8,6 +8,8 @@ TCTESTS:  35 files  (a UCSD directory holds 77)
   CONTROL.CODE        12    (ready to run)
   DOUBLES.C           10  doubles (8 bytes: IEEE binary64, CSP 100..; P-Code mode ...
   DOUBLES.CODE        23    (ready to run)
+  ELSEIF.C             8  long if / else if chains (parsed in a loop, not one ...
+  ELSEIF.CODE         12    (ready to run)
   FCOMPARE.C           4  real comparisons, all six operators, signs, zero and ...
   FCOMPARE.CODE       14    (ready to run)
   FILEIO.C             4  files: stdio text files, then io.h / fcntl.h binary ...

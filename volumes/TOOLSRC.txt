@@ -1,0 +1,9 @@
+TOOLSRC:  5 files  (a UCSD directory holds 77)
+
+  FILE            BLOCKS  WHAT
+
+  README.TEXT          4  what is on this volume
+  TOOLS.TEXT           4  X TINY-C:CC, @TOOLS: rebuilds every tool here
+  VI.C               242  vi: the editor (the BusyBox tiny vi, edited for Tiny-C)
+  VIUCSD.H            18  vi: its P-System side: keys, screen, files
+  FILES.TEXT           4  this list

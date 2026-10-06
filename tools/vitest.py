@@ -6,6 +6,11 @@ the mini-shell: VI #5:X.C), and the files they save must be identical.
 
 Uses the mode of PSYS_MODE (native or z80) like the other tools; the
 P-System VI is built with -z (tclibz.obj) so that it runs in both.
+
+  vitest.py --build   on the volumes (build/, tools/mkvolume.py): @TOOLS on
+                      TOOLSRC: with TINY-C:CC, in P-Code mode with the
+                      Harvard layout (the only one with the memory for vi.c
+                      so far); the VI.CODE it makes must be TOOLS:VI.CODE
 """
 import os, sys, pty, time, select, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -79,7 +84,41 @@ def psystem(work):
     return text('X.C'), text('Y.C')
 
 
+def build_on_psystem():
+    import shutil
+    from psys import BUILD
+    from voltest import prefix
+    work = tempfile.mkdtemp(prefix='vibuild_')
+    for v in ('TINY-C', 'TOOLSRC', 'TOOLS'):
+        shutil.copy(os.path.join(BUILD, v + '.BLK'), work)
+    script = ['WAIT "Command:"'] + prefix('TOOLSRC:') + [
+        'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINY-C:CC\\r"',
+        'WAIT "Compile what file?"', 'TYPE "@TOOLS\\r"', 'WAIT "Done."', 'WAIT "Command:"']
+    sp = os.path.join(work, 'script')
+    open(sp, 'w').write('\n'.join(script) + '\n')
+    out = os.path.join(work, 'out')
+    r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'), os.path.join(work, 'TINY-C.BLK'),
+                        os.path.join(work, 'TOOLSRC.BLK'), sp, 'native', out, '', '1800'], capture_output=True, text=True,
+                       env=dict(os.environ, VERIFY_RECLAIM='1', VERIFY_HARVARD='1'))
+    tr = open(os.path.join(out, 'transcript.txt'), encoding='latin1').read()
+    built = None
+    for f in os.listdir(out):
+        if f.endswith('.BLK'):
+            v = ucsdvol.Volume(os.path.join(out, f))
+            if v.volname == 'TOOLSRC' and v.find('VI.CODE'):
+                built = v.read('VI.CODE')[0]
+    shipped = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK')).read('VI.CODE')[0]
+    ok = 'VERIFY SCRIPT COMPLETED' in r.stdout and 'harvard layout: yes' in r.stdout and built == shipped
+    print('@TOOLS on TOOLSRC: (Harvard layout): %s' % ('VI.CODE identical to TOOLS:VI.CODE' if ok else 'FAILED'))
+    if not ok:
+        print(tr[tr.find('Compile what'):][-800:])
+    print('vi build test: %s' % ('PASSED' if ok else 'FAILED'))
+    return 0 if ok else 1
+
+
 def main():
+    if sys.argv[1:] == ['--build']:
+        return build_on_psystem()
     work = tempfile.mkdtemp(prefix='vitest_')
     lx, ly = linux(work)
     px, py = psystem(work)

@@ -109,6 +109,9 @@ pointers, then `segnum | nprocs<<8`). The OS enters a program with
    statement), generates P-code into a per-function buffer, resolves
    jumps, streams finished procedures into the code file, patches the
    segment dictionary at the end.
+   An `if ... else if ... else if` chain is parsed in a loop, its `else`
+   branches jumping to one shared end label: a long chain (a command
+   dispatcher) costs no stack per link.
 
 Both passes are segment procedures when Tiny-C compiles itself, so only
 one is in memory at a time.

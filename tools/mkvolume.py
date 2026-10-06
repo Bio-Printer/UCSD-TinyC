@@ -15,6 +15,9 @@
             ready-to-run code files, README.TEXT, TESTS.TEXT, FILES.TEXT
   (Four volumes: a UCSD directory holds 77 files, and @BUILD, @LIBS,
   @DEMOS and @TESTS leave a NAME.OBJ for every module or program.)
+  TOOLS:    tools written in Tiny-C, ready to run (VI.CODE), README.TEXT,
+            FILES.TEXT
+  TOOLSRC:  their sources (VI.C, VIUCSD.H), README.TEXT, FILES.TEXT
 
 FILES.TEXT lists every file on its volume with its size and what it is;
 the same listing is written next to the zips (volumes/NAME.txt).
@@ -175,6 +178,44 @@ leaves a NAME.OBJ as well; remove those with the Filer if you like).
 FILES.TEXT lists every file on this volume.
 """
 
+# the tools (TOOLS:, TOOLSRC:): name, main source, other source files, what it is
+TOOLS = [
+    ('VI', 'ports/vi/vi.c', ['ports/vi/viucsd.h'], 'vi, the screen editor: VI NAME.C from the shell'),
+]
+
+README_TOOLS = """TOOLS                                               volume TOOLS:
+
+Tools written in Tiny-C, ready to run.  Their sources are on TOOLSRC:.
+
+VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
+        VI NAME.C  (the name as typed; .C, .H and .TEXT files are text
+        files); from X(ecute TOOLS:VI it asks for the file.  Most of vi's
+        commands: moving, i a o O, x dd dw cw D C J p P y yy, . u U,
+        marks, / ? n N, :w :q :wq ZZ :s :set :r :e, ...  The cursor keys
+        are the P-System's (they take ^T ^R ^Q ^U); ^L redraws.  Memory
+        limits the file: about 6 KB in Z80 mode, 14 KB in P-Code mode.
+
+FILES.TEXT lists every file on this volume.
+"""
+
+README_TOOLSRC = """TOOL SOURCES                                      volume TOOLSRC:
+
+The sources of the tools on TOOLS:.
+
+REBUILDING THEM:  set the prefix to TOOLSRC:, X(ecute TINY-C:CC, answer
+@TOOLS.  TOOLS.TEXT compiles and links every tool (NAME.CODE here, and
+a NAME.OBJ); copy the new NAME.CODE to TOOLS: with the Filer.
+
+VI.C, VIUCSD.H   vi: the BusyBox "tiny vi" (GPL v2 or later, see its
+        header), edited for Tiny-C; VIUCSD.H is the P-System side (keys,
+        screen, files).  For now VI.C needs more memory than the compiler
+        has in the normal layout: rebuild it in P-Code mode with Options >
+        Reclaim Z80 Interpreter and BIOS Memory and Options > Harvard Mode
+        on (the compiler's code then takes no data memory).
+
+FILES.TEXT lists every file on this volume.
+"""
+
 # the demo programs (TCEXTRA:, with examples/ and CMPCODE); the other
 # tests/ programs go on TCTESTS:
 DEMOS = ('boxes', 'calc', 'demo', 'guess', 'hanoi', 'pi', 'queens', 'sieve')
@@ -231,6 +272,8 @@ WHAT = {
     'pexec.c': 'pexec, main(argc, argv) (<psys.h>)',
     'strtold.c': 'strtold, atold (<stdlib.h>, P-Code mode)',
     'tcrt.c': 'runtime helpers: C division, shifts, unsigned, longs',
+    'vi.c': 'the editor (the BusyBox tiny vi, edited for Tiny-C)',
+    'viucsd.h': 'its P-System side: keys, screen, files',
 }
 
 
@@ -364,11 +407,31 @@ def tests():
     t.finish()
 
 
+def tools():
+    t = Vol('TOOLS', 4000)
+    t.text('README.TEXT', README_TOOLS, 'what is on this volume')
+    for name, src, more, desc in TOOLS:
+        t.binary(name + '.CODE', compiled(os.path.join(ROOT, src)), desc)
+    t.finish()
+    s = Vol('TOOLSRC', 4000)
+    s.text('README.TEXT', README_TOOLSRC, 'what is on this volume')
+    s.text('TOOLS.TEXT', '; TOOLS -- compile and link every tool on TOOLSRC:\n'
+           '; prefix TOOLSRC:, X(ecute TINY-C:CC, answer @TOOLS\n' +
+           ''.join('/Z %s\n' % name for name, src, more, desc in TOOLS),
+           'X TINY-C:CC, @TOOLS: rebuilds every tool here')
+    for name, src, more, desc in TOOLS:
+        for f in [src] + more:
+            p = os.path.join(ROOT, f)
+            s.textfile(os.path.basename(f).upper(), p, '%s: %s' % (name.lower(), describe(p)))
+    s.finish()
+
+
 def main():
     tiny_c()
     sources()
     extras()
     tests()
+    tools()
     old = os.path.join(ROOT, 'TinyC_Volume.zip')
     if os.path.exists(old):
         os.remove(old)
