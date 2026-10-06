@@ -107,8 +107,11 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   emulator 1.97: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`), compiling each compiler module in Z80 mode (the
   normal layout; the same in P-Code mode without reclaim), from X(ecute:
-  PP.C, STMT.C, GENX.C and LINK.C 1,497 words (their Compiling pass), the
-  others more; `cc @build @libs` from the shell 1,452.  The Compiling
+  PP.C, STMT.C, GENX.C and LINK.C 1,472 words (their Compiling pass), the
+  others more; `cc @build @libs` from the shell 1,427.  CC's "(N words
+  free)" after each pass is that pass's least (`memleast()` in psys.h,
+  emulator 1.99; elsewhere the free memory at the pass's end), so the
+  least of them is the status bar's figure.  The Compiling
   pass's memory goes by the declarations a file uses, held in blocks of
   PCHUNK bytes (util.c), not by its function sizes: `tools/pchunk.py`
   measures the least against PCHUNK (512 is the best now; rerun it when

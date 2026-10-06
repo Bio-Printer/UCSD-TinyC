@@ -98,6 +98,14 @@ int __pxsum(unsigned char *s);
    it stopped with an execution error */
 #define pexec_status() (SYSCOM->expansion[5])
 
+/* The least free memory -- the room between the stack and the heap, at
+   every P-code instruction -- since memleast_start(), in words; -1 when the
+   machine does not keep it (the emulator does from version 1.99, through
+   SYSCOM->expansion[8]).  memleast_stop() when done. */
+#define memleast_start() (SYSCOM->expansion[8] = -1)
+#define memleast() (SYSCOM->expansion[8] > 0 ? SYSCOM->expansion[8] : -1)
+#define memleast_stop() (SYSCOM->expansion[8] = 0)
+
 /* memfill() fills the free memory (between the heap and the stack) with
    a pattern and returns how many words.  The pattern stays after the
    program ends: memgap() in a program run later returns the longest run

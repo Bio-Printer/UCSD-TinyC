@@ -82,17 +82,20 @@ def main():
     for l in tr.split('\n'):
         if l.startswith('> '):
             cmd = l[2:].strip()
-        elif re.match(r'(Preprocessing|Compiling|Generating|Linking|Joining)', l):
-            step = l.split()[0]
-        m = re.search(r'\((\d+) words free\)', l)
-        if m and (least is None or int(m.group(1)) < least):
-            least, where = int(m.group(1)), '%s, %s' % (cmd, step)
+        elif l.startswith('Linking'):
+            step = 'Linking'
+        # each pass's figure follows its name: Preprocessing X.C (n) Compiling (n) Generating code X.OBJ (n)
+        for m in re.finditer(r'(Preprocessing|Compiling|Generating|Linking)|\((\d+) words free\)', l):
+            if m.group(1):
+                step = m.group(1)
+            elif least is None or int(m.group(2)) < least:
+                least, where = int(m.group(2)), '%s, %s' % (cmd, step)
     glued = re.findall(r'words free\) +(?:> |Done).*', tr)   # a pass's last line runs into the next one
     if glued:
         print('not on a line of its own: %s' % glued[0])
         ok = False
     print([l for l in r.stdout.split('\n') if 'VERIFY' in l][-1:])
-    print('least memory: %s words free (%s)' % (least, where))
+    print('least memory: %s words free (%s; the least "words free" CC printed)' % (least, where))
     lw = [l for l in r.stdout.split('\n') if l.startswith('least free memory')]
     if lw:                              # the emulator's tracking (engine 1.97): the true worst case
         print('tracked ' + lw[0])

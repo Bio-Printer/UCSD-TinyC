@@ -27,6 +27,9 @@
  * library is linked into every program, a library built the same way).
  */
 #include "tc.h"
+#ifdef __TINYC__
+#include <psys.h>
+#endif
 #pragma segment MAIN
 
 #define MAXFILES 24
@@ -49,12 +52,15 @@ static void basename8(char *path, char *out)
 }
 
 /* every pass gives its heap back: on the P-System memory is released
-   to where it was before the pass (the stdio files are all closed) */
+   to where it was before the pass (the stdio files are all closed).
+   Its "words free" is the least free memory during the pass (memleast,
+   psys.h: emulator 1.99), else the free memory at its end (MEMAVAIL). */
 static void passbegin(int xsize)
 {
     curfile = 0;
 #ifdef __TINYC__
     __heapsave();
+    memleast_start();
 #endif
     xsetsize(xsize);
 }
@@ -62,8 +68,11 @@ static void passbegin(int xsize)
 static void passend(void)
 {
 #ifdef __TINYC__
+    int least;
+    least = memleast();
+    memleast_stop();
     say("  (");
-    sayn(__cspi(40));
+    sayn(least >= 0 ? least : __cspi(40));
     say(" words free) ");
     __heaprestore();
 #endif

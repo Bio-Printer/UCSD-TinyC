@@ -14,7 +14,7 @@ TINY-C:  20 files  (a UCSD directory holds 77)
   IO.H                 4  header: open, read, write, lseek, close, unlink
   LIMITS.H             4  header: INT_MAX, LONG_MAX, ... (16-bit int, 32-bit long)
   MATH.H               4  header: sqrt, sin, cos, atan, exp, log, pow, fabs, ...
-  PSYS.H              12  header: SYSCOM: the P-System's SYSCOM record (SYSCOM->memtop, ...)
+  PSYS.H              14  header: SYSCOM: the P-System's SYSCOM record (SYSCOM->memtop, ...)
   STDARG.H             4  header: va_list, va_start, va_arg, va_end
   STDDEF.H             4  header: size_t, NULL, offsetof
   STDIO.H             10  header: printf, scanf, FILE, fopen, fgets, fprintf, ...
