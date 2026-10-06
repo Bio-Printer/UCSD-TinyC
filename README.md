@@ -107,9 +107,9 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   emulator: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
   mode without reclaim): every @BUILD and @LIBS command from X(ecute
-  1,953 words (the library's STDIO.C, Compiling pass, five parentheses
-  deep; linking CC2.CODE 1,971; PP.C, EXPR.C, GENX.C and LINK.C about
-  2,170 to 2,250); `cc @build @libs` from the shell 1,813 (STDIO.C).  With reclaimed memory, 3,915 words more.  CC's "(N
+  1,954 words (linking CC2.CODE; the library's STDIO.C, Compiling pass,
+  about 2,500; the compiler's modules about 2,800 and more); `cc @build
+  @libs` from the shell 1,909 (linking).  With reclaimed memory, 3,915 words more.  CC's "(N
   words free)" after each pass is that pass's least (`memleast()` in
   psys.h, emulator 1.99; elsewhere the free memory at the pass's end), so
   the least of them is the status bar's figure; `voltest.py` prints both.
@@ -119,6 +119,10 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
     `tools/pchunk.py` measures the least against PCHUNK (512 now; rerun
     it when the sources change).  The 35 runtime helpers (`__divi`,
     `__lmul` ...) are declared when first needed, not in every module.
+    A symbol is 14 bytes (was 18 and a link-name string for a static
+    function, which is now made when written), a type 12 (was 22: what
+    only one kind of type uses shares a place, the small fields are
+    flags): about 667 words more in every Compiling pass.
   - the code generator's buffers are sized for 1.5 times the largest
     procedure in the compiler, library, demos and tests (tc.h: MAXCODE
     3000 bytes, MAXLABEL 200, MAXFIX 250, MAXREL 320; the switch case

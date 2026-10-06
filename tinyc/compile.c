@@ -7,6 +7,23 @@
 #include "parse.h"
 #pragma segment PARSE
 
+/* the module's segment names: a symbol keeps an index (symseg, segno) */
+#define MAXSEGTAB 15
+static char *segtab[MAXSEGTAB];
+static int nsegtab;
+
+static int segno(char *name)
+{
+    int i;
+    for (i = 0; i < nsegtab; i++)
+        if (strcmp(segtab[i], name) == 0)
+            return i + 1;
+    if (nsegtab >= MAXSEGTAB)
+        fatal(104 /* too many segments */, name);
+    segtab[nsegtab++] = pstrdup(name);
+    return nsegtab;
+}
+
 void pragma(char *s)
 {
     char name[MAXNAME];
@@ -26,7 +43,8 @@ void pragma(char *s)
         name[n] = 0;
         if (strcmp(name, "MAIN") == 0)
             name[0] = 0;
-        cursegname = pstrdup(name);
+        cursegi = segno(name);
+        cursegname = segtab[cursegi - 1];
         segexplicit = 1;
     } else if (strncmp(s, "nofltused", 9) == 0)
         nofltused = 1;              /* library modules: float use does not link %f */
@@ -57,6 +75,7 @@ int compile(char *src, char *ir, char *mod)
     swmax = 0;
     segexplicit = 0;
     curfnseg = 0;
+    nsegtab = 0;
     modname = mod;
     usesfloat = 0;
     nofltused = 0;
@@ -66,7 +85,8 @@ int compile(char *src, char *ir, char *mod)
     ir_open(ir, modname);
     scanrefs(src);
     typeinit();
-    cursegname = "";
+    cursegi = segno("");
+    cursegname = segtab[0];
     lexinit(fp);
     next();
     while (tok != T_EOF) {
@@ -89,7 +109,7 @@ int compileend(void)
     ir_initflush();
     for (h = 0; h < HSIZE; h++)
         for (g = htab[h]; g; g = g->next)
-            if (g->kind == S_GLOBAL && !g->isstatic && g->defined) {
+            if (g->kind == S_GLOBAL && !(g->sx & SX_STATIC) && g->defined) {
                 if (g->type->size < 0)
                     error(73 /* incomplete type */, g->name);
                 ir_data(g->name, (g->type->size + 1) / 2, g->defined == 2);

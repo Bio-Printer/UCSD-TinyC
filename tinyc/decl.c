@@ -56,11 +56,8 @@ void dcl(struct Dcl *d)
             ft = (struct Type *)xalloc(sizeof(struct Type));   /* see functype */
             ft->kind = TY_FUNC;
             ft->size = 2;
-            ft->align = -1;
-            ft->len = -1;
-            ft->params = pl;
-            ft->variadic = variadic;
-            ft->oldstyle = oldstyle;
+            ft->flags = TF_TEMP | (variadic ? TF_VARIADIC : 0) | (oldstyle ? TF_OLDSTYLE : 0);
+            ft->u.params = pl;
             if (d->n >= 12)
                 fatal(62 /* declarator too complex */, 0);
             d->kind[d->n] = TY_FUNC;
@@ -221,7 +218,7 @@ struct Type *structspec(int isunion)
         if (s)
             return s->type;
         t = mktype(isunion ? TY_UNION : TY_STRUCT, -1, 2);
-        t->tag = pstrdup(tag);
+        t->v.tag = pstrdup(tag);
         s = addsym(tag, S_TAG, t);
         return t;
     }
@@ -235,7 +232,7 @@ struct Type *structspec(int isunion)
     if (!t) {
         t = mktype(isunion ? TY_UNION : TY_STRUCT, -1, 2);
         if (tag[0]) {
-            t->tag = pstrdup(tag);
+            t->v.tag = pstrdup(tag);
             addsym(tag, S_TAG, t);
         }
     }
@@ -256,7 +253,7 @@ struct Type *structspec(int isunion)
             if (last)
                 last->next = f;
             else
-                t->fields = f;
+                t->u.fields = f;
             last = f;
             next();
             continue;
@@ -273,7 +270,7 @@ struct Type *structspec(int isunion)
                 if (ft->size > size)
                     size = ft->size;
             } else {
-                if (ft->align > 1)
+                if (talign(ft) > 1)
                     off = (off + 1) & ~1;
                 f->offset = off;
                 off = off + ft->size;
@@ -281,7 +278,7 @@ struct Type *structspec(int isunion)
             if (last)
                 last->next = f;
             else
-                t->fields = f;
+                t->u.fields = f;
             last = f;
             if (tok != ',')
                 break;
@@ -449,10 +446,10 @@ void init1(struct Node *lv, struct Type *t, int global)
         if (tok == T_STR && (t->base->kind == TY_CHAR || t->base->kind == TY_UCHAR)) {
             m = xmark();
             n = primary();
-            if (t->len < 0) {
-                t->len = n->slen;
+            if (t->u.len < 0) {
+                t->u.len = n->slen;
                 t->size = n->slen;
-            } else if (n->slen - 1 > t->len)
+            } else if (n->slen - 1 > t->u.len)
                 error(68 /* initializer string too long */, 0);
             ir_discard(mknode(N_ASSIGN, t, lv, n));
             xrelease(m);
@@ -465,7 +462,7 @@ void init1(struct Node *lv, struct Type *t, int global)
         next();
         i = 0;
         while (tok != '}' && tok != T_EOF) {
-            if (t->len >= 0 && i >= t->len)
+            if (t->u.len >= 0 && i >= t->u.len)
                 error(70 /* too many initializers */, 0);
             init1(elem(lv, W16(i * t->base->size), t->base), t->base, global);
             i++;
@@ -474,8 +471,8 @@ void init1(struct Node *lv, struct Type *t, int global)
             next();
         }
         expect('}', "}");
-        if (t->len < 0) {
-            t->len = i;
+        if (t->u.len < 0) {
+            t->u.len = i;
             t->size = W16(i * t->base->size);
         }
         return;
@@ -489,7 +486,7 @@ void init1(struct Node *lv, struct Type *t, int global)
             return;
         }
         next();
-        f = t->fields;
+        f = t->u.fields;
         while (tok != '}' && tok != T_EOF) {
             if (!f) {
                 error(70 /* too many initializers */, 0);

@@ -350,8 +350,8 @@ static void gen_call(struct Node *n, int want)
     }
     /* variadic extras go to a block in the caller's frame */
     blk = 0;
-    if (ft->variadic) {
-        p = ft->params;
+    if ((ft->flags & TF_VARIADIC)) {
+        p = ft->u.params;
         a = n->b;
         while (p && a) {
             p = p->next;
@@ -361,7 +361,7 @@ static void gen_call(struct Node *n, int want)
         for (pos = 0; a; a = a->next)
             bw = bw + (a->type->kind == TY_STRUCT || a->type->kind == TY_UNION ? (a->type->size + 1) / 2 : twords(a->type));
         blk = newtemp(bw > 0 ? bw : 1);
-        p = ft->params;
+        p = ft->u.params;
         a = n->b;
         while (p && a) {
             p = p->next;
@@ -387,9 +387,9 @@ static void gen_call(struct Node *n, int want)
             }
         }
     }
-    p = ft->params;
+    p = ft->u.params;
     for (a = n->b; a; a = a->next) {
-        if (ft->variadic && !p)
+        if ((ft->flags & TF_VARIADIC) && !p)
             break;
         if (a->type->kind == TY_STRUCT || a->type->kind == TY_UNION) {
             gen_value(a);
@@ -403,7 +403,7 @@ static void gen_call(struct Node *n, int want)
         if (p)
             p = p->next;
     }
-    if (ft->variadic) {
+    if ((ft->flags & TF_VARIADIC)) {
         lla(blk);
         pw++;
     }

@@ -50,6 +50,24 @@ static void irs(char *s)
         irb(*s++);
 }
 
+extern char *modname;           /* compile.c (parse.h) */
+
+/* a function's link name: a static one's is MODULE'name */
+static void irlname(struct Sym *s)
+{
+    char *p;
+    if (s->kind != S_FUNC || !(s->sx & SX_STATIC)) {
+        irs(s->name);
+        return;
+    }
+    irb(strlen(modname) + 1 + strlen(s->name));
+    for (p = modname; *p; p++)
+        irb(*p);
+    irb('\'');
+    for (p = s->name; *p; p++)
+        irb(*p);
+}
+
 static void irtype(struct Type *t)
 {
     struct Param *p;
@@ -65,16 +83,16 @@ static void irtype(struct Type *t)
     irb(t->kind);
     irw(t->size);
     if (t->kind == TY_PTR || t->kind == TY_ARRAY) {
-        irw(t->len);
+        irw(t->u.len);
         irtype(t->base);
     } else if (t->kind == TY_FUNC) {
-        irb(t->variadic + 2 * t->oldstyle);
+        irb(t->flags & (TF_VARIADIC | TF_OLDSTYLE));
         irtype(t->base);
         n = 0;
-        for (p = t->params; p; p = p->next)
+        for (p = t->u.params; p; p = p->next)
             n++;
         irb(n);
-        for (p = t->params; p; p = p->next)
+        for (p = t->u.params; p; p = p->next)
             irtype(p->type);
     }
 }
@@ -109,7 +127,7 @@ static void irnode(struct Node *n)
         irb(n->sym->kind);
         irw(n->sym->offset);
         if (n->sym->kind == S_FUNC)
-            irs(n->sym->lname ? n->sym->lname : n->sym->name);
+            irlname(n->sym);
         else
             irs(n->sym->offset < 0 ? n->sym->name : "");   /* globals by name */
     }
@@ -229,13 +247,13 @@ void ir_switch(int t, int *vals, int *labs, int n, int deflab)
     irw(deflab);
 }
 
-void ir_funcend(char *name, struct Type *ft, int exitlab, int isstatic, char *seg)
+void ir_funcend(struct Sym *fs, struct Type *ft, int exitlab, int isstatic, char *seg)
 {
     ntseen = 0;
     irb('E');
     irw(maxlocal);
     irb(isstatic);
-    irs(name);
+    irlname(fs);
     irs(seg);
     irw(exitlab);
     irtype(ft);
@@ -354,15 +372,14 @@ static struct Type *rtype(void)
         rseen[nrseen++] = t;
     t->kind = n;
     t->size = rw();
-    t->len = -1;
-    t->align = t->kind == TY_CHAR || t->kind == TY_UCHAR ? 1 : 2;
+    if (t->kind == TY_CHAR || t->kind == TY_UCHAR)
+        t->flags = TF_ALIGN1;
     if (t->kind == TY_PTR || t->kind == TY_ARRAY) {
-        t->len = rw();
+        t->u.len = rw();
         t->base = rtype();
     } else if (t->kind == TY_FUNC) {
         f = rb();
-        t->variadic = f & 1;
-        t->oldstyle = (f >> 1) & 1;
+        t->flags = f & (TF_VARIADIC | TF_OLDSTYLE);
         t->base = rtype();
         n = rb();
         last = 0;
@@ -372,7 +389,7 @@ static struct Type *rtype(void)
             if (last)
                 last->next = p;
             else
-                t->params = p;
+                t->u.params = p;
             last = p;
         }
     }

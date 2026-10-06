@@ -10,16 +10,16 @@ TCSRC:  35 files  (a UCSD directory holds 77)
   TYPES.C              6  compiler: type predicates
   PP.C                52  compiler: pass 1: the preprocessor
   LEX.C               36  compiler: pass 2: the tokenizer
-  PSYM.C              18  compiler: parser: types and symbols
+  PSYM.C              20  compiler: parser: types and symbols
   EXPR.C              62  compiler: parser: expressions
   DECL.C              22  compiler: parser: declarations and initializers
   STMT.C              30  compiler: parser: statements, functions, declarations
-  COMPILE.C            8  compiler: parser: the pass, helpers' and #pragma declarations
-  IR.C                24  compiler: the intermediate file between parser and code generator
+  COMPILE.C           10  compiler: parser: the pass, helpers' and #pragma declarations
+  IR.C                26  compiler: the intermediate file between parser and code generator
   GEN.C               24  compiler: pass 3: P-code generation: emitter, object files
   GENX.C              48  compiler: pass 3: P-code for expressions, calls, switch
   LINK.C              44  compiler: the linker: object files -> code file
-  TC.H                26  compiler: shared declarations (every module)
+  TC.H                28  compiler: shared declarations (every module)
   PARSE.H             12  compiler: the parser modules' shared declarations
   GEN.H                8  compiler: gen.c and genx.c's shared declarations
   ASSERT.C             4  library: <assert.h>

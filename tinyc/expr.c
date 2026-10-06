@@ -189,7 +189,7 @@ static struct Sym *declhelper(char *name)
     if (p[1] != '0') {
         q = (struct Param *)palloc(sizeof(struct Param));
         q->type = htype(p[1]);
-        ft->params = q;
+        ft->u.params = q;
         if (p[2] != '0') {
             q->next = (struct Param *)palloc(sizeof(struct Param));
             q->next->type = htype(p[2]);
@@ -232,7 +232,7 @@ struct Node *call1(char *name, struct Node *a, struct Node *b)
     f = mknode(N_FUNC, s->type, 0, 0);
     f->sym = s;
     n = mknode(N_CALL, s->type->base, f, 0);
-    p = s->type->params;
+    p = s->type->u.params;
     n->b = a;
     if (b)
         a->next = b;
@@ -290,7 +290,7 @@ struct Node *helpercall(char *name, struct Node *a, struct Node *b)
     struct Sym *s;
     struct Param *p;
     s = helper(name);
-    p = s->type->params;
+    p = s->type->u.params;
     a = cast(a, p->type);
     if (b)
         b = cast(b, p->next->type);
@@ -581,7 +581,7 @@ struct Node *arglist(struct Type *ft, int *nargs)
     first = 0;
     last = 0;
     n = 0;
-    p = ft ? ft->params : 0;
+    p = ft ? ft->u.params : 0;
     while (tok != ')' && tok != T_EOF) {
         a = assign();
         if (ft) {
@@ -589,7 +589,7 @@ struct Node *arglist(struct Type *ft, int *nargs)
                 a = cast(a, p->type);
                 p = p->next;
             } else {
-                if (!ft->variadic && !ft->oldstyle)
+                if (!(ft->flags & (TF_VARIADIC | TF_OLDSTYLE)))
                     error(44 /* too many arguments */, 0);
                 a = decay(a);
                 if (a->type->kind == TY_CHAR || a->type->kind == TY_UCHAR)
@@ -624,7 +624,7 @@ struct Node *intrinsic(int code)
     n->val = code;
     n->a = arglist(0, &na);
     if (code == I_VASTART) {
-        if (!curft || !curft->variadic)
+        if (!curft || !(curft->flags & TF_VARIADIC))
             error(46 /* __va_start outside a variadic function */, 0);
         n->val2 = vaoff;
         n->type = ty_charp;
@@ -682,9 +682,9 @@ struct Node *primary(void)
             st = (struct Type *)xalloc(sizeof(struct Type));
             st->kind = TY_ARRAY;
             st->size = toklen;
-            st->align = 1;
+            st->flags = TF_ALIGN1;
             st->base = ty_char;
-            st->len = toklen;
+            st->u.len = toklen;
             n = mknode(N_STR, st, 0, 0);
         }
         n->str = xalloc(toklen);
@@ -735,7 +735,7 @@ struct Field *findfield(struct Type *t, char *name, int *off)
     struct Field *f;
     struct Field *r;
     int o;
-    for (f = t->fields; f; f = f->next) {
+    for (f = t->u.fields; f; f = f->next) {
         if (f->name && strcmp(f->name, name) == 0) {
             *off = f->offset;
             return f;
@@ -761,7 +761,7 @@ struct Node *member(struct Node *n, char *name)
         return n;
     }
     if (n->type->size < 0)
-        error(52 /* incomplete structure */, n->type->tag);
+        error(52 /* incomplete structure */, n->type->v.tag);
     f = findfield(n->type, name, &off);
     if (!f) {
         error(53 /* no such member */, name);
@@ -807,11 +807,11 @@ struct Node *postfix(void)
             } else
                 error(55 /* not a function */, 0);
             c = mknode(N_CALL, ft ? ft->base : ty_int, n, 0);
-            if (n->op == N_FUNC && n->sym->seg && curfnseg && strcmp(n->sym->seg, curfnseg) == 0)
+            if (n->op == N_FUNC && symseg(n->sym) && symseg(n->sym) == curfnseg)
                 n->val = 1;             /* the callee is in this segment: CGP */
             c->b = arglist(ft, &na);
             c->val = na;
-            if (n->op == N_FUNC && ft && ft->variadic)
+            if (n->op == N_FUNC && ft && (ft->flags & TF_VARIADIC))
                 fmtfix(n->sym->name, c->b);
             if (n->op == N_FUNC && c->b && c->b->op == N_CAST && isdblty(c->b->a->type) &&
                 (na = dmathcsp(n->sym->name)) != 0)
@@ -1219,7 +1219,7 @@ void fmtfix(char *name, struct Node *args)
                     f->str = s = t;
                     f->slen++;
                     f->type->size++;
-                    f->type->len++;
+                    f->type->u.len++;
                     i++;
                 }
             } else if (!scan && lng && isfloatty(a->type)) {

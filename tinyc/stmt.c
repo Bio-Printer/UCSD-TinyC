@@ -52,11 +52,11 @@ void localdecl(void)
             }
         } else if (sc == K_STATIC) {
             s = addsym(name, S_GLOBAL, t);
-            s->isstatic = 1;
+            s->sx = s->sx | SX_STATIC;
             if (tok == '=') {
                 next();
-                if (t->kind == TY_ARRAY && t->len < 0 && tok == T_STR) {
-                    t->len = toklen;
+                if (t->kind == TY_ARRAY && t->u.len < 0 && tok == T_STR) {
+                    t->u.len = toklen;
                     t->size = toklen;
                 }
                 s->offset = t->size >= 0 ? allocglobal(t) : 0;
@@ -70,12 +70,12 @@ void localdecl(void)
             } else
                 s->offset = allocglobal(t);
         } else {
-            if (tok == '=' && t->kind == TY_ARRAY && t->len < 0) {
+            if (tok == '=' && t->kind == TY_ARRAY && t->u.len < 0) {
                 next();
                 if (tok != T_STR)
                     error(72 /* array size required */, name);
                 else {
-                    t->len = toklen;
+                    t->u.len = toklen;
                     t->size = toklen;
                 }
                 s = addsym(name, S_LOCAL, t);
@@ -388,8 +388,8 @@ void funcdef(struct Sym *fs, int isstatic)
     int i;
     char *seg;
     seg = cursegname;           /* a #pragma read as lookahead belongs to the next function */
-    fs->seg = seg;              /* calls from the same segment can be CGP */
-    curfnseg = seg;
+    fs->sx = (fs->sx & SX_STATIC) | cursegi;    /* calls from the same segment can be CGP */
+    curfnseg = cursegi;
     ft = fs->type;
     if (fs->defined)
         error(84 /* function redefined */, fs->name);
@@ -400,13 +400,13 @@ void funcdef(struct Sym *fs, int isstatic)
     pushscope();
     np = 0;
     pw = 0;
-    for (p = ft->params; p; p = p->next) {
+    for (p = ft->u.params; p; p = p->next) {
         if (np >= 32)
             fatal(85 /* too many parameters */, fs->name);
         pv[np++] = p;
         pw = pw + twords(p->type);
     }
-    if (ft->variadic)
+    if (ft->flags & TF_VARIADIC)
         pw++;
     sretoff = 0;
     if (ft->base->kind == TY_STRUCT || ft->base->kind == TY_UNION)
@@ -415,7 +415,7 @@ void funcdef(struct Sym *fs, int isstatic)
     pad = rw > pw ? rw - pw : 0;
     off = pad + 1;
     vaoff = 0;
-    if (ft->variadic) {
+    if (ft->flags & TF_VARIADIC) {
         vaoff = off;
         off++;
     }
@@ -424,7 +424,7 @@ void funcdef(struct Sym *fs, int isstatic)
         if (i < npnames && pnames[i]) {
             s = addsym(pnames[i], S_LOCAL, p->type);
             s->offset = off;
-        } else if (!ft->oldstyle)
+        } else if (!(ft->flags & TF_OLDSTYLE))
             error(86 /* parameter name missing */, fs->name);
         off = off + twords(p->type);
     }
@@ -442,7 +442,7 @@ void funcdef(struct Sym *fs, int isstatic)
     for (s = labels; s; s = s->next)
         if (!s->defined)
             error(87 /* undefined label */, s->name);
-    ir_funcend(fs->lname ? fs->lname : fs->name, ft, exitlab, isstatic, seg);
+    ir_funcend(fs, ft, exitlab, isstatic, seg);
     curfnseg = 0;               /* file-scope initialisers run in segment INIT */
     popscope();
     curfn = 0;
@@ -495,18 +495,13 @@ void external(void)
             }
             if (!s)
                 s = addsym(name, S_FUNC, t);
-            else if (!s->defined && t->params)
+            else if (!s->defined && t->u.params)
                 s->type = t;
-            if (!s->seg && segexplicit)
-                s->seg = cursegname;    /* declared under #pragma segment: the
-                                           linker checks it (message 116) */
-            if (sc == K_STATIC && !s->isstatic) {
-                s->isstatic = 1;
-                s->lname = palloc(strlen(modname) + strlen(name) + 2);
-                strcpy(s->lname, modname);
-                strcat(s->lname, "'");
-                strcat(s->lname, name);
-            }
+            if (!symseg(s) && segexplicit)
+                s->sx = s->sx | cursegi;    /* declared under #pragma segment: the
+                                               linker checks it (message 116) */
+            if (sc == K_STATIC)
+                s->sx = s->sx | SX_STATIC;  /* link name MODULE'name (irlname) */
             if (tok == '{') {
                 if (t != s->type)
                     s->type = t;
@@ -524,18 +519,18 @@ void external(void)
                 s = addsym(name, S_GLOBAL, t);
                 s->offset = -1;
                 if (sc == K_STATIC) {
-                    s->isstatic = 1;
+                    s->sx = s->sx | SX_STATIC;
                     if (t->size >= 0)
                         s->offset = allocglobal(t);
                 }
-            } else if (s->type->kind == TY_ARRAY && s->type->len < 0 && t->len >= 0)
+            } else if (s->type->kind == TY_ARRAY && s->type->u.len < 0 && t->u.len >= 0)
                 s->type = t;
             if (sc != K_EXTERN && !s->defined)
                 s->defined = 1;             /* a tentative (common) definition */
             if (tok == '=') {
                 next();
-                if (t->kind == TY_ARRAY && t->len < 0 && tok == T_STR) {
-                    t->len = toklen;
+                if (t->kind == TY_ARRAY && t->u.len < 0 && tok == T_STR) {
+                    t->u.len = toklen;
                     t->size = toklen;
                 }
                 if (s->defined == 2)
@@ -544,7 +539,7 @@ void external(void)
                 s->type = t;
                 lv = mknode(N_VAR, t, 0, 0);
                 lv->sym = s;
-                if (s->isstatic && s->offset < 0) {
+                if ((s->sx & SX_STATIC) && s->offset < 0) {
                     /* static array of unknown size: allocate after the initializer */
                     s->offset = globoff;
                     ir_initbegin();
@@ -557,7 +552,7 @@ void external(void)
                     initializer(lv, t, 1);
                     ir_initend();
                 }
-            } else if (s->isstatic && s->offset < 0 && t->size >= 0)
+            } else if ((s->sx & SX_STATIC) && s->offset < 0 && t->size >= 0)
                 s->offset = allocglobal(t);
         }
         if (tok != ',')

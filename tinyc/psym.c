@@ -26,7 +26,8 @@ struct Sym *labels;
 int globoff;                    /* next free word of the module's static variables */
 char *modname;
 int segexplicit;               /* a #pragma segment has been seen */
-char *curfnseg;                 /* the segment of the function being compiled */
+int curfnseg;                   /* the segment of the function being compiled (index, symseg) */
+int cursegi;                    /* the segment of #pragma segment (index; cursegname is its name) */
 int usesfloat;          /* the module uses floating point (links printf's %f) */
 int nofltused;
 
@@ -63,17 +64,16 @@ struct Type *mktype(int kind, int size, int align)
     struct Type *t;
     if (tentative && (kind == TY_PTR || kind == TY_ARRAY || kind == TY_FUNC)) {
         t = (struct Type *)xalloc(sizeof(struct Type));
-        t->align = -1;              /* marks a temporary type */
-        t->kind = kind;
-        t->size = size;
-        t->len = -1;
-        return t;
+        t->flags = TF_TEMP;         /* marks a temporary type */
+    } else {
+        t = (struct Type *)palloc(sizeof(struct Type));
+        if (align == 1)
+            t->flags = TF_ALIGN1;
     }
-    t = (struct Type *)palloc(sizeof(struct Type));
     t->kind = kind;
     t->size = size;
-    t->align = align;
-    t->len = -1;
+    if (kind == TY_PTR || kind == TY_ARRAY)
+        t->u.len = -1;              /* (fields, params: none) */
     return t;
 }
 
@@ -117,9 +117,9 @@ struct Type *ptrto(struct Type *t)
 struct Type *arrayof(struct Type *t, int n)
 {
     struct Type *a;
-    a = mktype(TY_ARRAY, n < 0 ? -1 : W16(n * t->size), t->align);
+    a = mktype(TY_ARRAY, n < 0 ? -1 : W16(n * t->size), talign(t));
     a->base = t;
-    a->len = n;
+    a->u.len = n;
     return a;
 }
 
@@ -135,10 +135,10 @@ struct Type *functype(struct Type *f)
     struct Param *p;
     struct Param *q;
     struct Param *last;
-    for (t = functypes; t; t = t->next) {
-        if (t->base != f->base || t->variadic != f->variadic || t->oldstyle != f->oldstyle)
+    for (t = functypes; t; t = t->v.next) {
+        if (t->base != f->base || (t->flags & 3) != (f->flags & 3))
             continue;
-        for (p = t->params, q = f->params; p && q; p = p->next, q = q->next)
+        for (p = t->u.params, q = f->u.params; p && q; p = p->next, q = q->next)
             if (p->type != q->type)
                 break;
         if (!p && !q)
@@ -147,22 +147,19 @@ struct Type *functype(struct Type *f)
     t = (struct Type *)palloc(sizeof(struct Type));
     t->kind = TY_FUNC;
     t->size = 2;
-    t->align = 2;
-    t->len = -1;
     t->base = f->base;
-    t->variadic = f->variadic;
-    t->oldstyle = f->oldstyle;
+    t->flags = f->flags & (TF_VARIADIC | TF_OLDSTYLE);
     last = 0;
-    for (q = f->params; q; q = q->next) {
+    for (q = f->u.params; q; q = q->next) {
         p = (struct Param *)palloc(sizeof(struct Param));
         p->type = q->type;
         if (last)
             last->next = p;
         else
-            t->params = p;
+            t->u.params = p;
         last = p;
     }
-    t->next = functypes;
+    t->v.next = functypes;
     functypes = t;
     return t;
 }
@@ -174,25 +171,24 @@ struct Type *permtype(struct Type *t)
     struct Param *p;
     struct Param *q;
     struct Param *last;
-    if (t->align != -1)
+    if (!(t->flags & TF_TEMP))
         return t;
     if (t->kind == TY_PTR)
         return ptrto(permtype(t->base));
     if (t->kind == TY_ARRAY)
-        return arrayof(permtype(t->base), t->len);
+        return arrayof(permtype(t->base), t->u.len);
     n = (struct Type *)xalloc(sizeof(struct Type));
     n->kind = TY_FUNC;
     n->base = permtype(t->base);
-    n->variadic = t->variadic;
-    n->oldstyle = t->oldstyle;
+    n->flags = t->flags & (TF_VARIADIC | TF_OLDSTYLE);
     last = 0;
-    for (p = t->params; p; p = p->next) {
+    for (p = t->u.params; p; p = p->next) {
         q = (struct Param *)xalloc(sizeof(struct Param));
         q->type = permtype(p->type);
         if (last)
             last->next = q;
         else
-            n->params = q;
+            n->u.params = q;
         last = q;
     }
     return functype(n);

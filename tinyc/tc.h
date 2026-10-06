@@ -137,20 +137,28 @@ struct Param {
 /* the small fields are bytes (unsigned: a signed char costs a sign
    extension on every load): there are hundreds of types and symbols in
    the compile pass */
+/* 12 bytes: what only one kind of type uses shares a place (u, v) */
 struct Type {
     unsigned char kind;
-    unsigned char variadic;
-    unsigned char oldstyle; /* f() -- parameters unknown */
+    unsigned char flags;    /* TF_ below */
     int size;               /* bytes; -1 = incomplete */
-    int align;              /* -1 = a temporary type (see mktype) */
     struct Type *base;      /* pointer/array element, function result */
-    int len;                /* array length, -1 = unknown */
-    struct Field *fields;   /* struct/union */
-    struct Param *params;   /* function */
-    char *tag;
+    union {
+        int len;            /* array length, -1 = unknown (pointers: -1) */
+        struct Field *fields;   /* struct/union */
+        struct Param *params;   /* function */
+    } u;
+    union {
+        char *tag;          /* struct/union */
+        struct Type *next;  /* function types: the list of distinct ones */
+    } v;
     struct Type *ptrto;     /* cached pointer-to-this type */
-    struct Type *next;      /* function types: the list of distinct ones */
 };
+#define TF_VARIADIC 1       /* f(a, ...) */
+#define TF_OLDSTYLE 2       /* f() -- parameters unknown */
+#define TF_ALIGN1   4       /* byte aligned (else word aligned) */
+#define TF_TEMP     8       /* a temporary type (see mktype) */
+#define talign(t) ((t)->flags & TF_ALIGN1 ? 1 : 2)
 
 /* ---- symbols ---- */
 #define S_GLOBAL   1
@@ -161,19 +169,21 @@ struct Type {
 #define S_TAG      6        /* struct/union/enum tag */
 #define S_LABEL    7
 
+/* 14 bytes; a static function's link name (MODULE'name) is made when it
+   is written (ir.c) */
 struct Sym {
     char *name;
     unsigned char kind;
     unsigned char level;    /* scope level (0 = file) */
-    unsigned char isstatic;
     unsigned char defined;  /* functions: has a body; globals: 1 common, 2 initialised */
+    unsigned char sx;       /* SX_STATIC, and functions: the segment (index, 0 = unknown) */
     struct Type *type;
     int offset;             /* word offset (globals, locals), enum value, label number */
-    char *lname;            /* link name when it differs (static functions) */
-    char *seg;              /* functions: the segment, when known (0 = unknown) */
     struct Sym *next;       /* hash chain */
     struct Sym *scopenext;  /* symbols of one scope */
 };
+#define SX_STATIC 128
+#define symseg(s) ((s)->sx & 127)
 
 /* ---- expression trees ---- */
 #define N_NUM     1         /* val (int), val/val2 for long */
@@ -354,7 +364,7 @@ void ir_discard(struct Node *n);
 void ir_valuestl(struct Node *n, int t);
 void ir_return(struct Node *n, struct Type *ft, int sretoff);
 void ir_switch(int t, int *vals, int *labs, int n, int deflab);
-void ir_funcend(char *name, struct Type *ft, int exitlab, int isstatic, char *seg);
+void ir_funcend(struct Sym *fs, struct Type *ft, int exitlab, int isstatic, char *seg);
 void ir_initbegin(void);
 void ir_initend(void);
 #pragma segment CINIT
