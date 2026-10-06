@@ -306,10 +306,60 @@ int fgetc(FILE *f)
     return f->buf[f->pos++];
 }
 
+/* A text page is full (pos 1023): write it and begin the next one with the
+   line not yet finished (no line crosses a page; one that fills a whole
+   page is split).  When the line begins in the page's second block -- any
+   line shorter than 512 -- the page goes out a block at a time and the line
+   moves into the first block, already written: no memory needed, so a
+   program that has used it all can still save its file.  A longer line is
+   kept in a copy; without the memory for it the write fails (EOF), it never
+   loses the line. */
+static int __textpage(FILE *f)
+{
+    unsigned char *b;
+    unsigned char *line;
+    int l;
+    int n;
+    int ok;
+    b = f->buf;
+    l = f->linestart;
+    if (l == 0)
+        l = f->pos;
+    n = f->pos - l;
+    if (l >= 512) {
+        f->flags = f->flags & ~__F_DIRTY;
+        ok = __blockio(f, 1, f->blk, 0) == 1;
+        memmove(b, b + l, n);
+        memset(b + l, 0, 1024 - l);
+        f->buf = b + 512;
+        ok = ok && __blockio(f, 1, f->blk + 1, 0) == 1;
+        f->buf = b;
+        if (!ok)
+            return EOF;
+    } else {
+        line = malloc(n);
+        if (!line) {
+            f->flags = f->flags | __F_ERR;
+            return EOF;
+        }
+        memcpy(line, b + l, n);
+        f->pos = l;
+        f->flags = f->flags | __F_DIRTY;
+        if (__flushbuf(f)) {
+            free(line);
+            return EOF;
+        }
+        memcpy(b, line, n);
+        free(line);
+    }
+    f->blk = f->blk + 2;
+    f->pos = n;
+    f->linestart = 0;
+    return 0;
+}
+
 int fputc(int c, FILE *f)
 {
-    int n;
-    unsigned char *line;
     if (f->flags & __F_CON) {
         __conputc(c);
         return c & 255;
@@ -319,28 +369,8 @@ int fputc(int c, FILE *f)
     if (f->flags & __F_TEXT) {
         if (c == '\n')
             c = 13;
-        if (f->pos >= 1023) {
-            /* page full: move the unfinished line to the next page */
-            n = f->pos - f->linestart;
-            if (n >= 1023)
-                n = 0;
-            line = malloc(n + 1);
-            if (!line)
-                n = 0;
-            if (n)
-                memcpy(line, f->buf + f->linestart, n);
-            f->pos = f->linestart;
-            f->flags = f->flags | __F_DIRTY;
-            if (__flushbuf(f))
-                return EOF;
-            f->blk = f->blk + 2;
-            if (n) {
-                memcpy(f->buf, line, n);
-                free(line);
-            }
-            f->pos = n;
-            f->linestart = 0;
-        }
+        if (f->pos >= 1023 && __textpage(f))
+            return EOF;
         f->buf[f->pos++] = c;
         if (c == 13)
             f->linestart = f->pos;

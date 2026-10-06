@@ -284,6 +284,8 @@ static int balance(char *s)
     return b;
 }
 
+static void ppdirective(char *s);
+
 /* a logical line: continuation lines joined, comments removed; for
    non-ppdirective lines, lines are joined while parentheses are open */
 static int ppgetline(void)
@@ -316,6 +318,18 @@ static int ppgetline(void)
             if (!rawline(tmp, MAXLINE))
                 break;
             uncomment(tmp);
+            /* #if ... #endif inside a statement spread over lines (a
+               function call's arguments): carried out, not joined in */
+            s = tmp;
+            while (*s == ' ' || *s == '\t')
+                s++;
+            if (*s == '#' && !incomment) {
+                ppdirective(s);
+                pragbuf[0] = 0;
+                continue;
+            }
+            if (!active)
+                continue;
             n = strlen(line);
             if (n + (int)strlen(tmp) >= MAXEXP - 2)
                 fatal(4 /* line too long */, 0);
@@ -547,6 +561,21 @@ static char *expandcall(struct Macro *m, char *p)
     return q;
 }
 
+/* A macro's name met while that macro is being expanded is never expanded
+   again, not even when the text it ends up in is scanned once more (an
+   argument's expansion, put into the body and rescanned): it is marked with
+   PAINT, which unpaint() takes out of the finished text. */
+#define PAINT 2
+
+static void unpaint(char *s)
+{
+    char *d;
+    for (d = s; *s; s++)
+        if (*s != PAINT)
+            *d++ = *s;
+    *d = 0;
+}
+
 static void expand(char *s)
 {
     char *p;
@@ -558,11 +587,19 @@ static void expand(char *s)
             e = skiplit(s);
             put(s, e - s);
             s = e;
+        } else if (*s == PAINT) {
+            p = s + 1;
+            while (isidc(*p))
+                p++;
+            put(s, p - s);
+            s = p;
         } else if (isid1(*s)) {
             p = s;
             while (isidc(*p))
                 p++;
             m = mlookup(s, p - s);
+            if (m && isexpanding(m))
+                put("\2", 1);
             if (m && !isexpanding(m)) {
                 if (m->nparams < 0) {
                     if (nexpanding >= 30)
@@ -943,6 +980,7 @@ static int ifexpr(char *s)
     outend = ebuf + MAXEXP;
     expand(buf);
     *outp = 0;
+    unpaint(ebuf);
     ep = ebuf;
     v = ecomma();
     return v;
@@ -1058,6 +1096,7 @@ static void doinclude(char *s)
         outend = ebuf + MAXEXP;
         expand(s);
         *outp = 0;
+        unpaint(ebuf);
         s = ebuf;
         while (*s == ' ')
             s++;
@@ -1300,6 +1339,7 @@ int preprocess(char *src, char *out)
             nexpanding = 0;
             expand(line);
             *outp = 0;
+            unpaint(ebuf);
             reals(ebuf, line);          /* line is free again: the converted line */
             fputs(line, ppout);
         }

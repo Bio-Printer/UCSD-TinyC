@@ -88,8 +88,10 @@ def run_c(src, keys='', extra_files=(), timeout=300):
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', timeout)
     i = tr.find('#5:%s' % base)
     out = tr[i + len(base) + 4:] if i >= 0 else tr
-    j = out.rfind('Command: E(dit')
-    if j >= 0:
+    # the Command: prompt the run ended at -- perhaps only partly printed
+    # when the script's WAIT "Command:" stopped the run
+    j = out.rfind('Command:')
+    if j >= 0 and '\n' not in out[j:]:
         out = out[:j]
     return ok, out.strip('\n'), ps, info
 

@@ -98,6 +98,13 @@ pointers, then `segnum | nprocs<<8`). The OS enters a program with
    `#if/#ifdef/#elif/#else/#endif`, `#undef`, `#error`, `#pragma segment`)
    writes a temporary file, and a list of every function definition with
    its segment -- so procedure numbers are known before code is generated.
+   Expansion works on text: a macro's name met inside its own expansion is
+   marked (byte 2, "painted") so that no later rescan expands it -- also when
+   it comes from an argument already expanded (`#define rows (G.rows)`, then
+   `f(rows)` stays `f((G.rows))`); the marks come out of the finished line.
+   A statement whose parentheses are open goes on over the next lines (a
+   macro call's arguments may); `#if`/`#else`/`#endif` lines in between are
+   carried out there, not joined in (`puts("a"` / `#if X` / `"b"` / `#endif` / `);`).
 2. **Compiler**: parses one function at a time (expression trees per
    statement), generates P-code into a per-function buffer, resolves
    jumps, streams finished procedures into the code file, patches the
@@ -113,7 +120,13 @@ one is in memory at a time.
 operating system's own `FINIT/FOPEN/FCLOSE/FBLOCKIO` (`CXP 0,3/5/6/28`)
 with Tiny-C doing the buffering and the UCSD text format (2-block header,
 DLE blank compression, CR line ends, 1K pages) itself; the console uses
-`UNITREAD/UNITWRITE` on units 1/2.
+`UNITREAD/UNITWRITE` on units 1/2. No line crosses a text page: when a page
+fills, the unfinished line moves to the next one. A line that starts in the
+page's second block (any line under 512 characters) needs no memory for
+that -- the page is written a block at a time and the line moved into the
+first, already written -- so a program that has used all its memory can
+still write a text file; a longer line is copied (`malloc`), and without the
+memory `fputc` fails rather than drop it.
 
 `psys.h` gives programs the operating system's SYSCOM record:
 `SYSCOM->memtop`, `SYSCOM->crtinfo.width`, `SYSCOM->segtable[n]`, ...

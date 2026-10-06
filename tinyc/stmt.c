@@ -28,6 +28,7 @@ void localdecl(void)
     struct Node *lv;
     char name[MAXNAME];
     int sc;
+    int sized;
     base = declspec(&sc);
     if (tok == ';') {
         next();
@@ -59,14 +60,19 @@ void localdecl(void)
                     t->u.len = toklen;
                     t->size = toklen;
                 }
-                s->offset = t->size >= 0 ? allocglobal(t) : 0;
+                /* an array of unknown size: its place is known before its
+                   size, which the initializer gives (as at file level) */
+                sized = t->size >= 0;
+                s->offset = sized ? allocglobal(t) : globoff;
                 lv = mknode(N_VAR, t, 0, 0);
                 lv->sym = s;
                 ir_initbegin();
                 initializer(lv, t, 1);
                 ir_initend();
-                if (s->offset == 0)
+                if (!sized) {
+                    globoff = s->offset;
                     s->offset = allocglobal(t);
+                }
             } else
                 s->offset = allocglobal(t);
         } else {
