@@ -6,7 +6,7 @@ TCSRC:  35 files  (a UCSD directory holds 77)
   BUILD.TEXT           4  X TINY-C:CC, @BUILD: rebuilds the compiler -> CC2.CODE
   LIBS.TEXT            4  X TINY-C:CC, @LIBS: rebuilds the library -> TCLIB2.OBJ
   MAIN.C              26  compiler: the driver: commands, @FILE, the passes
-  UTIL.C              14  compiler: messages, output helpers, memory pools
+  UTIL.C              16  compiler: messages, output helpers, memory pools
   TYPES.C              6  compiler: type predicates
   PP.C                50  compiler: pass 1: the preprocessor
   LEX.C               32  compiler: pass 2: the tokenizer

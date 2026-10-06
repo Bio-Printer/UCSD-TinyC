@@ -107,9 +107,9 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   emulator: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
   mode without reclaim): every @BUILD and @LIBS command from X(ecute
-  1,748 words (linking CC2.CODE; the Compiling passes of PP.C, EXPR.C and
-  LINK.C about 1,890); `cc @build @libs` from the shell 1,641 (STDIO.C's
-  Compiling pass).  With reclaimed memory, 3,915 words more.  CC's "(N
+  1,777 words (the library's STDIO.C, Compiling pass; PP.C, EXPR.C,
+  GENX.C and LINK.C about 1,890; linking CC2.CODE about 2,230); `cc
+  @build @libs` from the shell 1,637 (STDIO.C).  With reclaimed memory, 3,915 words more.  CC's "(N
   words free)" after each pass is that pass's least (`memleast()` in
   psys.h, emulator 1.99; elsewhere the free memory at the pass's end), so
   the least of them is the status bar's figure; `voltest.py` prints both.
@@ -126,6 +126,9 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   - files CC opens between passes (does NAME.C exist, the @FILE batch)
     are opened inside a heap mark of their own; their buffer used to sit
     unused under every pass (about 300 words).
+  - the linker gives back its reference lists (what each procedure uses:
+    about 1,950 words for CC2.CODE) once it knows what to link, before it
+    writes the code (`pmark`/`prelease`, util.c).
   - STMT.C's pass and set-up moved to `compile.c`; GEN.C is `gen.c` and
     `genx.c` (unsplit, it ran out at 347 words).
 * The Z80 interpreter on the boot disk has no SIN/COS/EXP/ATAN/SQT/LOG/LN

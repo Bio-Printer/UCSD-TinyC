@@ -68,6 +68,7 @@ static char **segnames;         /* [24], allocated per run */
 static int nsegs;
 static int *segnum;             /* [24] segment index -> II.0 segment number */
 static int globalwords;
+static struct PMark relmark;
 static FILE *lin;
 static unsigned char *lbuf;     /* the largest procedure (allocated after pass 1) */
 static int lbufsize;
@@ -680,6 +681,9 @@ int link(char **objs, int nobjs, char *code, char *progname)
     lbuf = (unsigned char *)malloc(lbufsize);
     if (!lbuf)
         fatal(2 /* out of memory */, 0);
+    /* the reference lists (pass 2) are needed only to find what to link:
+       given back before the code is written */
+    pmark(&relmark);
     pass2();
     if (nerrors)
         return 0;
@@ -699,6 +703,9 @@ int link(char **objs, int nobjs, char *code, char *progname)
     if (exitp)
         exitp->live = 1;
     markall();
+    prelease(&relmark);
+    for (i = 0; i < nprocs; i++)
+        procs[i]->rel = 0;
     /* globals: the linked modules' statics, then the used variables */
     globalwords = 3;
     for (i = 0; i < nmods; i++) {

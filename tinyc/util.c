@@ -197,6 +197,40 @@ char *palloc(int n)
     return p;
 }
 
+/* Give back everything allocated since pmark (the heap, and the
+   permanent pool's place in its current block), within a pass: the
+   linker's reference lists once it knows what to link.  Nothing taken
+   since may be used afterwards.  On a host nothing is given back.
+   Only the linker uses these: its segment, not the resident one. */
+#pragma segment LINK
+#ifdef __TINYC__
+extern unsigned *__freelist;    /* the library's (malloc, free) */
+#endif
+
+void pmark(struct PMark *m)
+{
+#ifdef __TINYC__
+    /* the free list is set aside: a block freed after the mark could be
+       in the memory given back (as __heapsave) */
+    m->heap[0] = (void *)__freelist;
+    __freelist = 0;
+    __cspv(32, &m->heap[1]);            /* MARK */
+#endif
+    m->pcur = pcur;
+    m->pleft = pleft;
+}
+
+void prelease(struct PMark *m)
+{
+#ifdef __TINYC__
+    __cspv(33, &m->heap[1]);            /* RELEASE */
+    __freelist = (unsigned *)m->heap[0];
+    pcur = m->pcur;
+    pleft = m->pleft;
+#endif
+}
+#pragma segment MAIN
+
 /* the function pool: a chain of chunks reused for every function */
 struct Chunk {
     struct Chunk *next;

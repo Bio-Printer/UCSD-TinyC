@@ -264,6 +264,11 @@ int xmark(void);
 void xrelease(int m);
 char *pstrdup(char *s);
 void resetpools(void);
+struct PMark { void *heap[2]; char *pcur; int pleft; };
+#pragma segment LINK
+void pmark(struct PMark *m);
+void prelease(struct PMark *m);
+#pragma segment MAIN
 void xsetsize(int n);
 int hashstr(char *s);
 
