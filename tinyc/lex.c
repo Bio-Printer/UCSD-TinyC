@@ -343,6 +343,102 @@ static void makereal(unsigned char *digits, int nd, int exp10, unsigned char *ou
     out[3] = m3;
 }
 
+/* The preprocessor's output (pp.c): the real constant at s (a decimal
+   number with a '.' or an exponent, as number() reads it) as the token
+   `HHHHHHHH?TEXT` in out -- its float image in hex (tokreal), L or S
+   (the L suffix), the "DIGITSeEXP" text a double is made from (toknum).
+   The compiling pass then needs no conversion (and not this segment,
+   which deep in an expression took memory where it is scarcest).
+   Returns the characters of s used, 0 when s is not a real constant. */
+int realtoken(char *s, char *out)
+{
+    unsigned char digits[24];
+    unsigned char img[4];
+    char *p;
+    int nd;
+    int exp10;
+    int esign;
+    int ev;
+    int islong;
+    int i;
+    p = s;
+    nd = 0;
+    exp10 = 0;
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
+        return 0;
+    while (*p >= '0' && *p <= '9') {
+        if (nd > 0 || *p != '0') {
+            if (nd < 24)
+                digits[nd++] = *p - '0';
+            else
+                exp10++;
+        }
+        p++;
+    }
+    if (*p != '.' && *p != 'e' && *p != 'E')
+        return 0;
+    if (*p == '.') {
+        p++;
+        while (*p >= '0' && *p <= '9') {
+            if (nd > 0 || *p != '0') {
+                if (nd < 24) {
+                    digits[nd++] = *p - '0';
+                    exp10--;
+                }
+            } else
+                exp10--;
+            p++;
+        }
+    }
+    if (*p == 'e' || *p == 'E') {
+        p++;
+        esign = 1;
+        if (*p == '-') {
+            esign = -1;
+            p++;
+        } else if (*p == '+')
+            p++;
+        ev = 0;
+        while (*p >= '0' && *p <= '9') {
+            if (ev < 1000)
+                ev = ev * 10 + *p - '0';
+            p++;
+        }
+        exp10 = exp10 + esign * ev;
+    }
+    islong = 0;
+    while (*p == 'f' || *p == 'F' || *p == 'l' || *p == 'L') {
+        if (*p == 'l' || *p == 'L')
+            islong = 1;
+        p++;
+    }
+    *out++ = '`';
+    if (exp10 + nd > 40 && !islong)
+        error(27 /* floating constant too large */, 0);
+    {
+        int k;
+        k = nd;
+        if (exp10 + nd < -40 || exp10 + nd > 40)
+            k = 0;
+        makereal(digits, k, exp10, img);
+    }
+    for (i = 0; i < 4; i++) {
+        *out++ = "0123456789ABCDEF"[img[i] >> 4];
+        *out++ = "0123456789ABCDEF"[img[i] & 15];
+    }
+    *out++ = islong ? 'L' : 'S';
+    for (i = 0; i < nd; i++)
+        *out++ = '0' + digits[i];
+    if (nd == 0)
+        *out++ = '0';
+    *out++ = 'e';
+    itoa10(nd ? exp10 : 0, out);
+    out = out + strlen(out);
+    *out++ = '`';
+    *out = 0;
+    return p - s;
+}
+
 #pragma segment PARSE
 
 static void number(void)
@@ -541,6 +637,30 @@ static void rawnext(void)
     }
     if (ch >= '0' && ch <= '9') {
         number();
+        return;
+    }
+    if (ch == '`') {
+        /* a real constant the preprocessor converted (realtoken) */
+        int i;
+        int h;
+        for (i = 0; i < 8; i++) {
+            nextch();
+            h = ch <= '9' ? ch - '0' : ch - 'A' + 10;
+            if (i & 1)
+                tokreal[i >> 1] = tokreal[i >> 1] | h;
+            else
+                tokreal[i >> 1] = h << 4;
+        }
+        nextch();
+        toklong = ch == 'L';
+        nextch();
+        for (i = 0; ch != '`' && ch != '\n' && ch != EOF && i < 39; i++) {
+            toknum[i] = ch;
+            nextch();
+        }
+        toknum[i] = 0;
+        nextch();
+        tok = T_FNUM;
         return;
     }
     if (ch == '\'') {

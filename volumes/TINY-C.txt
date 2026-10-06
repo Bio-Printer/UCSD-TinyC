@@ -2,7 +2,7 @@ TINY-C:  20 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
-  CC.CODE            111  the Tiny-C compiler: X(ecute CC
+  CC.CODE            113  the Tiny-C compiler: X(ecute CC
   TCLIB.OBJ           53  the C library (built with /Z), linked into every program
   TCMSGS.TEXT          8  the compiler's messages (line n = message n)
   README.TEXT         10  how to use Tiny-C

@@ -147,4 +147,7 @@ void scanrefs(char *src);
 #pragma segment PARSE
 void pragma(char *s);
 int compile(char *src, char *ir, char *mod);
+#pragma segment CINIT
+int compileend(void);
+#pragma segment PARSE
 #endif

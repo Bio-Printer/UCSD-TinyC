@@ -50,10 +50,16 @@ struct LData {
     struct LData *hnext;
 };
 
-static struct LProc **procs;
+/* the procedures and variables in pass 1 order, in blocks of TBLK
+   pointers: a table that doubled (and freed the old one) took 1,500
+   words more when the compiler's own procedures passed 512 */
+#define TBLK 64
+static struct LProc **pblk[MAXPROC / TBLK + 1];
 static int nprocs;
-static struct LData **datas;
+static struct LData **dblk[MAXDATA / TBLK + 1];
 static int ndatas;
+#define PROC(i) pblk[(i) / TBLK][(i) % TBLK]
+#define DATA(i) dblk[(i) / TBLK][(i) % TBLK]
 static struct LProc **lhash;
 static struct LData **dhash;
 static int *modstatic;
@@ -74,8 +80,6 @@ static unsigned char *lbuf;     /* the largest procedure (allocated after pass 1
 static int lbufsize;
 static int maxcode;             /* pass 1: the largest procedure, the most relocations */
 static int maxnrel;
-static int capprocs;            /* the tables grow as needed */
-static int capdatas;
 static char **objfiles;
 static int nobjfiles;
 static int curfilei;
@@ -124,7 +128,7 @@ static struct LProc *findproc(char *name)
 static int procindex(struct LProc *p)
 {
     int i;
-    for (i = 0; procs[i] != p; i++)
+    for (i = 0; PROC(i) != p; i++)
         ;
     return i;
 }
@@ -141,7 +145,7 @@ static struct LData *finddata(char *name)
 static int dataindex(struct LData *d)
 {
     int i;
-    for (i = 0; datas[i] != d; i++)
+    for (i = 0; DATA(i) != d; i++)
         ;
     return i;
 }
@@ -246,19 +250,6 @@ static void record(int c, char *name, char *seg, int *flags, int *parmsz, int *r
         lbuf[i] = rd();
 }
 
-/* double a table's size (the old one goes back to the free list) */
-static char **grow(char **t, int n, int *cap)
-{
-    char **g;
-    *cap = *cap * 2;
-    g = (char **)malloc(*cap * sizeof(char *));
-    if (!g)
-        fatal(2 /* out of memory */, 0);
-    memcpy(g, t, n * sizeof(char *));
-    free(t);
-    return g;
-}
-
 static void pass1(void)
 {
     char name[MAXNAME];
@@ -295,15 +286,16 @@ static void pass1(void)
             if (!d) {
                 if (ndatas >= MAXDATA)
                     fatal(108 /* too many functions */, 0);
-                if (ndatas >= capdatas)
-                    datas = (struct LData **)grow((char **)datas, ndatas, &capdatas);
+                if (ndatas % TBLK == 0)
+                    dblk[ndatas / TBLK] = (struct LData **)palloc(TBLK * sizeof(struct LData *));
                 d = (struct LData *)palloc(sizeof(struct LData));
                 d->name = pstrdup(name);
                 d->mod = -1;
                 h = hashstr(name) & (LHASH - 1);
                 d->hnext = dhash[h];
                 dhash[h] = d;
-                datas[ndatas++] = d;
+                DATA(ndatas) = d;
+                ndatas++;
             }
             if (flags && d->strong)
                 error(115 /* variable defined twice */, name);
@@ -328,8 +320,8 @@ static void pass1(void)
             error(107 /* function defined twice */, name);
         if (nprocs >= MAXPROC)
             fatal(108 /* too many functions */, 0);
-        if (nprocs >= capprocs)
-            procs = (struct LProc **)grow((char **)procs, nprocs, &capprocs);
+        if (nprocs % TBLK == 0)
+            pblk[nprocs / TBLK] = (struct LProc **)palloc(TBLK * sizeof(struct LProc *));
         if (n > maxnrel)
             maxnrel = n;
         p = (struct LProc *)palloc(sizeof(struct LProc));
@@ -350,7 +342,8 @@ static void pass1(void)
         h = hashstr(name) & (LHASH - 1);
         p->hnext = lhash[h];
         lhash[h] = p;
-        procs[nprocs++] = p;
+        PROC(nprocs) = p;
+        nprocs++;
     }
 }
 
@@ -395,7 +388,8 @@ static void pass2(void)
         }
         if (c != 'P')
             continue;
-        p = procs[k++];
+        p = PROC(k);
+        k++;
         n = rdw();
         m = 0;
         for (i = 0; i < n; i++) {
@@ -445,7 +439,7 @@ static void markall(void)
     do {
         changed = 0;
         for (i = 0; i < nuses; i++) {
-            d = datas[usedata[i]];
+            d = DATA(usedata[i]);
             if (modlive[usemod[i]] && !d->live) {
                 d->live = 1;
                 modlive[d->mod] = 1;
@@ -453,7 +447,7 @@ static void markall(void)
             }
         }
         for (i = 0; i < nprocs; i++) {
-            p = procs[i];
+            p = PROC(i);
             if (!p->live && (p->flags & 1) && modlive[p->mod]) {
                 p->live = 1;
                 changed = 1;
@@ -466,11 +460,11 @@ static void markall(void)
             }
             for (j = 0; j < p->nrel; j++) {
                 k = p->rel[j];
-                if (k >= 0 && !procs[k]->live) {
-                    procs[k]->live = 1;
+                if (k >= 0 && !PROC(k)->live) {
+                    PROC(k)->live = 1;
                     changed = 1;
-                } else if (k <= -2 && !datas[-2 - k]->live) {
-                    d = datas[-2 - k];
+                } else if (k <= -2 && !DATA(-2 - k)->live) {
+                    d = DATA(-2 - k);
                     d->live = 1;
                     modlive[d->mod] = 1;
                     changed = 1;
@@ -530,8 +524,8 @@ static void makeentry(struct LProc *mainp, struct LProc *exitp)
         eb(10);
     }
     for (i = 0; i < nprocs; i++)
-        if (procs[i]->live && (procs[i]->flags & 1))
-            ecall(procs[i]);
+        if (PROC(i)->live && (PROC(i)->flags & 1))
+            ecall(PROC(i));
     if (callmp) {                       /* main(argc, argv): __callmain calls it */
         for (i = 0; i < cmparmsz / 2; i++)
             eb(0);
@@ -643,15 +637,11 @@ int link(char **objs, int nobjs, char *code, char *progname)
     int *jt;
     objfiles = objs;
     nobjfiles = nobjs;
-    capprocs = 64;
-    capdatas = 32;
-    procs = (struct LProc **)malloc(capprocs * sizeof(struct LProc *));
-    datas = (struct LData **)malloc(capdatas * sizeof(struct LData *));
     lbuf = 0;
     maxcode = 0;
     maxnrel = 0;
     entry = (unsigned char *)malloc(600);
-    if (!procs || !datas || !entry)
+    if (!entry)
         fatal(2 /* out of memory */, 0);
     lhash = (struct LProc **)calloc(LHASH, sizeof(struct LProc *));
     dhash = (struct LData **)calloc(LHASH, sizeof(struct LData *));
@@ -705,7 +695,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     markall();
     prelease(&relmark);
     for (i = 0; i < nprocs; i++)
-        procs[i]->rel = 0;
+        PROC(i)->rel = 0;
     /* globals: the linked modules' statics, then the used variables */
     globalwords = 3;
     for (i = 0; i < nmods; i++) {
@@ -714,9 +704,9 @@ int link(char **objs, int nobjs, char *code, char *progname)
             globalwords = globalwords + modstatic[i];
     }
     for (i = 0; i < ndatas; i++)
-        if (datas[i]->live) {
-            datas[i]->offset = globalwords;
-            globalwords = globalwords + datas[i]->words;
+        if (DATA(i)->live) {
+            DATA(i)->offset = globalwords;
+            globalwords = globalwords + DATA(i)->words;
         }
     if (globalwords > 16000 || globalwords < 0)
         fatal(34 /* too many global variables */, 0);
@@ -730,7 +720,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     order[norder++] = mainp->seg;
     segnum[mainp->seg] = 1;
     for (i = 0; i < nprocs; i++) {
-        p = procs[i];
+        p = PROC(i);
         if (!p->live || segnum[p->seg])
             continue;
         if (norder >= 10)
@@ -741,7 +731,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     /* procedure numbers and segment lengths */
     pnum[mainp->seg] = 1;
     for (i = 0; i < nprocs; i++) {
-        p = procs[i];
+        p = PROC(i);
         if (!p->live)
             continue;
         s = p->seg;
@@ -795,7 +785,8 @@ int link(char **objs, int nobjs, char *code, char *progname)
             record(c, name, seg, &flags, &parmsz, &rw, &codelen, &jtab);
             if (c != 'P')
                 continue;
-            p = procs[i++];
+            p = PROC(i);
+            i++;
             n = rdw();
             for (j = 0; j < n; j++) {
                 rpos = rdw();

@@ -345,7 +345,6 @@ void gen_objend(int globalwords);
 /* intermediate file (ir.c) */
 #pragma segment PARSE
 void ir_open(char *name, char *modname);
-void ir_close(int globalwords);
 void ir_funcbegin(void);
 int ir_newlabel(void);
 void ir_setlabel(int l);
@@ -358,9 +357,12 @@ void ir_switch(int t, int *vals, int *labs, int n, int deflab);
 void ir_funcend(char *name, struct Type *ft, int exitlab, int isstatic, char *seg);
 void ir_initbegin(void);
 void ir_initend(void);
+#pragma segment CINIT
 void ir_initflush(void);
 void ir_data(char *name, int words, int strong);
 void ir_use(char *name);
+void ir_close(int globalwords);
+#pragma segment PARSE
 #pragma segment GEN
 int gencode(char *ir, char *obj);
 void gen_objdata(char *name, int words, int strong);
@@ -369,8 +371,13 @@ void gen_objuse(char *name);
 /* passes */
 #pragma segment PP
 int preprocess(char *src, char *out);
+#pragma segment REALLIT
+int realtoken(char *s, char *out);
 #pragma segment PARSE
 int compile(char *src, char *obj, char *modname);
+#pragma segment CINIT
+int compileend(void);
+#pragma segment PARSE
 #pragma segment LINK
 int link(char **objs, int nobjs, char *code, char *progname);
 int join(char **objs, int nobjs, char *out);

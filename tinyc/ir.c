@@ -153,28 +153,6 @@ void ir_open(char *name, char *modname)
     irs(modname);
 }
 
-void ir_close(int globalwords)
-{
-    irb('G');
-    irw(globalwords);
-    irb('Q');
-    fclose(irout);
-}
-
-void ir_data(char *name, int words, int strong)
-{
-    irb('d');
-    irb(strong);
-    irs(name);
-    irw(words);
-}
-
-void ir_use(char *name)
-{
-    irb('u');
-    irs(name);
-}
-
 void ir_funcbegin(void)
 {
     irlabels = 0;
@@ -275,9 +253,51 @@ void ir_initend(void)
         irb('i');
 }
 
+/* ---- the end of the module: compileend (compile.c), segment CINIT,
+   after PARSE has been left -- with byte writers of its own, as calling
+   PARSE's would load it again ---- */
+#pragma segment CINIT
+
+static void ceb(int b)
+{
+    putc(b & 255, irout);
+}
+
+static void cew(int w)
+{
+    putc(w & 255, irout);
+    putc((w >> 8) & 255, irout);
+}
+
 void ir_initflush(void)
 {
-    irb('Z');
+    ceb('Z');
+}
+
+void ir_data(char *name, int words, int strong)
+{
+    ceb('d');
+    ceb(strong);
+    ceb(strlen(name));
+    while (*name)
+        ceb(*name++);
+    cew(words);
+}
+
+void ir_use(char *name)
+{
+    ceb('u');
+    ceb(strlen(name));
+    while (*name)
+        ceb(*name++);
+}
+
+void ir_close(int globalwords)
+{
+    ceb('G');
+    cew(globalwords);
+    ceb('Q');
+    fclose(irout);
 }
 
 /* ---- the reader (code generator segment) ---- */

@@ -107,9 +107,9 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   emulator: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
   mode without reclaim): every @BUILD and @LIBS command from X(ecute
-  1,777 words (the library's STDIO.C, Compiling pass; PP.C, EXPR.C,
-  GENX.C and LINK.C about 1,890; linking CC2.CODE about 2,230); `cc
-  @build @libs` from the shell 1,637 (STDIO.C).  With reclaimed memory, 3,915 words more.  CC's "(N
+  1,953 words (the library's STDIO.C, Compiling pass, five parentheses
+  deep; linking CC2.CODE 1,971; PP.C, EXPR.C, GENX.C and LINK.C about
+  2,170 to 2,250); `cc @build @libs` from the shell 1,813 (STDIO.C).  With reclaimed memory, 3,915 words more.  CC's "(N
   words free)" after each pass is that pass's least (`memleast()` in
   psys.h, emulator 1.99; elsewhere the free memory at the pass's end), so
   the least of them is the status bar's figure; `voltest.py` prints both.
@@ -129,6 +129,18 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   - the linker gives back its reference lists (what each procedure uses:
     about 1,950 words for CC2.CODE) once it knows what to link, before it
     writes the code (`pmark`/`prelease`, util.c).
+  - the end of the Compiling pass (`compileend`: the module's variables,
+    closing the intermediate file) runs in segment CINIT after PARSE has
+    been left: with the heap at its largest, PARSE's 19 KB of code was
+    still resident only for it.
+  - real constants are converted by the preprocessor (`realtoken`,
+    segment REALLIT): it writes each as `` `HHHHHHHHSDIGITSeEXP` `` (the
+    float image in hex, S or L, the text a double is made from), so the
+    compiling pass no longer loads REALLIT for a constant deep in an
+    expression.
+  - the linker keeps its procedure and variable tables in blocks of 64
+    pointers: a doubling table freed the old one, and when the compiler
+    passed 512 procedures that cost about 1,500 words.
   - STMT.C's pass and set-up moved to `compile.c`; GEN.C is `gen.c` and
     `genx.c` (unsplit, it ran out at 347 words).
 * The Z80 interpreter on the boot disk has no SIN/COS/EXP/ATAN/SQT/LOG/LN

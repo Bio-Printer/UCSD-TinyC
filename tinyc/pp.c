@@ -1173,6 +1173,61 @@ static void ppdirective(char *s)
         error(23 /* unknown ppdirective */, w);
 }
 
+/* the expanded line with every real constant converted (realtoken,
+   lex.c), so that the compiling pass needs no conversion; strings,
+   character constants and identifiers are left as they are */
+static void reals(char *in, char *out)
+{
+    char *o;
+    char *p;
+    int q;
+    int prev;
+    int isreal;
+    int k;
+    o = out;
+    q = 0;
+    prev = 0;
+    while (*in) {
+        if (q) {
+            *o++ = *in;
+            if (*in == '\\' && in[1]) {
+                in++;
+                *o++ = *in;
+            } else if (*in == q)
+                q = 0;
+            prev = *in++;
+            continue;
+        }
+        if (*in == '"' || *in == '\'') {
+            q = *in;
+            prev = *in;
+            *o++ = *in++;
+            continue;
+        }
+        if (*in >= '0' && *in <= '9' && !isidc(prev) && prev != '.') {
+            isreal = 0;
+            p = in;
+            if (!(p[0] == '0' && (p[1] == 'x' || p[1] == 'X')))
+                for (; isidc(*p) || *p == '.' || ((*p == '+' || *p == '-') && (p[-1] == 'e' || p[-1] == 'E')); p++)
+                    if (*p == '.' || *p == 'e' || *p == 'E')
+                        isreal = 1;
+            /* room for the token (at most about 50 characters) and the rest */
+            if (isreal && (o - out) + strlen(in) + 60 < MAXEXP) {
+                k = realtoken(in, o);
+                if (k) {
+                    o = o + strlen(o);
+                    in = in + k;
+                    prev = '0';
+                    continue;
+                }
+            }
+        }
+        prev = *in;
+        *o++ = *in++;
+    }
+    *o = 0;
+}
+
 int preprocess(char *src, char *out)
 {
     char num[8];
@@ -1245,7 +1300,8 @@ int preprocess(char *src, char *out)
             nexpanding = 0;
             expand(line);
             *outp = 0;
-            fputs(ebuf, ppout);
+            reals(ebuf, line);          /* line is free again: the converted line */
+            fputs(line, ppout);
         }
         fputc('\n', ppout);
         xrelease(m);

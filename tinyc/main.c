@@ -93,7 +93,7 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
     passend();
     say("  Compiling ");
     passbegin(2000);
-    if (!compile(tmpi, tmpr, mod))
+    if (!compile(tmpi, tmpr, mod) || !compileend())
         return 0;
     passend();
     say("Generating code ");

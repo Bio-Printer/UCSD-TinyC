@@ -1,7 +1,7 @@
 /* compile.c -- the parser's pass: compile() and #pragma.  Split from
    stmt.c so that each compiles in less memory on the P-System (the
    declarations a file uses take its memory, in blocks of PCHUNK bytes);
-   same segment, PARSE.  The runtime helpers are declared when first
+   segment PARSE, its end (compileend) CINIT.  The runtime helpers are declared when first
    needed (helper, expr.c). */
 #include "tc.h"
 #include "parse.h"
@@ -72,22 +72,31 @@ int compile(char *src, char *ir, char *mod)
     while (tok != T_EOF) {
         external();
     }
+    fclose(fp);
+    return 1;                       /* compileend (CINIT) finishes the module */
+}
+
+/* The end of the module, called after compile has returned: PARSE's code
+   is then off the stack, and the heap is at its largest -- the closing of
+   the intermediate file (the operating system's frames) was the least
+   free memory of many modules. */
+#pragma segment CINIT
+int compileend(void)
+{
+    /* the module's exported variables: name, size, initialised or common */
+    struct Sym *g;
+    int h;
     ir_initflush();
-    {
-        /* the module's exported variables: name, size, initialised or common */
-        struct Sym *g;
-        int h;
-        for (h = 0; h < HSIZE; h++)
-            for (g = htab[h]; g; g = g->next)
-                if (g->kind == S_GLOBAL && !g->isstatic && g->defined) {
-                    if (g->type->size < 0)
-                        error(73 /* incomplete type */, g->name);
-                    ir_data(g->name, (g->type->size + 1) / 2, g->defined == 2);
-                }
-    }
+    for (h = 0; h < HSIZE; h++)
+        for (g = htab[h]; g; g = g->next)
+            if (g->kind == S_GLOBAL && !g->isstatic && g->defined) {
+                if (g->type->size < 0)
+                    error(73 /* incomplete type */, g->name);
+                ir_data(g->name, (g->type->size + 1) / 2, g->defined == 2);
+            }
     if (usesfloat && !nofltused)
         ir_use("__fltused");
     ir_close(globoff);
-    fclose(fp);
     return nerrors == 0;
 }
+#pragma segment PARSE
