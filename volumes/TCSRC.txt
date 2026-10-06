@@ -18,7 +18,7 @@ TCSRC:  35 files  (a UCSD directory holds 77)
   IR.C                26  compiler: the intermediate file between parser and code generator
   GEN.C               24  compiler: pass 3: P-code generation: emitter, object files
   GENX.C              48  compiler: pass 3: P-code for expressions, calls, switch
-  LINK.C              44  compiler: the linker: object files -> code file
+  LINK.C              46  compiler: the linker: object files -> code file
   TC.H                28  compiler: shared declarations (every module)
   PARSE.H             12  compiler: the parser modules' shared declarations
   GEN.H                8  compiler: gen.c and genx.c's shared declarations

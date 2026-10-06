@@ -107,16 +107,16 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   emulator: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
   mode without reclaim): every @BUILD and @LIBS command from X(ecute
-  1,954 words (linking CC2.CODE; the library's STDIO.C, Compiling pass,
-  about 2,500; the compiler's modules about 2,800 and more); `cc @build
-  @libs` from the shell 1,909 (linking).  With reclaimed memory, 3,915 words more.  CC's "(N
+  2,713 words (the library's STDIO.C, Compiling pass; EXPR.C and LINK.C
+  about 2,740, linking CC2.CODE 2,813); `cc @build @libs` from the shell
+  2,573 (STDIO.C).  (The Filer, setting the prefix, has less: 1,993.)  With reclaimed memory, 3,915 words more.  CC's "(N
   words free)" after each pass is that pass's least (`memleast()` in
   psys.h, emulator 1.99; elsewhere the free memory at the pass's end), so
   the least of them is the status bar's figure; `voltest.py` prints both.
   What took the memory, and what was done:
   - the Compiling pass's heap is mostly the declarations a file uses
     (symbols, types, fields), held in blocks of PCHUNK bytes (util.c):
-    `tools/pchunk.py` measures the least against PCHUNK (512 now; rerun
+    `tools/pchunk.py` measures the least against PCHUNK (448 now; rerun
     it when the sources change).  The 35 runtime helpers (`__divi`,
     `__lmul` ...) are declared when first needed, not in every module.
     A symbol is 14 bytes (was 18 and a link-name string for a static
@@ -142,6 +142,10 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
     float image in hex, S or L, the text a double is made from), so the
     compiling pass no longer loads REALLIT for a constant deep in an
     expression.
+  - the linker's procedure record is 12 bytes (was 16: the count of
+    references is the first word of their list, the flags are bits), and
+    a static procedure's name is kept without its MODULE' (the module
+    names are kept once): about 840 words more when it links CC2.CODE.
   - the linker keeps its procedure and variable tables in blocks of 64
     pointers: a doubling table freed the old one, and when the compiler
     passed 512 procedures that cost about 1,500 words.

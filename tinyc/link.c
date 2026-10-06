@@ -26,19 +26,21 @@
 #define MAXMOD  64
 #define LHASH 128
 
-/* kept small: the P-System links the compiler itself (about 500 of these) */
+/* 12 bytes: the P-System links the compiler itself (more than 500 of these) */
 struct LProc {
-    char *name;
+    char *name;             /* a static one's without its MODULE' (LP_STATIC) */
     struct LProc *hnext;
-    int *rel;               /* what it uses, each once: >= 0 procedure, <= -2 variable -2-k */
-    int nrel;
+    int *rel;               /* what it uses: rel[0] how many, then each once:
+                               >= 0 procedure, <= -2 variable -2-k (0: none) */
     int codelen;
     unsigned char mod;
     unsigned char seg;      /* index into segnames */
-    unsigned char flags;    /* 1 = initialiser */
-    unsigned char live;
+    unsigned char bits;     /* LP_ below */
     unsigned char procnum;
 };
+#define LP_INIT   1         /* an initialiser */
+#define LP_LIVE   2         /* linked */
+#define LP_STATIC 4         /* name is modnames[mod]'name */
 
 struct LData {
     char *name;
@@ -74,6 +76,7 @@ static char **segnames;         /* [24], allocated per run */
 static int nsegs;
 static int *segnum;             /* [24] segment index -> II.0 segment number */
 static int globalwords;
+static char **modnames;         /* [MAXMOD]: a static procedure's name is MODULE'name */
 static struct PMark relmark;
 static FILE *lin;
 static unsigned char *lbuf;     /* the largest procedure (allocated after pass 1) */
@@ -116,11 +119,23 @@ static void rds(char *s)
     s[n] = 0;
 }
 
+/* is p the procedure called name (a static one: MODULE'name) */
+static int procis(struct LProc *p, char *name)
+{
+    char *m;
+    int n;
+    if (!(p->bits & LP_STATIC))
+        return strcmp(p->name, name) == 0;
+    m = modnames[p->mod];
+    n = strlen(m);
+    return strncmp(name, m, n) == 0 && name[n] == '\'' && strcmp(name + n + 1, p->name) == 0;
+}
+
 static struct LProc *findproc(char *name)
 {
     struct LProc *p;
     for (p = lhash[hashstr(name) & (LHASH - 1)]; p; p = p->hnext)
-        if (strcmp(p->name, name) == 0)
+        if (procis(p, name))
             return p;
     return 0;
 }
@@ -274,6 +289,7 @@ static void pass1(void)
                 fatal(108 /* too many functions */, 0);
             modstatic[curmod] = 0;
             modlive[curmod] = 0;
+            modnames[curmod] = pstrdup(name);
             nmods = curmod + 1;
             continue;
         }
@@ -325,12 +341,16 @@ static void pass1(void)
         if (n > maxnrel)
             maxnrel = n;
         p = (struct LProc *)palloc(sizeof(struct LProc));
-        p->name = pstrdup(name);
         p->mod = curmod;
         p->seg = segindex(seg);
-        p->flags = flags;
+        p->bits = flags & LP_INIT;
         p->codelen = codelen;
-        p->nrel = n;
+        i = strlen(modnames[curmod]);
+        if (strncmp(name, modnames[curmod], i) == 0 && name[i] == '\'') {
+            p->bits = p->bits | LP_STATIC;
+            p->name = pstrdup(name + i + 1);
+        } else
+            p->name = pstrdup(name);
         if (strcmp(name, "main") == 0) {
             mainparmsz = parmsz;
             mainrw = rw;
@@ -417,12 +437,12 @@ static void pass2(void)
             if (j == m && m < lbufsize / (int)sizeof(int))
                 tmp[m++] = v;
         }
-        p->nrel = m;
         p->rel = 0;
         if (m) {
-            p->rel = (int *)palloc(m * sizeof(int));
+            p->rel = (int *)palloc((m + 1) * sizeof(int));
+            p->rel[0] = m;
             for (j = 0; j < m; j++)
-                p->rel[j] = tmp[j];
+                p->rel[j + 1] = tmp[j];
         }
     }
 }
@@ -448,20 +468,20 @@ static void markall(void)
         }
         for (i = 0; i < nprocs; i++) {
             p = PROC(i);
-            if (!p->live && (p->flags & 1) && modlive[p->mod]) {
-                p->live = 1;
+            if (!(p->bits & LP_LIVE) && (p->bits & LP_INIT) && modlive[p->mod]) {
+                p->bits = p->bits | LP_LIVE;
                 changed = 1;
             }
-            if (!p->live)
+            if (!(p->bits & LP_LIVE))
                 continue;
             if (!modlive[p->mod]) {
                 modlive[p->mod] = 1;
                 changed = 1;
             }
-            for (j = 0; j < p->nrel; j++) {
+            for (j = 1; p->rel && j <= p->rel[0]; j++) {
                 k = p->rel[j];
-                if (k >= 0 && !PROC(k)->live) {
-                    PROC(k)->live = 1;
+                if (k >= 0 && !(PROC(k)->bits & LP_LIVE)) {
+                    PROC(k)->bits = PROC(k)->bits | LP_LIVE;
                     changed = 1;
                 } else if (k <= -2 && !DATA(-2 - k)->live) {
                     d = DATA(-2 - k);
@@ -524,7 +544,7 @@ static void makeentry(struct LProc *mainp, struct LProc *exitp)
         eb(10);
     }
     for (i = 0; i < nprocs; i++)
-        if (PROC(i)->live && (PROC(i)->flags & 1))
+        if ((PROC(i)->bits & (LP_LIVE | LP_INIT)) == (LP_LIVE | LP_INIT))
             ecall(PROC(i));
     if (callmp) {                       /* main(argc, argv): __callmain calls it */
         for (i = 0; i < cmparmsz / 2; i++)
@@ -648,9 +668,10 @@ int link(char **objs, int nobjs, char *code, char *progname)
     modstatic = (int *)malloc(MAXMOD * sizeof(int));
     modbase = (int *)malloc(MAXMOD * sizeof(int));
     modlive = (int *)malloc(MAXMOD * sizeof(int));
+    modnames = (char **)malloc(MAXMOD * sizeof(char *));
     usemod = (int *)malloc(MAXUSES * sizeof(int));
     usedata = (int *)malloc(MAXUSES * sizeof(int));
-    if (!lhash || !dhash || !modstatic || !modbase || !modlive || !usemod || !usedata)
+    if (!lhash || !dhash || !modstatic || !modbase || !modlive || !modnames || !usemod || !usedata)
         fatal(2 /* out of memory */, 0);
     nprocs = 0;
     ndatas = 0;
@@ -682,16 +703,16 @@ int link(char **objs, int nobjs, char *code, char *progname)
         error(110 /* no main function */, 0);
         return 0;
     }
-    mainp->live = 1;
+    mainp->bits = mainp->bits | LP_LIVE;
     callmp = 0;
     if (mainparmsz >= 4) {              /* main has parameters: argc, argv */
         callmp = findproc("__callmain");
         if (callmp)
-            callmp->live = 1;
+            callmp->bits = callmp->bits | LP_LIVE;
     }
     exitp = findproc("exit");
     if (exitp)
-        exitp->live = 1;
+        exitp->bits = exitp->bits | LP_LIVE;
     markall();
     prelease(&relmark);
     for (i = 0; i < nprocs; i++)
@@ -721,7 +742,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     segnum[mainp->seg] = 1;
     for (i = 0; i < nprocs; i++) {
         p = PROC(i);
-        if (!p->live || segnum[p->seg])
+        if (!(p->bits & LP_LIVE) || segnum[p->seg])
             continue;
         if (norder >= 10)
             fatal(111 /* more than 10 segments */, segnames[p->seg]);
@@ -732,7 +753,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     pnum[mainp->seg] = 1;
     for (i = 0; i < nprocs; i++) {
         p = PROC(i);
-        if (!p->live)
+        if (!(p->bits & LP_LIVE))
             continue;
         s = p->seg;
         p->procnum = ++pnum[s];
@@ -792,15 +813,16 @@ int link(char **objs, int nobjs, char *code, char *progname)
                 rpos = rdw();
                 rtype = rd();
                 rds(rname);
-                if (p->live && p->seg == s)
+                if ((p->bits & LP_LIVE) && p->seg == s)
                     patchproc(p, rpos, rtype, rname);
             }
-            if (!p->live || p->seg != s)
+            if (!(p->bits & LP_LIVE) || p->seg != s)
                 continue;
             lbuf[jtab] = p->procnum;
 #ifndef __TINYC__
             if (getenv("TINYC_MAP"))
-                fprintf(stderr, "MAP %d %d %d %d %s\n", segnum[s], p->procnum, len, len + jtab, p->name);
+                fprintf(stderr, "MAP %d %d %d %d %s%s%s\n", segnum[s], p->procnum, len, len + jtab,
+                        p->bits & LP_STATIC ? modnames[p->mod] : "", p->bits & LP_STATIC ? "'" : "", p->name);
 #endif
             if (codelen & 1)
                 lbuf[codelen++] = 0;
