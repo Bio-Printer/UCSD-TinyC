@@ -96,6 +96,17 @@ modes. A program built without `-z` that calls through a function pointer and ru
 on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it runs correctly
 (`TINYC_Z80CALLS=0` makes `tcrun.py` test exactly that in Z80 mode).
 
+## setjmp and longjmp
+
+`<setjmp.h>`: `setjmp(env)` saves its own call's mark stack control word (the caller's
+frame, segment, return address and stack depth) in `jmp_buf env`; `longjmp(env, val)`
+returns from that setjmp call again with `val` (1 for 0), out of any number of calls and
+segments. It gives back the segments of the functions it leaves (their reference counts
+in INTSEGT, and in the engine's Harvard layout their code), as their returns would have.
+The function that called setjmp must not have returned. Works in Z80 and P-Code mode,
+with and without reclaimed memory and the Harvard layout; `tests/setjmp.c`, and
+docs/DESIGN.md for how.
+
 ## Status (September 2026)
 
 * Self-hosting, byte-identical, in P-Code mode and in **Z80 mode** (Z80 mode

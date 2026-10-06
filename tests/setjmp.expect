@@ -1,0 +1,15 @@
+setjmp returned 0, local 1
+setjmp returned 7, local 2
+depth 11
+longjmp(top, 0) gives 1
+300 longjmps: 300 right, sum(50) still 1275
+via pointer: 42
+from B and C: 50 right, segments ok
+B and C again: 1001 21
+segments ok
+dcatch: 36 -1
+dcatch2: 109
+segments ok
+inner caught 3
+outer caught 4
+done

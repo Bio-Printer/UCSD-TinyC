@@ -128,6 +128,29 @@ out last first (LOWTIME before HIGHTIME, JTAB/SEG/MEMTOP), and packed
 fields fill each word from bit 0 (`MI_` bits of `miscinfo`).
 `tests/syscom.c` checks it from `main`, nested calls and another segment.
 
+`setjmp.h`: `setjmp(env)` copies its own mark stack control word (MSCW:
+the caller's MP, JTAB, SEGP, the return IPC and SP; the P-machine keeps
+MP, JTAB and SEGP in SYSCOM's `lastmp`, `jtab` and `seg`) into
+`jmp_buf env` (5 words) and returns 0. `longjmp(env, val)` is an int
+function (declared void): it overwrites its own MSCW with the saved one,
+so its `RNP 1` returns from the setjmp call again, with val (1 for 0),
+SP back where it was and every frame in between gone. Before that it
+does the bookkeeping those frames' returns would have done: walking the
+dynamic links from its own frame up to setjmp's caller, each frame whose
+caller runs in another segment counts that segment down in INTSEGT (just
+below SYSCOM: the reference count and the load address, which is what
+SEGP holds, per segment). The walk stops with an error if it passes
+setjmp's caller (that function has returned). RNP itself counts down the
+segment SEGP names when the caller's differs: so that this is the one
+that releases code -- in the Harvard layout a segment's code goes only
+when RNP takes its count to 0 -- longjmp points SEGP, just before
+returning, at the first loaded (highest) of the segments no longer in
+use, after counting it back up by one; with none, it counts up the
+segment RNP would wrongly count down. Segments are released in stack
+order, so releasing that one releases the others too. `tests/setjmp.c`
+checks the counts after longjmps out of 40 calls alternating between two
+segments, 50 times over, and the segments loading again afterwards.
+
 `pexec(name)` (also `psys.h`) runs another program and then starts the
 caller again from the beginning; `pexec_returned()` and `pexec_status()`
 tell it so, and the exit status (`exit(n)` or `main`'s result: `exit()`

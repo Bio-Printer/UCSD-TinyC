@@ -1,4 +1,4 @@
-TCTESTS:  27 files  (a UCSD directory holds 77)
+TCTESTS:  29 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -20,6 +20,8 @@ TCTESTS:  27 files  (a UCSD directory holds 77)
   FUNCSEG.CODE        13    (ready to run)
   LONGS.C              4  32-bit long arithmetic
   LONGS.CODE          13    (ready to run)
+  SETJMP.C            10  setjmp/longjmp: from deep calls, val 0 as 1, locals kept
+  SETJMP.CODE         17    (ready to run)
   STRCONST.C           8  string literals kept in pointers and arrays, across ...
   STRCONST.CODE       14    (ready to run)
   STRINGS.C            6  string.h, sprintf, sscanf, ctype, macros with arguments

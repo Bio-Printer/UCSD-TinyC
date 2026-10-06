@@ -69,6 +69,11 @@ stays in memory meanwhile.  pexec("NAME ARG1 ARG2") passes the words to
 NAME's main(int argc, char **argv) (80 characters at most).  It needs the operating system of BIGGY 1.10
 or later.  SHELL.C on TCEXTRA: is a small shell built on it.
 
+SETJMP.H: setjmp(env) and longjmp(env, val) -- back to the setjmp from
+any depth, through any segments (their code is given back as their
+returns would have).  The function that called setjmp must not have
+returned.
+
 FUNCTION POINTERS: a call through a function pointer (qsort, bsearch and
 printf's floating-point formatting use them) is by default compiled to
 CSP 138 (CALLI), which the native P-Code engine implements and the Z80
@@ -196,6 +201,7 @@ WHAT = {
     'limits.h': 'INT_MAX, LONG_MAX, ... (16-bit int, 32-bit long)',
     'math.h': 'sqrt, sin, cos, atan, exp, log, pow, fabs, ...',
     'psys.h': 'SYSCOM: the P-System\'s SYSCOM record (SYSCOM->memtop, ...)',
+    'setjmp.h': 'setjmp, longjmp: back to an earlier point, out of any calls',
     'stdarg.h': 'va_list, va_start, va_arg, va_end',
     'stddef.h': 'size_t, NULL, offsetof',
     'stdio.h': 'printf, scanf, FILE, fopen, fgets, fprintf, ...',
@@ -221,6 +227,9 @@ WHAT = {
     'gen.h': "gen.c and genx.c's shared declarations",
     'libint.h': "the library modules' shared declarations",
     'fltfmt.c': "printf's %f %e %g (linked only when floats are used)",
+    'memscan.c': 'memfill, memgap (<psys.h>)',
+    'pexec.c': 'pexec, main(argc, argv) (<psys.h>)',
+    'strtold.c': 'strtold, atold (<stdlib.h>, P-Code mode)',
     'tcrt.c': 'runtime helpers: C division, shifts, unsigned, longs',
 }
 

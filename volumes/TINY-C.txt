@@ -1,9 +1,9 @@
-TINY-C:  20 files  (a UCSD directory holds 77)
+TINY-C:  21 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
   CC.CODE            115  the Tiny-C compiler: X(ecute CC
-  TCLIB.OBJ           53  the C library (built with /Z), linked into every program
+  TCLIB.OBJ           54  the C library (built with /Z), linked into every program
   TCMSGS.TEXT          8  the compiler's messages (line n = message n)
   README.TEXT         10  how to use Tiny-C
   ASSERT.H             4  header: assert()
@@ -15,6 +15,7 @@ TINY-C:  20 files  (a UCSD directory holds 77)
   LIMITS.H             4  header: INT_MAX, LONG_MAX, ... (16-bit int, 32-bit long)
   MATH.H               4  header: sqrt, sin, cos, atan, exp, log, pow, fabs, ...
   PSYS.H              14  header: SYSCOM: the P-System's SYSCOM record (SYSCOM->memtop, ...)
+  SETJMP.H             4  header: setjmp, longjmp: back to an earlier point, out of any calls
   STDARG.H             4  header: va_list, va_start, va_arg, va_end
   STDDEF.H             4  header: size_t, NULL, offsetof
   STDIO.H             10  header: printf, scanf, FILE, fopen, fgets, fprintf, ...
