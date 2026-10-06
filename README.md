@@ -104,27 +104,30 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   without reclaimed memory), so it is split into `gen.c` and `genx.c`;
   `PSYS_MODE=z80 voltest.py` runs `@BUILD @LIBS @DEMOS @TESTS` in Z80 mode.
 * Least free memory (SP - NP at every P-code instruction, tracked by the
-  emulator 1.97: Options > Track Least Free Memory, run_verify
-  `VERIFY_LOWWATER`), compiling each compiler module in Z80 mode (the
-  normal layout; the same in P-Code mode without reclaim), from X(ecute:
-  PP.C, STMT.C, GENX.C and LINK.C 1,472 words (their Compiling pass), the
-  others more; `cc @build @libs` from the shell 1,427.  CC's "(N words
-  free)" after each pass is that pass's least (`memleast()` in psys.h,
-  emulator 1.99; elsewhere the free memory at the pass's end), so the
-  least of them is the status bar's figure.  The Compiling
-  pass's memory goes by the declarations a file uses, held in blocks of
-  PCHUNK bytes (util.c), not by its function sizes: `tools/pchunk.py`
-  measures the least against PCHUNK (512 is the best now; rerun it when
-  the sources change).  The code generator's buffers are sized for 1.5
-  times the largest procedure in the compiler, library, demos and tests
-  (tc.h: MAXCODE 3000 bytes, MAXLABEL 200, MAXFIX 250, MAXREL 320; the
-  switch case table is allocated per switch): code generation has about
-  5,900 words free at its least, the Compiling pass less.  Files CC opens between passes (to see whether
-  NAME.C exists, the @FILE batch) are opened inside a heap mark of their
-  own, or their buffer would sit unused under every pass (about 300
-  words).  STMT.C was 324 until its pass and set-up moved to `compile.c`.
-  The unsplit GEN.C ran out at 347.  With reclaimed memory each is 3,915
-  words more.  `voltest.py` prints the run's least.
+  emulator: Options > Track Least Free Memory, run_verify
+  `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
+  mode without reclaim): every @BUILD and @LIBS command from X(ecute
+  1,748 words (linking CC2.CODE; the Compiling passes of PP.C, EXPR.C and
+  LINK.C about 1,890); `cc @build @libs` from the shell 1,641 (STDIO.C's
+  Compiling pass).  With reclaimed memory, 3,915 words more.  CC's "(N
+  words free)" after each pass is that pass's least (`memleast()` in
+  psys.h, emulator 1.99; elsewhere the free memory at the pass's end), so
+  the least of them is the status bar's figure; `voltest.py` prints both.
+  What took the memory, and what was done:
+  - the Compiling pass's heap is mostly the declarations a file uses
+    (symbols, types, fields), held in blocks of PCHUNK bytes (util.c):
+    `tools/pchunk.py` measures the least against PCHUNK (512 now; rerun
+    it when the sources change).  The 35 runtime helpers (`__divi`,
+    `__lmul` ...) are declared when first needed, not in every module.
+  - the code generator's buffers are sized for 1.5 times the largest
+    procedure in the compiler, library, demos and tests (tc.h: MAXCODE
+    3000 bytes, MAXLABEL 200, MAXFIX 250, MAXREL 320; the switch case
+    table is allocated per switch).
+  - files CC opens between passes (does NAME.C exist, the @FILE batch)
+    are opened inside a heap mark of their own; their buffer used to sit
+    unused under every pass (about 300 words).
+  - STMT.C's pass and set-up moved to `compile.c`; GEN.C is `gen.c` and
+    `genx.c` (unsplit, it ran out at 347 words).
 * The Z80 interpreter on the boot disk has no SIN/COS/EXP/ATAN/SQT/LOG/LN
   (assembled with NOFPT): before engine 1.93 `math.h` functions stopped there
   with "Unimplemented instruction"; from 1.93 the engine's Z80-mode

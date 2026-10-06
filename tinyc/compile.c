@@ -1,71 +1,10 @@
-/* compile.c -- the parser's pass: compile(), the runtime helpers' and
-   #pragma declarations.  Split from stmt.c so that each compiles in less
-   memory on the P-System (the declarations a file uses take its memory,
-   in blocks of PCHUNK bytes); same segments (CINIT, PARSE). */
+/* compile.c -- the parser's pass: compile() and #pragma.  Split from
+   stmt.c so that each compiles in less memory on the P-System (the
+   declarations a file uses take its memory, in blocks of PCHUNK bytes);
+   same segment, PARSE.  The runtime helpers are declared when first
+   needed (helper, expr.c). */
 #include "tc.h"
 #include "parse.h"
-
-#pragma segment CINIT
-
-/* declare the runtime helpers the code generator calls (defined in tcrt.h) */
-void declhelper(char *name, struct Type *ret, struct Type *a, struct Type *b)
-{
-    struct Type *ft;
-    struct Param *p;
-    struct Sym *s;
-    ft = mktype(TY_FUNC, 2, 2);
-    ft->base = ret;
-    if (a) {
-        p = (struct Param *)palloc(sizeof(struct Param));
-        p->type = a;
-        ft->params = p;
-        if (b) {
-            p->next = (struct Param *)palloc(sizeof(struct Param));
-            p->next->type = b;
-        }
-    }
-    s = addsym(name, S_FUNC, ft);
-}
-
-void helpers(void)
-{
-    declhelper("__divi", ty_int, ty_int, ty_int);
-    declhelper("__modi", ty_int, ty_int, ty_int);
-    declhelper("__udiv", ty_uint, ty_uint, ty_uint);
-    declhelper("__umod", ty_uint, ty_uint, ty_uint);
-    declhelper("__shl", ty_int, ty_int, ty_int);
-    declhelper("__shr", ty_int, ty_int, ty_int);
-    declhelper("__ushr", ty_uint, ty_uint, ty_int);
-    declhelper("__xor", ty_int, ty_int, ty_int);
-    declhelper("__sx", ty_int, ty_int, 0);
-    declhelper("__utof", ty_float, ty_uint, 0);
-    declhelper("__ftou", ty_uint, ty_float, 0);
-    declhelper("__ladd", ty_long, ty_long, ty_long);
-    declhelper("__lsub", ty_long, ty_long, ty_long);
-    declhelper("__lmul", ty_long, ty_long, ty_long);
-    declhelper("__ldiv", ty_long, ty_long, ty_long);
-    declhelper("__lmod", ty_long, ty_long, ty_long);
-    declhelper("__uldiv", ty_ulong, ty_ulong, ty_ulong);
-    declhelper("__ulmod", ty_ulong, ty_ulong, ty_ulong);
-    declhelper("__land", ty_long, ty_long, ty_long);
-    declhelper("__lor", ty_long, ty_long, ty_long);
-    declhelper("__lxor", ty_long, ty_long, ty_long);
-    declhelper("__lshl", ty_long, ty_long, ty_int);
-    declhelper("__lshr", ty_long, ty_long, ty_int);
-    declhelper("__ulshr", ty_ulong, ty_ulong, ty_int);
-    declhelper("__lneg", ty_long, ty_long, 0);
-    declhelper("__lnot", ty_long, ty_long, 0);
-    declhelper("__lcmp", ty_int, ty_long, ty_long);
-    declhelper("__ulcmp", ty_int, ty_ulong, ty_ulong);
-    declhelper("__itol", ty_long, ty_int, 0);
-    declhelper("__utol", ty_long, ty_uint, 0);
-    declhelper("__ltoi", ty_int, ty_long, 0);
-    declhelper("__ltof", ty_float, ty_long, 0);
-    declhelper("__ultof", ty_float, ty_ulong, 0);
-    declhelper("__ftol", ty_long, ty_float, 0);
-    declhelper("__ftoul", ty_ulong, ty_float, 0);
-}
-
 #pragma segment PARSE
 
 void pragma(char *s)
@@ -127,7 +66,6 @@ int compile(char *src, char *ir, char *mod)
     ir_open(ir, modname);
     scanrefs(src);
     typeinit();
-    helpers();
     cursegname = "";
     lexinit(fp);
     next();

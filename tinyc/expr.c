@@ -135,10 +135,88 @@ struct Node *decay(struct Node *n)
     return n;
 }
 
+/* a runtime helper's type letter: int, unsigned, float, long, unsigned long */
+static struct Type *htype(int c)
+{
+    switch (c) {
+    case 'i': return ty_int;
+    case 'u': return ty_uint;
+    case 'f': return ty_float;
+    case 'l': return ty_long;
+    case 'L': return ty_ulong;
+    }
+    return 0;
+}
+
+/* Declare the runtime helper NAME (__NAME in tcrt.c) when it is first
+   needed, not all of them in every module: each is a symbol, a type and
+   its parameters in the memory of the whole pass.  The table is in the
+   code (two string constants): NAME, then its result and parameter types
+   (0: none). */
+static struct Sym *declhelper(char *name)
+{
+    char *p;
+    struct Type *ft;
+    struct Param *q;
+    struct Sym *s;
+    struct Sym **pp;
+    int n;
+    int k;
+    int savelevel;
+    int savetent;
+    for (k = 0; k < 2; k++) {
+        p = k ? "ladd lll lsub lll lmul lll ldiv lll lmod lll uldiv LLL ulmod LLL land lll lor lll lxor lll lshl lli lshr lli ulshr LLi lneg ll0 lnot ll0 lcmp ill ulcmp iLL "
+              : "divi iii modi iii udiv uuu umod uuu shl iii shr iii ushr uui xor iii sx ii0 utof fu0 ftou uf0 itol li0 utol lu0 ltoi il0 ltof fl0 ultof fL0 ftol lf0 ftoul Lf0 ";
+        while (*p) {
+            for (n = 0; p[n] != ' '; n++)
+                ;
+            if (strncmp(p, name + 2, n) == 0 && name[n + 2] == 0)
+                break;
+            p = p + n + 5;
+        }
+        if (*p)
+            break;
+    }
+    if (k == 2)
+        return 0;
+    p = p + n + 1;
+    savelevel = level;              /* a file-level, permanent declaration */
+    savetent = tentative;
+    level = 0;
+    tentative = 0;
+    ft = mktype(TY_FUNC, 2, 2);
+    ft->base = htype(p[0]);
+    if (p[1] != '0') {
+        q = (struct Param *)palloc(sizeof(struct Param));
+        q->type = htype(p[1]);
+        ft->params = q;
+        if (p[2] != '0') {
+            q->next = (struct Param *)palloc(sizeof(struct Param));
+            q->next->type = htype(p[2]);
+        }
+    }
+    s = addsym(name, S_FUNC, ft);
+    level = savelevel;
+    tentative = savetent;
+    if (level > 0) {
+        /* popscope takes each scope's symbols off the front of their hash
+           chains: keep this one behind the local ones */
+        pp = &htab[hashstr(name) & (HSIZE - 1)];
+        *pp = s->next;
+        while (*pp && (*pp)->level > 0)
+            pp = &(*pp)->next;
+        s->next = *pp;
+        *pp = s;
+    }
+    return s;
+}
+
 struct Sym *helper(char *name)
 {
     struct Sym *s;
     s = lookup(name);
+    if (!s)
+        s = declhelper(name);
     if (!s || s->kind != S_FUNC)
         fatal(37 /* runtime helper not declared (tcrt.h) */, name);
     return s;

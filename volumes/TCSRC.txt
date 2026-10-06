@@ -11,10 +11,10 @@ TCSRC:  35 files  (a UCSD directory holds 77)
   PP.C                50  compiler: pass 1: the preprocessor
   LEX.C               32  compiler: pass 2: the tokenizer
   PSYM.C              18  compiler: parser: types and symbols
-  EXPR.C              58  compiler: parser: expressions
+  EXPR.C              62  compiler: parser: expressions
   DECL.C              22  compiler: parser: declarations and initializers
   STMT.C              30  compiler: parser: statements, functions, declarations
-  COMPILE.C           12  compiler: parser: the pass, helpers' and #pragma declarations
+  COMPILE.C            8  compiler: parser: the pass, helpers' and #pragma declarations
   IR.C                24  compiler: the intermediate file between parser and code generator
   GEN.C               24  compiler: pass 3: P-code generation: emitter, object files
   GENX.C              48  compiler: pass 3: P-code for expressions, calls, switch

@@ -144,9 +144,6 @@ void fmtfix(char *name, struct Node *args);
 #pragma segment REFSCAN
 void addref(char *name);
 void scanrefs(char *src);
-#pragma segment CINIT
-void declhelper(char *name, struct Type *ret, struct Type *a, struct Type *b);
-void helpers(void);
 #pragma segment PARSE
 void pragma(char *s);
 int compile(char *src, char *ir, char *mod);
