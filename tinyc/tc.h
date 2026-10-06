@@ -26,11 +26,15 @@
 #define MAXEXP    1024     /* longest line after macro expansion */
 #define MAXINCL   8        /* #include nesting */
 #define MAXIF     32       /* #if nesting */
-#define MAXCODE   5000     /* code bytes in one procedure */
-#define MAXLABEL  300      /* labels in one procedure */
-#define MAXFIX    500      /* jump fixups in one procedure */
+/* The code generator's buffers for one procedure, allocated for every
+   code generation pass: about 1.5 times the most any procedure of the
+   compiler, its library, the demos and tests needs (code 1928 bytes,
+   labels 119, fixups 138, relocations 211); more is "function too large" */
+#define MAXCODE   3000     /* code bytes in one procedure */
+#define MAXLABEL  200      /* labels in one procedure */
+#define MAXFIX    250      /* jump fixups in one procedure */
 #define MAXLONGJ  60       /* jump-table entries in one procedure (II.0 limit) */
-#define MAXREL    500      /* relocations in one procedure */
+#define MAXREL    320      /* relocations in one procedure */
 #define MAXSEGS   10       /* segment 1 and 7..15 */
 #define MAXNAME   64
 

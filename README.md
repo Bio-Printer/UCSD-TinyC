@@ -107,12 +107,16 @@ on an engine before 1.93 does not stop: it gives wrong results. From 1.93 it run
   emulator 1.97: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`), compiling each compiler module in Z80 mode (the
   normal layout; the same in P-Code mode without reclaim), from X(ecute:
-  EXPR.C, STMT.C and GENX.C 1,069 words, PP.C, LINK.C and the library's
-  STDIO.C 1,199, the others more; `cc @build @libs` from the shell 1,024.
-  The passes' memory goes by the declarations a file uses, held in
-  blocks of PCHUNK bytes (util.c), not by its function sizes:
-  `tools/pchunk.py` measures the least against PCHUNK (256 is near the
-  best; 1024 gave 691).  Files CC opens between passes (to see whether
+  PP.C, STMT.C, GENX.C and LINK.C 1,497 words (their Compiling pass), the
+  others more; `cc @build @libs` from the shell 1,452.  The Compiling
+  pass's memory goes by the declarations a file uses, held in blocks of
+  PCHUNK bytes (util.c), not by its function sizes: `tools/pchunk.py`
+  measures the least against PCHUNK (512 is the best now; rerun it when
+  the sources change).  The code generator's buffers are sized for 1.5
+  times the largest procedure in the compiler, library, demos and tests
+  (tc.h: MAXCODE 3000 bytes, MAXLABEL 200, MAXFIX 250, MAXREL 320; the
+  switch case table is allocated per switch): code generation has about
+  5,900 words free at its least, the Compiling pass less.  Files CC opens between passes (to see whether
   NAME.C exists, the @FILE batch) are opened inside a heap mark of their
   own, or their buffer would sit unused under every pass (about 300
   words).  STMT.C was 324 until its pass and set-up moved to `compile.c`.

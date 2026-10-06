@@ -319,7 +319,7 @@ void gen_objheader(char *modname)
     lvtemp = 0;
     lvnode = 0;
     setupemit(&fe, MAXCODE, MAXLABEL, MAXFIX, MAXREL);
-    setupemit(&ie, 1600, 40, 80, 300);
+    setupemit(&ie, 1600, 16, 32, 120);  /* initialisers: flushed to an init procedure when near full */
     E = &fe;
     fputs("TCOB", objout);
     putc('M', objout);

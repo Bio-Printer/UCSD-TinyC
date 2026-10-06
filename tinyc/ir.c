@@ -457,9 +457,7 @@ int gencode(char *irname, char *obj)
     rseen = (struct Type **)malloc(MAXTSEEN * sizeof(struct Type *));
     if (!rseen)
         fatal(2 /* out of memory */, 0);
-    vals = (int *)malloc(1024 * sizeof(int));
-    labs = (int *)malloc(1024 * sizeof(int));
-    if (!lmap || !vals || !labs)
+    if (!lmap)
         fatal(2 /* out of memory */, 0);
     m = xmark();
     modname = pstrdup(rstr());
@@ -513,11 +511,18 @@ int gencode(char *irname, char *obj)
             n = rw();
             if (n > 1024)
                 fatal(93 /* too many cases */, 0);
+            /* the case table, as large as this switch needs (not 1024
+               cases for the whole pass) */
+            vals = (int *)malloc(2 * n * sizeof(int) + 2);
+            if (!vals)
+                fatal(2 /* out of memory */, 0);
+            labs = vals + n;
             for (i = 0; i < n; i++) {
                 vals[i] = rw();
                 labs[i] = lab(rw());
             }
             gen_switch(t, vals, labs, n, lab(rw()));
+            free(vals);
             break;
         case 'E':
             ml = rw();
