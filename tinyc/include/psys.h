@@ -91,6 +91,19 @@ int pexec(char *cmd);
 #define PX_PL    70
 int __pxsum(unsigned char *s);
 
+/* SYSCOM->expansion[1]: a program that wants the PC's Page Up, Page Down,
+   Home, End, Insert and Delete keys as one code each sets it to PX_KEYS,
+   and back to 0 when it ends.  The emulator (with the keys patch, see
+   emulator/KEYS.md) then sends KEY_PGUP ... instead of the L2 editor's
+   command letters (>P <P> JB JE I D^U^C) it types for them otherwise. */
+#define PX_KEYS  25605
+#define KEY_HOME   0x84
+#define KEY_END    0x85
+#define KEY_INSERT 0x86
+#define KEY_DELETE 0x87
+#define KEY_PGUP   0x88
+#define KEY_PGDN   0x89
+
 /* this run was started again by pexec, after the program it ran */
 #define pexec_returned() (SYSCOM->expansion[0] == PX_BACK)
 /* and that program's exit status: exit(n) or main's result (0 for a

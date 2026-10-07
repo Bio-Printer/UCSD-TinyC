@@ -223,7 +223,9 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         files); from X(ecute TOOLS:VI it asks for the file.  Most of vi's
         commands: moving, i a o O, x dd dw cw D C J p P y yy, . u U,
         marks, / ? n N, :w :q :wq ZZ :s :set :r :e, ...  The cursor keys
-        are the P-System's (they take ^T ^R ^Q ^U); ^L redraws.
+        are the P-System's (they take ^T ^R ^Q ^U); ^L redraws.  Page Up,
+        Page Down, Home, End, Insert and Delete work with an emulator that
+        has the keys change (UCSD-C emulator/KEYS.md).
         Big files: vi keeps a window of the file in memory (about 4 KB in
         Z80 mode, 12 KB in P-Code mode, 30 KB with the Harvard layout) and
         the rest in VI.SWAP, a temporary file on the prefix volume (deleted

@@ -215,6 +215,7 @@ char *ucsd_askname(void)
 int rawmode(void)
 {
 	ucsd_reserve();
+	SYSCOM->expansion[1] = PX_KEYS;	// Page Up ... Delete: one code each (psys.h)
 	erase_char = SYSCOM->crtinfo.chardel;
 	ticsPerChar = 1;
 	return 0;
@@ -222,6 +223,7 @@ int rawmode(void)
 
 void cookmode(void)
 {
+	SYSCOM->expansion[1] = 0;	// the keys as the L2 editor wants them again
 }
 
 /* true if a key comes within tics/100 seconds: the system clock (1/60 s)
@@ -271,6 +273,7 @@ char readit(void)
 		return VI_K_LEFT;
 	if (c == ci->right)
 		return VI_K_RIGHT;
+	// KEY_HOME .. KEY_PGDN (psys.h) are vi's own VI_K_HOME .. VI_K_PAGEDOWN
 	return c;
 }
 

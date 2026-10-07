@@ -23,7 +23,7 @@ Start here when picking the project up in a new session.
 | `repro/` | engine bug repros (REAL compare, DEEPCXP: both fixed in the engine) |
 | `tools/` | host tools (below) |
 | `UCSD-Pascal---P-Machine_work-v1.88.zip` | the emulator (engine, Linux runner `verify/run_verify.cpp`), with the double CSPs (NativeDouble.inc) |
-| `emulator/` | **the double CSPs on their own**: `NativeDouble.inc` + the 4-line `PSystemEngine.cpp` patch, and how to add them to a Windows build (README) |
+| `emulator/` | **the double CSPs on their own**: `NativeDouble.inc` + the 4-line `PSystemEngine.cpp` patch, and how to add them to a Windows build (README); **the PC keys for vi**: `PSystemEngine-keys.patch` and `KEYS.md` (Page Up/Down, Home, End, Insert, Delete as one code each while a program sets `SYSCOM->expansion[1]` to `PX_KEYS`) |
 | `Usefull_System_Disk_Images.zip`, `pascal.bin` | boot disk images, the Z80 loader |
 
 ## Tools (Linux; `tools/setup.sh` unpacks the zips into `build/` and builds `build/run_verify`)

@@ -63,6 +63,11 @@ UCSD text files); from X(ecute) it asks for the file.
 * Keys: `getch()` (UNITREAD, raw); the P-System's cursor keys (CRTINFO: the emulator
   sends ^T ^R ^Q ^U for the arrows) become vi's arrow keys, so ^R and ^U are not
   available as vi commands (^L redraws, ^B/^F page).
+* Page Up, Page Down, Home, End, Insert, Delete: the emulator types the L2 editor's
+  commands for them (`>P`, `JB`, ...). While vi runs it sets SYSCOM->expansion[1] to
+  `PX_KEYS` (psys.h; cleared when it ends), and an emulator with the keys patch
+  (`emulator/KEYS.md`) then sends one code each, vi's own VI_K_HOME ...
+  VI_K_PAGEDOWN (0x84..0x89): a screen down/up, start/end of the line, insert, x.
 * Screen: FGOTOXY for the cursor, CRTCTRL's erase-to-end-of-line/screen.
 * Files: UCSD text files through stdio. The memory `fopen` needs (1 KB + 80 bytes) is
   set aside at the start and given back only around opening a file, so a file whose

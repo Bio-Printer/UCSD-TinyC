@@ -1,0 +1,58 @@
+diff -u a/UCSDPascal/MainFrm.cpp b/UCSDPascal/MainFrm.cpp
+--- a/UCSDPascal/MainFrm.cpp
++++ b/UCSDPascal/MainFrm.cpp
+@@ -464,9 +464,24 @@
+ //     Delete     "D" ^U ^C  delete the character under the cursor
+ //   Every sequence was checked against the real SYSTEM.EDITOR in the
+ //   harness (v1.68).
++//   A program that sets SYSCOM^.EXPANSION[1] to 25605 while it runs (Tiny-C's
++//   vi; PX_KEYS in psys.h) gets these six keys as one code each instead:
++//   Home 0x84, End 0x85, Insert 0x86, Delete 0x87, Page Up 0x88,
++//   Page Down 0x89 (KEY_HOME ... KEY_PGDN in psys.h).
+ void CMainFrame::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
+     if (m_verifyRunner) return;   // the verify script owns the keyboard
+     auto send = [this](const char* keys) { for (const char* p = keys; *p; p++) m_engine->PostKey((uint8_t)*p); };
++    if (m_engine->WantsKeyCodes()) {
++        switch (nChar) {
++            case VK_HOME:   m_engine->PostKey(0x84); return;
++            case VK_END:    m_engine->PostKey(0x85); return;
++            case VK_INSERT: m_engine->PostKey(0x86); return;
++            case VK_DELETE: m_engine->PostKey(0x87); return;
++            case VK_PRIOR:  m_engine->PostKey(0x88); return; // Page Up
++            case VK_NEXT:   m_engine->PostKey(0x89); return; // Page Down
++            default: break;
++        }
++    }
+     switch (nChar) {
+         case VK_UP:     m_engine->PostKey(0x14); return; // ^T
+         case VK_DOWN:   m_engine->PostKey(0x12); return; // ^R
+diff -u a/UCSDPascal/PSystemEngine.cpp b/UCSDPascal/PSystemEngine.cpp
+--- a/UCSDPascal/PSystemEngine.cpp
++++ b/UCSDPascal/PSystemEngine.cpp
+@@ -264,6 +264,12 @@
+     if (m_traceFile) { fclose(m_traceFile); m_traceFile = nullptr; }
+ }
+ 
++// SYSCOM^.EXPANSION[1] (SYSCOM is at 0x02E4; EXPANSION[0] at +36) = 25605
++bool PSystemEngine::WantsKeyCodes() const {
++    const uint16_t a = PM_V(0x030A);
++    return (uint16_t)(m_mem[a] | (m_mem[(uint16_t)(a + 1)] << 8)) == 25605;
++}
++
+ void PSystemEngine::PostKey(uint8_t ch) {
+     EnterCriticalSection(&m_keyLock);
+     m_keyQueue.push_back(ch);
+diff -u a/UCSDPascal/PSystemEngine.h b/UCSDPascal/PSystemEngine.h
+--- a/UCSDPascal/PSystemEngine.h
++++ b/UCSDPascal/PSystemEngine.h
+@@ -133,6 +133,10 @@
+     // command set doesn't need them beyond what already maps to plain
+     // ASCII control codes (ESC, CR, BS, etc.).
+     void PostKey(uint8_t ch);
++    // A program that wants Page Up, Page Down, Home, End, Insert and Delete
++    // as one code each (Tiny-C's vi) sets SYSCOM^.EXPANSION[1] to 25605
++    // (PX_KEYS in Tiny-C's psys.h) while it runs. See MainFrm OnKeyDown.
++    bool WantsKeyCodes() const;
+ 
+     // Verify P-System support (see verify/). IsWaitingForKey(): the system
+     // is blocked in CONIN with nothing queued -- after a scripted run this
