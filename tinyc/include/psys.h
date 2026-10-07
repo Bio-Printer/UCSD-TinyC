@@ -93,7 +93,7 @@ int __pxsum(unsigned char *s);
 
 /* SYSCOM->expansion[1]: a program that wants the PC's Page Up, Page Down,
    Home, End, Insert and Delete keys as one code each sets it to PX_KEYS,
-   and back to 0 when it ends.  The emulator (with the keys patch, see
+   and back to 0 when it ends.  The emulator (from version 2.00, see
    emulator/KEYS.md) then sends KEY_PGUP ... instead of the L2 editor's
    command letters (>P <P> JB JE I D^U^C) it types for them otherwise. */
 #define PX_KEYS  25605

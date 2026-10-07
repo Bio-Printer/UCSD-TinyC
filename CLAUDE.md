@@ -1,5 +1,16 @@
 # Notes for Claude
 
+## Repositories
+
+When work changes what a repository holds, commit and push that repository
+too -- not only a patch or a copy somewhere else:
+* UCSD-TinyC (this one): `main` and the session's branch.
+* UCSD-Pascal-Volumes: `main` -- the changed BLK_format disks, the extracted
+  files (`tools/extract_all.py BLK_format .`), the manifest, and a README.txt
+  entry.
+* UCSD-Pascal_Windows_Emulator: `main` -- an engine or window change is a new
+  version (Version.h, UCSDPascal.rc, README).
+
 ## Testing
 
 Test what is likely to show a problem with the change at hand; do not run the
