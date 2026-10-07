@@ -20,6 +20,13 @@
                              (WHEREIS STDIO.H, WHEREIS *.C), or on one
      VOLUMES                 every disk on line: unit, volume, files,
                              blocks used of its size
+     COPY SRC DEST           SRC: [VOL: | #n:]PAT; DEST: a volume (VOL:,
+                             #n:: the same names) or, for one file, a
+                             name (on the prefix volume unless VOL:):
+                             the kind, date and length as they were
+     MOVE SRC DEST           the same, then SRC goes (on its own disk:
+                             only its name changes)
+     RENAME [VOL: | #n:]NAME NEW   one file's name, on its disk
      MEM                     the shell's free memory
      BYE                     back to the Command: prompt */
 #include <stdio.h>
@@ -487,6 +494,299 @@ void delete(char *arg)
     }
 }
 
+/* ---- COPY, MOVE, RENAME ---- */
+
+void __ptitle(char *name, char *title);     /* the C library's: a Pascal string */
+
+/* the OS's file routines on an untyped file (the bytes as they are) */
+int bopen(char *fib, char *path, int old)
+{
+    char title[32];
+    __ptitle(path, title);
+    __cxp0v(3, fib, 0, -1);             /* FINIT(fib, NIL, untyped) */
+    __cxp0v(5, fib, title, old, 0);     /* FOPEN */
+    return __cspi(34) == 0;
+}
+
+/* n blocks at block b: 1 if all of them */
+int bio(char *fib, char *buf, int n, int b, int doread)
+{
+    int got;
+    got = __cxp0i(28, fib, buf, 0, n, b, doread, 0, 0);    /* FBLOCKIO */
+    return __cspi(34) == 0 && got == n;
+}
+
+/* write unit u's directory back; the OS's copy of a directory (GDIRP)
+   is then forgotten, so that it reads this one before it changes it */
+int writedir(int u, int *dir)
+{
+    unsigned char *g;
+    __cspv(6, u, dir, 0, 2048, 2, 0);   /* UNITWRITE */
+    g = (unsigned char *)SYSCOM->gdirp;
+    if (g)
+        g[6] = 0;                       /* its volume name: no volume */
+    return __cspi(34) == 0;
+}
+
+/* the entry named name: its index, 0 if none */
+int findentry(int *dir, char *name)
+{
+    char got[16];
+    int i;
+    for (i = 1; i <= dir[8]; i++) {
+        dirname(dir, i, got);
+        if (strcmp(got, name) == 0)
+            return i;
+    }
+    return 0;
+}
+
+/* a file name for a new entry: upper case, 1 to 15 characters, none of
+   : # * = ? , or a blank */
+int newname(char *name)
+{
+    char *p;
+    if (*name == 0 || strlen(name) > 15)
+        return 0;
+    for (p = name; *p; p++) {
+        if (*p <= ' ' || strchr(":#*=?,", *p))
+            return 0;
+        *p = toupper(*p);
+    }
+    return 1;
+}
+
+/* entry i of unit su's directory (sdir) to unit du as dname: its blocks,
+   then its kind, date and last byte; 1 if done */
+int copyone(int su, int *sdir, int i, char *svol, int du, char *dvol, char *dname)
+{
+    int ddir[1024];
+    char sfib[80];
+    char dfib[80];
+    char buf[2048];
+    char sname[16];
+    char path[24];
+    int *e;
+    int n, b, nb, j, had;
+    e = sdir + 13 * i;
+    nb = e[1] - e[0];
+    dirname(sdir, i, sname);
+    sprintf(path, "#%d:%s", su, sname);
+    if (!bopen(sfib, path, 1)) {
+        printf("%s:%s: cannot open it\n", svol, sname);
+        return 0;
+    }
+    had = readdir(du, ddir) && findentry(ddir, dname);
+    sprintf(path, "#%d:%s", du, dname);
+    if (!bopen(dfib, path, 0)) {
+        __cxp0v(6, sfib, 0);
+        printf("%s:%s: cannot create it\n", dvol, dname);
+        return 0;
+    }
+    for (b = 0; b < nb; b = b + n) {
+        n = nb - b < 4 ? nb - b : 4;
+        if (!bio(sfib, buf, n, b, 1) || !bio(dfib, buf, n, b, 0)) {
+            __cxp0v(6, dfib, 2);        /* FCLOSE(PURGE) */
+            __cxp0v(6, sfib, 0);
+            printf("%s:%s: no room on %s (or a disk error)\n", svol, sname, dvol);
+            return 0;
+        }
+    }
+    __cxp0v(6, sfib, 0);
+    __cxp0v(6, dfib, 1);                /* FCLOSE(LOCK): an old one of that name goes */
+    if (__cspi(34) != 0 || !readdir(du, ddir) || !(j = findentry(ddir, dname))) {
+        printf("%s:%s: cannot create it\n", dvol, dname);
+        return 0;
+    }
+    /* the OS made it a data file of today, its last block full */
+    e = ddir + 13 * j;
+    e[2] = (e[2] & ~15) | (sdir[13 * i + 2] & 15);      /* DFKIND */
+    e[11] = sdir[13 * i + 11];          /* DLASTBYTE */
+    e[12] = sdir[13 * i + 12];          /* DACCESS */
+    writedir(du, ddir);
+    printf("%s:%s -> %s:%s%s\n", svol, sname, dvol, dname, had ? " (replaced)" : "");
+    return 1;
+}
+
+/* entry name on unit u becomes new; 1 if done */
+int renameone(int u, char *vol, char *name, char *new)
+{
+    int dir[1024];
+    unsigned char *t;
+    int i;
+    if (!readdir(u, dir) || !(i = findentry(dir, name))) {
+        printf("%s:%s: not there\n", vol, name);
+        return 0;
+    }
+    if (findentry(dir, new)) {
+        printf("%s:%s is there already\n", vol, new);
+        return 0;
+    }
+    t = (unsigned char *)dir + 26 * i + 6;      /* DTID */
+    t[0] = strlen(new);
+    memcpy(t + 1, new, t[0]);
+    if (!writedir(u, dir)) {
+        printf("%s: cannot write its directory\n", vol);
+        return 0;
+    }
+    printf("%s:%s -> %s:%s\n", vol, name, vol, new);
+    return 1;
+}
+
+/* COPY / MOVE SRC DEST (move: 1) */
+void copy(char *arg, int move)
+{
+    int sdir[1024];
+    int ddir[1024];
+    char svol[20];
+    char dvol[20];
+    char dname[20];
+    char sname[16];
+    char path[24];
+    char idx[78];
+    char *cmd;
+    char *pat;
+    char *dst;
+    char *c;
+    int su, du, i, n, k;
+    cmd = move ? "move" : "copy";
+    dst = arg;
+    while (*dst && *dst != ' ')
+        dst++;
+    if (*dst)
+        *dst++ = 0;
+    while (*dst == ' ')
+        dst++;
+    if (!*arg || !*dst) {
+        printf("%s: from where to where? (%s X.C #9:, %s X.C Y.C)\n", cmd, cmd, cmd);
+        return;
+    }
+    su = target(cmd, arg, sdir, svol, &pat);
+    if (!su)
+        return;
+    if (!*pat) {
+        printf("%s: which files on %s:? (* for all of them)\n", cmd, svol);
+        return;
+    }
+    n = 0;
+    for (i = 1; i <= sdir[8]; i++) {
+        dirname(sdir, i, sname);
+        if (match(pat, sname))
+            idx[n++] = i;
+    }
+    if (n == 0) {
+        printf("%s: no file %s on %s:\n", cmd, pat, svol);
+        return;
+    }
+    /* DEST: VOL: or #n(:) -- the same names; [VOL:]NAME -- one file */
+    c = strchr(dst, ':');
+    dname[0] = 0;
+    if (c) {
+        *c = 0;
+        strcpy(dvol, dst);
+        strncpy(dname, c + 1, 19);
+        dname[19] = 0;
+    } else if (dst[0] == '#')
+        strcpy(dvol, dst);
+    else {
+        prefix(dvol);
+        strncpy(dname, dst, 19);
+        dname[19] = 0;
+    }
+    if (dname[0] && (wild(dname) || !newname(dname))) {
+        printf("%s: %s is not a file name (no wildcards in the new name)\n", cmd, dname);
+        return;
+    }
+    if (dname[0] && n > 1) {
+        printf("%s: %d files: to a volume, not to one name (%s %s #9:)\n", cmd, n, cmd, pat);
+        return;
+    }
+    du = unitof(dvol, ddir);
+    if (du == 0 || !readdir(du, ddir)) {
+        printf("%s: no disk %s on line\n", cmd, dvol);
+        return;
+    }
+    dirname(ddir, 0, dvol);
+    for (k = 0; k < n; k++) {
+        dirname(sdir, idx[k], sname);
+        if (du == su) {
+            if (!dname[0] || strcmp(dname, sname) == 0) {
+                printf("%s: %s:%s is that file\n", cmd, svol, sname);
+                continue;
+            }
+            if (move) {                 /* on its own disk: a new name */
+                renameone(su, svol, sname, dname);
+                continue;
+            }
+        }
+        if (!copyone(su, sdir, idx[k], svol, du, dvol, dname[0] ? dname : sname))
+            return;
+        if (move) {
+            sprintf(path, "#%d:%s", su, sname);
+            if (remove(path) != 0)
+                printf("%s:%s: cannot delete it\n", svol, sname);
+        }
+    }
+}
+
+/* RENAME [VOL: | #n:]NAME NEW */
+void rename(char *arg)
+{
+    int dir[1024];
+    char vol[20];
+    char name[16];
+    char *pat;
+    char *new;
+    char *c;
+    int u, i, n, k;
+    new = arg;
+    while (*new && *new != ' ')
+        new++;
+    if (*new)
+        *new++ = 0;
+    while (*new == ' ')
+        new++;
+    if (!*arg || !*new) {
+        printf("rename: which file, and its new name? (RENAME X.C Y.C)\n");
+        return;
+    }
+    u = target("rename", arg, dir, vol, &pat);
+    if (!u)
+        return;
+    n = 0;
+    for (i = 1; i <= dir[8]; i++) {
+        dirname(dir, i, name);
+        if (*pat && match(pat, name)) {
+            n++;
+            k = i;
+        }
+    }
+    if (n == 0) {
+        printf("rename: no file %s on %s:\n", pat, vol);
+        return;
+    }
+    if (n > 1) {
+        printf("rename: %d files match: one at a time\n", n);
+        return;
+    }
+    c = strchr(new, ':');
+    if (c) {
+        *c = 0;
+        if (unitof(new, dir) != u) {
+            printf("rename: to another disk: MOVE\n");
+            return;
+        }
+        new = c + 1;
+    }
+    if (wild(new) || !newname(new)) {
+        printf("rename: %s is not a file name\n", new);
+        return;
+    }
+    readdir(u, dir);
+    dirname(dir, k, name);
+    renameone(u, vol, name, new);
+}
+
 /* run NAME (with its arguments ARGS); returns only when it cannot */
 void run(char *name, char *args)
 {
@@ -586,6 +886,18 @@ int main(void)
         }
         if (same(name, "volumes") || same(name, "vols")) {
             volumes();
+            continue;
+        }
+        if (same(name, "copy")) {
+            copy(args, 0);
+            continue;
+        }
+        if (same(name, "move")) {
+            copy(args, 1);
+            continue;
+        }
+        if (same(name, "rename") || same(name, "ren")) {
+            rename(args);
             continue;
         }
         if (same(name, "mem")) {

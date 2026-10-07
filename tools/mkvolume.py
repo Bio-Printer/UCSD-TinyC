@@ -164,6 +164,14 @@ and you choose with one key (no RETURN).  Its own commands:
         line (WHEREIS STDIO.H, WHEREIS *.C), or on the volume named.
   VOLUMES (or VOLS)              every disk on line: unit, volume,
         files, blocks used of its size; (boot) and (prefix) marked.
+  COPY SOURCE DEST    SOURCE: [VOL: or #5:]PATTERN; DEST: a volume (#9:,
+        TOOLSRC:) keeps the names, or for one file a new name ([VOL:]NAME;
+        no volume: the prefix).  The copy keeps the kind (a .C stays a
+        text file), the date and the length; a file of that name there
+        is replaced.
+  MOVE SOURCE DEST    as COPY, then the original is deleted; on its own
+        disk only its name changes.
+  RENAME (or REN) [VOL: or #5:]NAME NEWNAME   on the same disk.
   MEM   the shell's free memory;  BYE leaves it.
 MEMFREE shows a program's free memory: run it with X(ecute and from
 SHELL, it is the same (pexec leaves nothing of the shell in memory).

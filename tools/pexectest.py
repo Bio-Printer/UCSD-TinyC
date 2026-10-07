@@ -35,6 +35,15 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
     WHEREIS #10:*            a volume given: there only
     whereis nosuch.x         on no disk
     volumes                  every disk: unit, name, files, blocks used
+    copy hello.c #10:        to another disk: a text file (.C) stays text
+    copy *:system.c* #10:    its date and kind stay
+    COPY hello.c #10         again: the old copy replaced
+    copy hello.c hello2.c    a new name on the same disk
+    move hello2.c #11:       to another disk: copied, then deleted here
+    move #11:... #11:...     on its own disk: renamed
+    rename #10:hello.c bye.c, rename notes.text args.code (there already)
+    copy *.code #12:x.code   several files to one name: refused
+    type #10:bye.c, dir #10:, dir #11:, dir *.c   the result
     dir *:system.c*          the system volume's SYSTEM.COMPILER (dated)
     dir nosuch:, cd 13       no such disk
     bye                      back to the Command: prompt
@@ -143,6 +152,32 @@ TYPE "whereis nosuch.x\r"
 WAIT "shell> "
 TYPE "volumes\r"
 WAIT "shell> "
+TYPE "copy hello.c #10:\r"
+WAIT "shell> "
+TYPE "copy *:system.c* #10:\r"
+WAIT "shell> "
+TYPE "COPY hello.c #10\r"
+WAIT "shell> "
+TYPE "copy hello.c hello2.c\r"
+WAIT "shell> "
+TYPE "move hello2.c #11:\r"
+WAIT "shell> "
+TYPE "move #11:hello2.c #11:hello3.c\r"
+WAIT "shell> "
+TYPE "rename #10:hello.c bye.c\r"
+WAIT "shell> "
+TYPE "rename notes.text args.code\r"
+WAIT "shell> "
+TYPE "copy *.code #12:x.code\r"
+WAIT "shell> "
+TYPE "type #10:bye.c\r"
+WAIT "shell> "
+TYPE "dir #10:\r"
+WAIT "shell> "
+TYPE "dir #11:\r"
+WAIT "shell> "
+TYPE "dir *.c\r"
+WAIT "shell> "
 TYPE "dir *:system.c*\r"
 WAIT "shell> "
 TYPE "dir nosuch:\r"
@@ -178,7 +213,8 @@ def main():
     where = open(os.path.join(ps.dir, 'ARGS.CODE'), 'rb').read()
     ps.put('WHERE.CODE', where)
     ps.put('NOTES.TEXT', 'not a code file\nits second line\n')     # dir *.code leaves it out
-    for name, text in (('TMP1.TEXT', 'tmp one\n'), ('TMP2.TEXT', 'tmp two\n'), ('KEEP.TEXT', 'keep me\n')):
+    for name, text in (('TMP1.TEXT', 'tmp one\n'), ('TMP2.TEXT', 'tmp two\n'), ('KEEP.TEXT', 'keep me\n'),
+                       ('HELLO.C', 'int hello;\n/* copied */\n')):
         ps.put(name, text)
     disks = [ps.spare]
     for u in (10, 11, 12):
@@ -228,7 +264,7 @@ def main():
         ('dir #10: DISK10\'s one file', 'DISK10: (#10)' in tr and re.search(r'WHERE\.CODE +\d+ .*Code', tr) is not None
          and '1 of 1 files' in tr),
         ('cd #5: the prefix is WORK:', 'prefix is WORK: (#5)' in tr),
-        ('dir *.code: the 5 code files of WORK:, not the text files', '5 of 9 files' in part('dir *.code')
+        ('dir *.code: the 5 code files of WORK:, not the text files', '5 of 10 files' in part('dir *.code')
          and '.TEXT' not in part('dir *.code')
          and all(re.search(r'%s\.CODE +\d+ ' % n, tr) for n in ('SHELL', 'MEMFREE', 'ARGS', 'CRASH'))),
         ('type notes.text: its two lines', 'not a code file\nits second line\n' in part('type notes.text')),
@@ -247,9 +283,25 @@ def main():
         ('whereis nosuch.x: on no disk', 'whereis: no file nosuch.x on any disk on line' in tr),
         ('volumes: units, names, files, blocks; boot and prefix marked',
          re.search(r'#4 +BIGGY: +\d+ +\d+ of +\d+  \(boot\)', part('volumes')) is not None
-         and re.search(r'#5 +WORK: +6 +\d+ of +\d+  \(prefix\)', part('volumes')) is not None
+         and re.search(r'#5 +WORK: +7 +\d+ of +\d+  \(prefix\)', part('volumes')) is not None
          and re.search(r'#10 +DISK10: +1 +14 of +400\n', part('volumes')) is not None),
-        ('dir *.text: only NOTES.TEXT left', 'NOTES.TEXT' in part('dir *.text') and '1 of 6 files' in part('dir *.text')),
+        ('copy hello.c #10:', 'WORK:HELLO.C -> DISK10:HELLO.C\n' in part('copy hello.c #10:')),
+        ('copy *:system.c* #10:', 'BIGGY:SYSTEM.COMPILER -> DISK10:SYSTEM.COMPILER' in part('copy *:system.c* #10:')),
+        ('COPY hello.c #10: replaced', 'DISK10:HELLO.C (replaced)' in part('COPY hello.c #10')),
+        ('copy hello.c hello2.c', 'WORK:HELLO.C -> WORK:HELLO2.C' in part('copy hello.c hello2.c')),
+        ('move hello2.c #11:', 'WORK:HELLO2.C -> DISK11:HELLO2.C' in part('move hello2.c #11:')),
+        ('move on its own disk: renamed', 'DISK11:HELLO2.C -> DISK11:HELLO3.C' in part('move #11:hello2.c #11:hello3.c')),
+        ('rename #10:hello.c bye.c', 'DISK10:HELLO.C -> DISK10:BYE.C' in part('rename #10:hello.c bye.c')),
+        ('rename onto an existing name: refused', 'WORK:ARGS.CODE is there already' in part('rename notes.text args.code')),
+        ('several files to one name: refused', 'copy: 5 files: to a volume' in part('copy *.code #12:x.code')),
+        ('the copy reads the same', 'int hello;\n/* copied */\n' in part('type #10:bye.c')),
+        ('dir #10:: BYE.C text, SYSTEM.COMPILER code and dated', re.search(r'BYE\.C +\d+ +Text', part('dir #10:')) is not None
+         and re.search(r'SYSTEM\.COMPILER +69 +\d+-Feb-79  Code', part('dir #10:')) is not None and '3 of 3 files' in part('dir #10:')),
+        ('dir #11:: HELLO3.C (text), WHERE.CODE', re.search(r'HELLO3\.C +\d+ +Text', part('dir #11:')) is not None
+         and '2 of 2 files' in part('dir #11:')),
+        ('dir *.c: HELLO.C still on WORK:, HELLO2.C moved away', 'HELLO.C' in part('dir *.c') and 'HELLO2' not in part('dir *.c')
+         and '1 of 7 files' in part('dir *.c')),
+        ('dir *.text: only NOTES.TEXT left', 'NOTES.TEXT' in part('dir *.text') and '1 of 7 files' in part('dir *.text')),
         ('DIR disk11:w?ere.=: WHERE.CODE', 'DISK11: (#11)' in tr and tr.count('1 of 1 files') == 2),
         ('dir *:system.c*: SYSTEM.COMPILER, dated', re.search(r'SYSTEM\.COMPILER +\d+ +\d+-[A-Z][a-z][a-z]-\d\d  Code', tr) is not None
          and '1 of ' in tr.split('SYSTEM.COMPILER')[-1]),
