@@ -144,7 +144,14 @@ SHELL is a small shell: type a program's name (as for X(ecute), with
 arguments if you like, and it runs it, then comes back with its exit
 status.  A name without a volume (ARGS rather than TCEXTRA:ARGS) is
 looked for on every disk on line; when several have it, SHELL lists them
-and you choose with one key (no RETURN); MEM shows the shell's free memory, BYE leaves it.
+and you choose with one key (no RETURN).  Its own commands:
+  CD #5 (or CD 5, CD VOL, CD *)  the prefix becomes unit 5's volume, as
+        the Filer's Prefix: later commands find their files there; CD
+        alone shows it.
+  DIR [VOL: or #5:][PATTERN]     the files of the prefix volume (or VOL:,
+        or unit 5) whose names match: * or = any characters, ? any one
+        (DIR *.C, DIR #9:, DIR TOOLSRC:VI*.C); ESC stops a long list.
+  MEM   the shell's free memory;  BYE leaves it.
 MEMFREE shows a program's free memory: run it with X(ecute and from
 SHELL, it is the same (pexec leaves nothing of the shell in memory).
 ARGS does what its arguments say: from SHELL try ARGS, ARGS ADD 2 3,

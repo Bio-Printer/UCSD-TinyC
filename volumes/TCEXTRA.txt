@@ -2,7 +2,7 @@ TCEXTRA:  29 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
-  README.TEXT          6  what is on this volume
+  README.TEXT          8  what is on this volume
   DEMOS.TEXT           4  X TINY-C:CC, @DEMOS: rebuilds every program here
   BOXES.C              4  conio.h: clear the screen, draw boxes with gotoxy ...
   BOXES.CODE           4    (ready to run)
@@ -28,6 +28,6 @@ TCEXTRA:  29 files  (a UCSD directory holds 77)
   MEMFREE.CODE        11    (ready to run)
   MEMMARK.C            6  the least free memory of another program
   MEMMARK.CODE        12    (ready to run)
-  SHELL.C             12  a mini-shell: runs programs with pexec() and comes back
-  SHELL.CODE          18    (ready to run)
+  SHELL.C             22  a mini-shell: runs programs with pexec() and comes back
+  SHELL.CODE          23    (ready to run)
   FILES.TEXT           6  this list

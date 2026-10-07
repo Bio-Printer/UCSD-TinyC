@@ -2,7 +2,18 @@
    NAME ARG1 ARG2 ... passes the arguments to NAME's main(argc, argv).
    A NAME without a volume (no ':', no '*') is looked for on every disk
    on line: found once it runs, found on several disks (up to 8) you
-   choose with one key, no RETURN. */
+   choose with one key, no RETURN.
+   Its own commands (upper or lower case):
+     CD [#n | n | VOL | *]   the prefix: the volume of unit n (or VOL, or
+                             the system volume), as the Filer's Prefix: the
+                             files of later commands are there when they
+                             name no volume.  CD alone: what it is.
+     DIR [VOL: | #n:][PAT]   the files of the prefix volume, or of VOL or
+                             unit n, whose names match PAT: * or = any
+                             characters, ? any one (DIR #5, DIR *.C,
+                             DIR TOOLSRC:VI*.C, DIR #9:?.TEXT)
+     MEM                     the shell's free memory
+     BYE                     back to the Command: prompt */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +24,12 @@
 #define MAXFOUND 8
 
 int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
+
+/* the operating system's prefix (DKVID, the Filer's Prefix) and system
+   volume (SYVID): STRING[7] globals, OS words 59..62 and 63..66 (II.0
+   lays out "SYVID,DKVID: VID" last first) */
+#define OS_DKVID 59
+#define OS_SYVID 63
 char found[MAXFOUND][24];               /* "#10:ARGS", as pexec takes it */
 char vols[MAXFOUND][8];                 /* its volume's name */
 
@@ -60,6 +77,208 @@ int search(char *name)
         }
     }
     return n;
+}
+
+/* same, ignoring case */
+int same(char *a, char *b)
+{
+    while (*a && toupper(*a) == toupper(*b)) {
+        a++;
+        b++;
+    }
+    return *a == 0 && *b == 0;
+}
+
+/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
+int readdir(int u, int *dir)
+{
+    unsigned char *d;
+    d = (unsigned char *)dir;
+    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
+    if (__cspi(34) != 0)
+        return 0;
+    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
+}
+
+/* a directory's volume name, or entry i's file name */
+void dirname(int *dir, int i, char *s)
+{
+    unsigned char *e;
+    int n;
+    e = (unsigned char *)dir + 26 * i + 6;
+    for (n = 0; n < e[0] && n < 15; n++)
+        s[n] = e[1 + n];
+    s[n] = 0;
+}
+
+/* the unit of a volume: "#n", "n", "*" (the system volume) or a name
+   (":" after it or not); 0 when no disk on line has it */
+int unitof(char *vol, int *dir)
+{
+    char name[20];
+    char got[16];
+    int n, k, u;
+    strncpy(name, vol, 19);
+    name[19] = 0;
+    n = strlen(name);
+    if (n > 0 && name[n - 1] == ':')
+        name[--n] = 0;
+    if (n == 0)
+        return 0;
+    if (strcmp(name, "*") == 0)
+        return SYSCOM->sysunit;
+    if (name[0] == '#' || isdigit(name[0])) {
+        u = atoi(name[0] == '#' ? name + 1 : name);
+        return u > 0 && u <= 14 && readdir(u, dir) ? u : 0;
+    }
+    for (k = 0; k < 8; k++)
+        if (readdir(units[k], dir)) {
+            dirname(dir, 0, got);
+            if (same(got, name))
+                return units[k];
+        }
+    return 0;
+}
+
+/* the prefix volume's name (the OS's DKVID) */
+void prefix(char *s)
+{
+    unsigned char *v;
+    int n;
+    v = (unsigned char *)__osvaraddr(OS_DKVID);
+    for (n = 0; n < v[0] && n < 7; n++)
+        s[n] = v[1 + n];
+    s[n] = 0;
+}
+
+/* CD: the prefix becomes the volume in unit n (or VOL, or *) */
+void cd(char *arg)
+{
+    int dir[1024];
+    char vol[16];
+    unsigned char *v;
+    int u, n;
+    if (*arg) {
+        u = unitof(arg, dir);
+        if (u == 0 || !readdir(u, dir)) {
+            printf("cd: no disk %s on line\n", arg);
+            return;
+        }
+        dirname(dir, 0, vol);
+        v = (unsigned char *)__osvaraddr(OS_DKVID);
+        n = strlen(vol);
+        v[0] = n;
+        memcpy(v + 1, vol, n);
+    }
+    prefix(vol);
+    u = unitof(vol, dir);
+    if (u)
+        printf("prefix is %s: (#%d)\n", vol, u);
+    else
+        printf("prefix is %s: (not on line)\n", vol);
+}
+
+/* does name match the pattern: * or = any characters, ? any one */
+int match(char *pat, char *name)
+{
+    if (*pat == 0)
+        return *name == 0;
+    if (*pat == '*' || *pat == '=') {
+        for (;;) {
+            if (match(pat + 1, name))
+                return 1;
+            if (*name == 0)
+                return 0;
+            name++;
+        }
+    }
+    if (*name == 0)
+        return 0;
+    if (*pat != '?' && toupper(*pat) != toupper(*name))
+        return 0;
+    return match(pat + 1, name + 1);
+}
+
+char *months[] = { "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+char *kinds[] = { "", "Bad", "Code", "Text", "Info", "Data", "Graf", "Foto" };
+
+/* after a screenful, wait for a key: 0 if it was ESC (stop) */
+int more(int *lines)
+{
+    int c;
+    if (++*lines < SYSCOM->crtinfo.height - 1)
+        return 1;
+    *lines = 0;
+    printf("-- more (any key; ESC stops) --");
+    c = getch();
+    printf("\r                                \r");
+    return c != 27;
+}
+
+/* DIR [VOL: | #n:][PAT] */
+void dir(char *arg)
+{
+    int dir[1024];
+    char vol[20];
+    char name[16];
+    char *pat;
+    char *colon;
+    int *e;
+    int u, i, nf, shown, used, gap, largest, unused, last, lines, m;
+    colon = strchr(arg, ':');
+    if (colon) {
+        i = colon - arg;
+        if (i > 19)
+            i = 19;
+        memcpy(vol, arg, i);
+        vol[i] = 0;
+        pat = colon + 1;
+    } else if (arg[0] == '#') {
+        strcpy(vol, arg);               /* DIR #5: the unit, every file */
+        pat = "";
+    } else {
+        prefix(vol);
+        pat = arg;
+    }
+    u = unitof(vol, dir);
+    if (u == 0 || !readdir(u, dir)) {
+        printf("dir: no disk %s on line\n", *vol ? vol : ":");
+        return;
+    }
+    dirname(dir, 0, vol);
+    nf = dir[8];
+    printf("%s: (#%d)\n", vol, u);
+    lines = 1;
+    shown = used = unused = largest = 0;
+    last = dir[1];                      /* the directory's end: the first free block */
+    for (i = 1; i <= nf; i++) {
+        e = dir + 13 * i;
+        gap = e[0] - last;
+        unused += gap;
+        if (gap > largest)
+            largest = gap;
+        last = e[1];
+        used += e[1] - e[0];
+        dirname(dir, i, name);
+        if (*pat && !match(pat, name))
+            continue;
+        m = e[12] & 15;
+        if (m == 0)                     /* no date */
+            printf("%-15s %5d             %s\n", name, e[1] - e[0], kinds[e[2] & 7]);
+        else
+            printf("%-15s %5d  %2d-%s-%02d  %s\n", name, e[1] - e[0], (e[12] >> 4) & 31,
+                   months[m <= 12 ? m : 0], (e[12] >> 9) & 127, kinds[e[2] & 7]);
+        shown++;
+        if (!more(&lines))
+            return;
+    }
+    gap = dir[7] - last;                /* DEOVBLK: to the volume's end */
+    unused += gap;
+    if (gap > largest)
+        largest = gap;
+    printf("%d of %d files, %d blocks used, %d unused, %d in the largest area\n",
+           shown, nf, used, unused, largest);
 }
 
 /* run NAME (with its arguments ARGS); returns only when it cannot */
@@ -129,13 +348,6 @@ int main(void)
             name++;
         if (*name == 0)
             continue;
-        if (strcmp(name, "bye") == 0 || strcmp(name, "BYE") == 0)
-            return 0;
-        if (strcmp(name, "mem") == 0 || strcmp(name, "MEM") == 0) {
-            __cspv(32, &heaptop);       /* MARK: the top of the heap */
-            printf("shell: %u words free\n", (unsigned)(&here - heaptop) / 2);
-            continue;
-        }
         args = name;
         while (*args && *args != ' ')
             args++;
@@ -143,6 +355,21 @@ int main(void)
             *args++ = 0;
             while (*args == ' ')
                 args++;
+        }
+        if (same(name, "bye"))
+            return 0;
+        if (same(name, "cd")) {
+            cd(args);
+            continue;
+        }
+        if (same(name, "dir")) {
+            dir(args);
+            continue;
+        }
+        if (same(name, "mem")) {
+            __cspv(32, &heaptop);       /* MARK: the top of the heap */
+            printf("shell: %u words free\n", (unsigned)(&here - heaptop) / 2);
+            continue;
         }
         run(name, args);
     }

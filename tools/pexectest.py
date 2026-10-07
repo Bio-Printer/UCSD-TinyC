@@ -20,8 +20,14 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
                              #10, #11, #12): the shell lists them, the key
                              4 (no RETURN) runs #11's (argv[0] says so),
                              another key runs nothing
+    cd, dir #10              the prefix (the boot volume); unit 10's files
+    cd #5, dir *.code        the prefix becomes WORK:; its code files
+    DIR disk11:w?ere.=       a volume and a pattern (? and = wildcards)
+    dir *:system.c*          the system volume's SYSTEM.COMPILER (dated)
+    dir nosuch:, cd 13       no such disk
     bye                      back to the Command: prompt
-  X ARGS                     started by the OS afterwards: no arguments
+  X ARGS                     no volume: found on the prefix (WORK:, set by
+                             cd #5), started by the OS: no arguments
   ?, $                       the Command: prompt's $ starts the shell
                              (*SYSTEM.SHELL), MEMFREE from it, bye
 
@@ -87,11 +93,27 @@ TYPE "WHERE ECHO\r"
 WAIT "Which one"
 TYPE "x"
 WAIT "shell> "
+TYPE "cd\r"
+WAIT "shell> "
+TYPE "dir #10\r"
+WAIT "shell> "
+TYPE "cd #5\r"
+WAIT "shell> "
+TYPE "dir *.code\r"
+WAIT "shell> "
+TYPE "DIR disk11:w?ere.=\r"
+WAIT "shell> "
+TYPE "dir *:system.c*\r"
+WAIT "shell> "
+TYPE "dir nosuch:\r"
+WAIT "shell> "
+TYPE "cd 13\r"
+WAIT "shell> "
 TYPE "bye\r"
 WAIT "Command:"
 TYPE "X"
 WAIT "Execute what file?"
-TYPE "#5:ARGS\r"
+TYPE "ARGS\r"
 WAIT "Command:"
 TYPE "?"
 WAIT "$(hell"
@@ -115,6 +137,7 @@ def main():
     # WHERE (ARGS under another name) on five disks: #5, #9 and three more
     where = open(os.path.join(ps.dir, 'ARGS.CODE'), 'rb').read()
     ps.put('WHERE.CODE', where)
+    ps.put('NOTES.TEXT', 'not a code file\n')     # dir *.code leaves it out
     disks = [ps.spare]
     for u in (10, 11, 12):
         path = os.path.join(ps.dir, 'DISK%d.BLK' % u)
@@ -130,7 +153,7 @@ def main():
     free = [int(x) for x in re.findall(r'memfree: (\d+) words free', tr)]
     shell = re.findall(r'shell: (\d+) words free', tr)
     status = re.findall(r'\[exit status (-?\d+)\]', tr)
-    print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init|args:|too long', l)))
+    print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init|args:|too long|prefix|files|\(#\d+\)$|  Code|  Text|no disk', l)))
     checks = [
         ('the script completed', ok),
         ('memfree ran three times', len(free) == 3),
@@ -150,6 +173,16 @@ def main():
         ('81 characters: too long', 'command line too long' in tr),
         ('the ? prompt offers $(hell', 'H(alt, $(hell' in tr),
         ('NOSUCH: no such program', 'NOSUCH: no such program' in tr),
+        ('cd: the prefix is the boot volume, unit 4', re.search(r'prefix is \w+: \(#4\)', tr) is not None),
+        ('dir #10: DISK10\'s one file', 'DISK10: (#10)' in tr and re.search(r'WHERE\.CODE +\d+ .*Code', tr) is not None
+         and '1 of 1 files' in tr),
+        ('cd #5: the prefix is WORK:', 'prefix is WORK: (#5)' in tr),
+        ('dir *.code: the 5 code files of WORK:, not NOTES.TEXT', '5 of 6 files' in tr and 'NOTES.TEXT' not in tr
+         and all(re.search(r'%s\.CODE +\d+ ' % n, tr) for n in ('SHELL', 'MEMFREE', 'ARGS', 'CRASH'))),
+        ('DIR disk11:w?ere.=: WHERE.CODE', 'DISK11: (#11)' in tr and tr.count('1 of 1 files') == 2),
+        ('dir *:system.c*: SYSTEM.COMPILER, dated', re.search(r'SYSTEM\.COMPILER +\d+ +\d+-[A-Z][a-z][a-z]-\d\d  Code', tr) is not None
+         and '1 of ' in tr.split('SYSTEM.COMPILER')[-1]),
+        ('dir nosuch:, cd 13: no such disk', 'dir: no disk nosuch on line' in tr and 'cd: no disk 13 on line' in tr),
     ]
     bad = [name for name, good in checks if not good]
     for name, good in checks:
