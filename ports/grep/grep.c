@@ -7,15 +7,16 @@
    it names a volume (VOL: or #n:).  Only text files are searched.
 
    PATTERN is a regular expression:
-     c        the character c        .      any character
+     c        the character c        .      any one character
+     *        any characters (none or more, as in file names)
      [abc]    one of them            [^abc] any other ([a-z]: a range)
-     x*       x 0 or more times      x+     1 or more     x?  0 or 1
+     x+       x 1 or more times      x?     x 0 or 1 time
      ^        the line's start       $      the line's end
      \c       c itself (\. \* \[ ...) \s    a blank or a tab (the shell
                                              splits its words at blanks)
 
    Run it from the shell: GREP printf *.C, GREP -i ^int #9:*.H,
-   GREP fopen\s*\( TOOLSRC:VI*.C */
+   GREP vi*pageup TOOLSRC:=.C, GREP fopen\s?\( TOOLSRC:VI*.C */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,9 +110,9 @@ int matchhere(char *re, char *s)
             return 1;
         if (*re == '$' && re[1] == 0)
             return *s == 0;
+        if (*re == '*')                 /* any characters, as in file names */
+            return matchrep(".", 1, 0, re + 1, s);
         matchone(re, 'a', &n);          /* the element's length */
-        if (re[n] == '*')
-            return matchrep(re, n, 0, re + n + 1, s);
         if (re[n] == '+')
             return matchrep(re, n, 1, re + n + 1, s);
         if (re[n] == '?')
@@ -308,7 +309,8 @@ int main(int argc, char **argv)
     if (argc - a < 2) {
         printf("use: GREP [-i] PATTERN [VOL: | #n:]FILES ...   (from the shell)\n");
         printf("  case is ignored unless -i; FILES: * = ? wildcards, every disk\n");
-        printf("  unless a volume is named; PATTERN: . [] [^] * + ? ^ $ \\c \\s\n");
+        printf("  unless a volume is named; PATTERN: * any characters, . any one,\n");
+        printf("  [] [^] a class, x+ x?, ^ $ start/end, \\c c itself, \\s a blank\n");
         return 2;
     }
     for (k = a + 1; k < argc; k++)      /* argv[a]: the pattern */

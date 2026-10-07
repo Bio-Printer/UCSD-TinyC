@@ -8,7 +8,8 @@ on the P-System:
   grep "  indented"      an indented line (blanks kept as DLE in the file)
                          comes out with its blanks
   grep marker150 big.text   a file of several 1 KB pages: line 150
-  grep [0-9]+$ disk1?:*  a class, +, $, a volume named with a wildcard
+  grep [0-9]+$ disk1?:*.h   a class, +, $, a volume named with a wildcard
+  grep vi*pageup *.c     * is any characters: VI_K_PAGEUP, not VI_K_UP
   grep shell *.code      code files are not searched: no text file
   grep x nosuch.z        no such file
   grep                   the usage
@@ -27,10 +28,10 @@ FILES = {
     5: {'A.C': 'int main(void)\n{\n    printf("Hello");\n    return 0;\n}\n',
         'BIG.TEXT': ''.join('line %d%s\n' % (i, ' marker%d' % i if i == 150 else '') for i in range(1, 201))},
     9: {'B.C': 'hello world\nHELLO again\n        indented hello\n'},
-    10: {'C.H': '#define N 42\n#define M x\n'},
+    10: {'C.H': '#define N 42\n#define M x\n', 'D.C': '    case VI_K_PAGEUP:\n    case VI_K_UP:\n'},
 }
 CMDS = ['grep hello *.c', 'grep -i hello *.c', 'grep ^int #5:*.c', 'grep marker150 big.text',
-        'grep [0-9]+$ disk1?:*', 'grep shell *.code', 'grep x nosuch.z', 'grep']
+        'grep [0-9]+$ disk1?:*.h', 'grep vi*pageup *.c', 'grep shell *.code', 'grep x nosuch.z', 'grep']
 
 
 def main():
@@ -68,17 +69,19 @@ def main():
         ('the script completed', ok),
         ('grep hello *.c: every disk, case ignored',
          'WORK:A.C:3:     printf("Hello");\n' in part(CMDS[0]) and 'SPARE:B.C:1: hello world\n' in part(CMDS[0])
-         and 'SPARE:B.C:2: HELLO again\n' in part(CMDS[0]) and '4 lines in 2 of 2 files' in part(CMDS[0])),
+         and 'SPARE:B.C:2: HELLO again\n' in part(CMDS[0]) and '4 lines in 2 of 3 files' in part(CMDS[0])),
         ('grep -i hello *.c: case counts', 'B.C:2:' not in part(CMDS[1]) and 'A.C' not in part(CMDS[1])
-         and '2 lines in 1 of 2 files' in part(CMDS[1])),
+         and '2 lines in 1 of 3 files' in part(CMDS[1])),
         ('an indented line keeps its blanks', 'SPARE:B.C:3:         indented hello\n' in part(CMDS[0])),
         ('grep ^int #5:*.c', 'WORK:A.C:1: int main(void)\n' in part(CMDS[2]) and '1 line in 1 of 1 file' in part(CMDS[2])),
         ('grep marker150 big.text: line 150 of a file of several pages',
          'WORK:BIG.TEXT:150: line 150 marker150\n' in part(CMDS[3]) and '1 line in 1 of 1 file' in part(CMDS[3])),
-        ('grep [0-9]+$ disk1?:*', 'DISK10:C.H:1: #define N 42\n' in part(CMDS[4]) and 'C.H:2' not in part(CMDS[4])),
-        ('grep shell *.code: code files are not searched', 'grep: no text file *.code on any disk on line' in part(CMDS[5])),
-        ('grep x nosuch.z', 'grep: no text file nosuch.z on any disk on line' in part(CMDS[6])),
-        ('grep alone: the usage', 'use: GREP [-i] PATTERN' in part(CMDS[7])),
+        ('grep [0-9]+$ disk1?:*.h', 'DISK10:C.H:1: #define N 42\n' in part(CMDS[4]) and 'C.H:2' not in part(CMDS[4])),
+        ('grep vi*pageup *.c: * is any characters', 'DISK10:D.C:1:     case VI_K_PAGEUP:\n' in part(CMDS[5])
+         and 'D.C:2' not in part(CMDS[5]) and '1 line in 1 of 3 files' in part(CMDS[5])),
+        ('grep shell *.code: code files are not searched', 'grep: no text file *.code on any disk on line' in part(CMDS[6])),
+        ('grep x nosuch.z', 'grep: no text file nosuch.z on any disk on line' in part(CMDS[7])),
+        ('grep alone: the usage', 'use: GREP [-i] PATTERN' in part(CMDS[8])),
     ]
     bad = [n for n, good in checks if not good]
     for n, good in checks:

@@ -239,10 +239,11 @@ GREP    GREP [-i] PATTERN [VOL: or #5:]FILES ...  from the shell: the
         lines of text files that match, as VOL:NAME:LINE: text.  Case is
         ignored unless -i (the other way round from Unix).  FILES takes
         * = ? wildcards and is looked for on every disk unless a volume
-        is named.  PATTERN: . any character, [abc] [^abc] [a-z] a class,
-        * + ? repeat what is before, ^ $ the line's start and end, \c c
-        itself, \s a blank (the shell splits words at blanks).
-        GREP printf *.C, GREP -i ^int #9:*.H
+        is named.  PATTERN: * any characters (as in file names), . any
+        one, [abc] [^abc] [a-z] a class, x+ x? x once or more / or not,
+        ^ $ the line's start and end, \c c itself (\*: a star), \s a
+        blank (the shell splits words at blanks).
+        GREP printf *.C, GREP -i ^int #9:*.H, GREP vi*pageup *.C
 
 FILES.TEXT lists every file on this volume.
 """
