@@ -132,18 +132,22 @@ def build_on_psystem(harvard):
                         os.path.join(work, 'TOOLSRC.BLK'), sp, mode, out, '', '1800'], capture_output=True, text=True,
                        env=dict(os.environ, VERIFY_RECLAIM='1', VERIFY_HARVARD='1') if harvard else os.environ)
     tr = open(os.path.join(out, 'transcript.txt'), encoding='latin1').read()
-    built = None
+    from mkvolume import TOOLS
+    names = [name + '.CODE' for name, mods, hdrs, desc in TOOLS]
+    built = {}
     for f in os.listdir(out):
         if f.endswith('.BLK'):
             v = ucsdvol.Volume(os.path.join(out, f))
-            if v.volname == 'TOOLSRC' and v.find('VI.CODE'):
-                built = v.read('VI.CODE')[0]
-    shipped = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK')).read('VI.CODE')[0]
-    ok = 'VERIFY SCRIPT COMPLETED' in r.stdout and (not harvard or 'harvard layout: yes' in r.stdout) and built == shipped
-    print('@TOOLS on TOOLSRC: (%s): %s' % (layout, 'VI.CODE identical to TOOLS:VI.CODE' if ok else 'FAILED'))
+            if v.volname == 'TOOLSRC':
+                built = {n: v.read(n)[0] for n in names if v.find(n)}
+    shipped = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK'))
+    same = [n for n in names if built.get(n) == shipped.read(n)[0]]
+    ok = 'VERIFY SCRIPT COMPLETED' in r.stdout and (not harvard or 'harvard layout: yes' in r.stdout) and len(same) == len(names)
+    print('@TOOLS on TOOLSRC: (%s): %s' % (layout, ', '.join('%s identical to TOOLS:%s' % (n, n) for n in same) if ok
+                                          else 'FAILED (identical: %s)' % (', '.join(same) or 'none')))
     if not ok:
         print(tr[tr.find('Compile what'):][-800:])
-    print('vi build test: %s' % ('PASSED' if ok else 'FAILED'))
+    print('tools build test: %s' % ('PASSED' if ok else 'FAILED'))
     return 0 if ok else 1
 
 

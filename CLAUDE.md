@@ -23,6 +23,7 @@ whole suite unless asked (it takes a long time).
 | linker, volume layout, memory | add `tools/voltest.py` and `tools/vitest.py --build` |
 | pexec / shell | `tools/pexectest.py` |
 | where CC finds files (`findfile`, pp.c / main.c) | `tools/findtest.py`, `tools/selfcompile.py` |
+| grep (`ports/grep/`) | `tools/greptest.py` |
 
 Modes: `PSYS_MODE=native` or `PSYS_MODE=z80`. Say in the report what was run and
 what was not.

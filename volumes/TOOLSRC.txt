@@ -1,4 +1,4 @@
-TOOLSRC:  12 files  (a UCSD directory holds 77)
+TOOLSRC:  13 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -13,4 +13,5 @@ TOOLSRC:  12 files  (a UCSD directory holds 77)
   VIUCSD.C            20  vi: vi on UCSD Pascal II.0 with Tiny-C: the routines that
   VI.H                42  vi: vi's modules share this: configuration, globals
   VIPAGE.H            10  vi: vi's window into big files (VI.SWAP)
+  GREP.C              18  grep: GREP [-i] PATTERN [VOL: | #n:]FILES ...: the lines of ...
   FILES.TEXT           4  this list

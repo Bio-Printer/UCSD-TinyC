@@ -95,7 +95,9 @@ int __pxsum(unsigned char *s);
    Home, End, Insert and Delete keys as one code each sets it to PX_KEYS,
    and back to 0 when it ends.  The emulator (from version 2.00, see
    emulator/KEYS.md) then sends KEY_PGUP ... instead of the L2 editor's
-   command letters (>P <P> JB JE I D^U^C) it types for them otherwise. */
+   command letters (>P <P> JB JE I D^U^C) it types for them otherwise.
+   (pexec's own use of expansion[1..4] is over before the program it
+   starts runs: the OS reads [1] and [2] to load it, [3] and [4] after.) */
 #define PX_KEYS  25605
 #define KEY_HOME   0x84
 #define KEY_END    0x85

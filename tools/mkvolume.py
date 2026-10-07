@@ -212,6 +212,7 @@ VI_MODULES = ['ports/vi/%s.c' % m for m in
               ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'viucsd')]
 TOOLS = [
     ('VI', VI_MODULES, ['ports/vi/vi.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
+    ('GREP', ['ports/grep/grep.c'], [], 'grep: GREP [-i] PATTERN FILES from the shell'),
 ]
 
 README_TOOLS = """TOOLS                                               volume TOOLS:
@@ -234,6 +235,15 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         command on more lines than fit in the window at once (500dd,
         :1,$s/a/b/ on a big file) is refused with a message.
 
+GREP    GREP [-i] PATTERN [VOL: or #5:]FILES ...  from the shell: the
+        lines of text files that match, as VOL:NAME:LINE: text.  Case is
+        ignored unless -i (the other way round from Unix).  FILES takes
+        * = ? wildcards and is looked for on every disk unless a volume
+        is named.  PATTERN: . any character, [abc] [^abc] [a-z] a class,
+        * + ? repeat what is before, ^ $ the line's start and end, \c c
+        itself, \s a blank (the shell splits words at blanks).
+        GREP printf *.C, GREP -i ^int #9:*.H
+
 FILES.TEXT lists every file on this volume.
 """
 
@@ -252,6 +262,8 @@ VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
         VIPAGE.C and VIPAGE.H (the window into big files), VIUCSD.C (the
         P-System: keys, screen, files).  @TOOLS compiles each (/Z /C) and
         links them (/L VI=...), in P-Code or Z80 mode.
+
+GREP.C  grep (a regular expression, wildcards, every disk).
 
 FILES.TEXT lists every file on this volume.
 """
