@@ -28,7 +28,7 @@ BIGGY:  36 files  (the boot volume, with the Tiny-C shell)
   NEW.PASCAL           2
   MYGOTOXY.TEXT        4
   132X45.PASCAL       34
-  SYSTEM.SHELL        35
+  SYSTEM.SHELL        38
   SYSORIG.FILER       28
   SYSTEM.FILER        30
   SYSL2.EDITOR        59

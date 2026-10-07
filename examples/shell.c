@@ -28,7 +28,13 @@
                              only its name changes)
      RENAME [VOL: | #n:]NAME NEW   one file's name, on its disk
      MEM                     the shell's free memory
-     BYE                     back to the Command: prompt */
+     BYE                     back to the Command: prompt
+   The command line: Up and Down bring back the last 10 commands (kept in
+   #4:SYSTEM.CMDS, so they outlast the shell); Left, Right, Home and End
+   move in the line; Insert switches between inserting and typing over;
+   Delete deletes the character at the cursor, Backspace the one before
+   it; ESC clears the line.  (Home, End, Insert and Delete need emulator
+   2.00 or later: see psys.h PX_KEYS.) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +51,154 @@ int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
    lays out "SYVID,DKVID: VID" last first) */
 #define OS_DKVID 59
 #define OS_SYVID 63
+
+/* ---- the command line: history and editing ---- */
+
+#define NHIST 10
+#define LINEMAX 120
+#define HISTFILE "#4:SYSTEM.CMDS"
+char hist[NHIST][LINEMAX + 1];          /* the oldest first */
+int nhist;
+
+/* the commands kept in #4:SYSTEM.CMDS: lines, then a NUL */
+void loadhist(void)
+{
+    FILE *f;
+    int c, n;
+    nhist = 0;
+    f = fopen(HISTFILE, "rb");
+    if (!f)
+        return;
+    n = 0;
+    while ((c = fgetc(f)) != EOF && c != 0 && nhist < NHIST) {
+        if (c == '\n') {
+            hist[nhist][n] = 0;
+            if (n > 0)
+                nhist++;
+            n = 0;
+        } else if (n < LINEMAX)
+            hist[nhist][n++] = c;
+    }
+    fclose(f);
+}
+
+/* a command entered: the newest in the history, which goes to the file */
+void savehist(char *cmd)
+{
+    FILE *f;
+    int i;
+    if (!*cmd || (nhist > 0 && strcmp(hist[nhist - 1], cmd) == 0))
+        return;
+    if (nhist == NHIST) {
+        for (i = 1; i < NHIST; i++)
+            strcpy(hist[i - 1], hist[i]);
+        nhist--;
+    }
+    strcpy(hist[nhist++], cmd);
+    f = fopen(HISTFILE, "wb");
+    if (!f)
+        return;
+    for (i = 0; i < nhist; i++) {
+        fputs(hist[i], f);
+        fputc('\n', f);
+    }
+    fputc(0, f);
+    fclose(f);
+}
+
+void out(int c)
+{
+    fputc(c, stdout);
+}
+
+/* the cursor n places left */
+void back(int n)
+{
+    int bs;
+    bs = SYSCOM->crtctrl.backspace ? SYSCOM->crtctrl.backspace : 8;
+    while (n-- > 0)
+        out(bs);
+}
+
+/* the cursor is at from: buf[from..len) again, blanks over what was
+   shown beyond it, then the cursor to to; returns what is shown now */
+int redraw(char *buf, int len, int from, int to, int shown)
+{
+    int i;
+    for (i = from; i < len; i++)
+        out(buf[i]);
+    for (; i < shown; i++)
+        out(' ');
+    back(i - to);
+    return len;
+}
+
+/* a command line, edited: into buf (LINEMAX characters at most) */
+void editline(char *buf)
+{
+    char draft[LINEMAX + 1];
+    struct crtinforec *ci;
+    int len, pos, shown, ins, h, c;
+    ci = &SYSCOM->crtinfo;
+    len = pos = shown = 0;
+    ins = 1;
+    h = nhist;
+    buf[0] = 0;
+    draft[0] = 0;
+    SYSCOM->expansion[1] = PX_KEYS;     /* Home ... Delete: one code each */
+    for (;;) {
+        fflush(stdout);
+        c = getch();
+        if (c == '\r' || c == '\n')
+            break;
+        if ((c == ci->up && h > 0) || (c == ci->down && h < nhist)) {
+            if (h == nhist)
+                strcpy(draft, buf);     /* what was being typed */
+            h = c == ci->up ? h - 1 : h + 1;
+            back(pos);
+            strcpy(buf, h == nhist ? draft : hist[h]);
+            len = pos = strlen(buf);
+            shown = redraw(buf, len, 0, len, shown);
+        } else if (c == ci->left || c == KEY_HOME) {
+            c = c == KEY_HOME ? pos : (pos > 0);
+            back(c);
+            pos = pos - c;
+        } else if (c == ci->right || c == KEY_END) {
+            c = c == KEY_END ? len : (pos < len ? pos + 1 : pos);
+            for (; pos < c; pos++)
+                out(buf[pos]);
+        } else if (c == KEY_INSERT)
+            ins = !ins;
+        else if ((c == KEY_DELETE && pos < len)
+                 || ((c == 8 || c == 127 || c == ci->chardel) && pos > 0)) {
+            if (c != KEY_DELETE) {
+                pos--;
+                back(1);
+            }
+            memmove(buf + pos, buf + pos + 1, len - pos);
+            len--;
+            shown = redraw(buf, len, pos, pos, shown);
+        } else if (c == 27 || c == ci->linedel) {
+            back(pos);
+            len = pos = 0;
+            buf[0] = 0;
+            shown = redraw(buf, 0, 0, 0, shown);
+        } else if (c >= ' ' && c < 127) {
+            if (ins || pos == len) {
+                if (len >= LINEMAX)
+                    continue;
+                memmove(buf + pos + 1, buf + pos, len - pos + 1);
+                len++;
+            }
+            buf[pos] = c;
+            shown = redraw(buf, len, pos, pos + 1, shown);
+            pos++;
+        }
+    }
+    SYSCOM->expansion[1] = 0;           /* the keys as other programs want them */
+    out('\n');
+    fflush(stdout);
+}
 char found[MAXFOUND][24];               /* "#10:ARGS", as pexec takes it */
 char vols[MAXFOUND][8];                 /* its volume's name */
 
@@ -842,18 +996,20 @@ int main(void)
     int n;
     if (pexec_returned())
         printf("[exit status %d]\n", pexec_status());
+    loadhist();
     for (;;) {
         printf("shell> ");
-        if (!fgets(line, sizeof line, stdin))
-            return 0;
+        editline(line);
         n = strlen(line);
-        while (n > 0 && (line[n - 1] == '\n' || line[n - 1] == ' '))
+        while (n > 0 && line[n - 1] == ' ')
             line[--n] = 0;
         name = line;
         while (*name == ' ')
             name++;
         if (*name == 0)
             continue;
+        if (!same(name, "bye"))
+            savehist(name);             /* before it runs: pexec ends the shell */
         args = name;
         while (*args && *args != ' ')
             args++;

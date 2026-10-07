@@ -172,6 +172,12 @@ and you choose with one key (no RETURN).  Its own commands:
   MOVE SOURCE DEST    as COPY, then the original is deleted; on its own
         disk only its name changes.
   RENAME (or REN) [VOL: or #5:]NAME NEWNAME   on the same disk.
+THE COMMAND LINE: Up and Down bring back the last 10 commands (kept in
+#4:SYSTEM.CMDS, so they are there the next time too); Left, Right, Home
+and End move in the line; Insert switches between inserting and typing
+over; Delete deletes the character at the cursor, Backspace the one
+before it; ESC clears the line.  Home, End, Insert and Delete need
+emulator 2.00 or later.
   MEM   the shell's free memory;  BYE leaves it.
 MEMFREE shows a program's free memory: run it with X(ecute and from
 SHELL, it is the same (pexec leaves nothing of the shell in memory).

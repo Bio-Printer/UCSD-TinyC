@@ -36,7 +36,7 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
     whereis nosuch.x         on no disk
     volumes                  every disk: unit, name, files, blocks used
     copy hello.c #10:        to another disk: a text file (.C) stays text
-    copy *:system.c* #10:    its date and kind stay
+    copy *:system.co* #10:    its date and kind stay
     COPY hello.c #10         again: the old copy replaced
     copy hello.c hello2.c    a new name on the same disk
     move hello2.c #11:       to another disk: copied, then deleted here
@@ -44,13 +44,22 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
     rename #10:hello.c bye.c, rename notes.text args.code (there already)
     copy *.code #12:x.code   several files to one name: refused
     type #10:bye.c, dir #10:, dir #11:, dir *.c   the result
-    dir *:system.c*          the system volume's SYSTEM.COMPILER (dated)
+    dir *:system.co*          the system volume's SYSTEM.COMPILER (dated)
     dir nosuch:, cd 13       no such disk
     bye                      back to the Command: prompt
   X ARGS                     no volume: found on the prefix (WORK:, set by
                              cd #5), started by the OS: no arguments
   ?, $                       the Command: prompt's $ starts the shell
-                             (*SYSTEM.SHELL), MEMFREE from it, bye
+                             (*SYSTEM.SHELL), MEMFREE from it, then the
+                             command line (keys as emulator 2.00 sends them):
+    Up Up Enter              #4:SYSTEM.CMDS outlasts the shell: cd 13 again
+    ...ECHO abc Left Left Delete X   edited in the middle: aXc
+    Up Enter                 the history after pexec restarted the shell
+    XRGS ECHO ow Home Insert A End " z"   type over, then at the end
+    junk ESC ...ECHO esc     ESC clears the line
+    Up Up Down Enter         back and forth: ECHO esc again
+    ...ECHO bsx Backspace    bs
+    bye
 
 Uses the mode of PSYS_MODE (native or z80) like the other tools.
 """
@@ -154,7 +163,7 @@ TYPE "volumes\r"
 WAIT "shell> "
 TYPE "copy hello.c #10:\r"
 WAIT "shell> "
-TYPE "copy *:system.c* #10:\r"
+TYPE "copy *:system.co* #10:\r"
 WAIT "shell> "
 TYPE "COPY hello.c #10\r"
 WAIT "shell> "
@@ -178,7 +187,7 @@ TYPE "dir #11:\r"
 WAIT "shell> "
 TYPE "dir *.c\r"
 WAIT "shell> "
-TYPE "dir *:system.c*\r"
+TYPE "dir *:system.co*\r"
 WAIT "shell> "
 TYPE "dir nosuch:\r"
 WAIT "shell> "
@@ -195,6 +204,20 @@ WAIT "$(hell"
 TYPE "$"
 WAIT "shell> "
 TYPE "#5:MEMFREE\r"
+WAIT "shell> "
+TYPE "\x14\x14\r"
+WAIT "shell> "
+TYPE "#5:ARGS ECHO abc\x11\x11\x87X\r"
+WAIT "shell> "
+TYPE "\x14\r"
+WAIT "shell> "
+TYPE "XRGS ECHO ow\x84\x86A\x85 z\r"
+WAIT "shell> "
+TYPE "junk\x1b#5:ARGS ECHO esc\r"
+WAIT "shell> "
+TYPE "\x14\x14\x12\r"
+WAIT "shell> "
+TYPE "#5:ARGS ECHO bsx\x08\r"
 WAIT "shell> "
 TYPE "bye\r"
 WAIT "Command:"
@@ -247,7 +270,13 @@ def main():
         ('same free memory from X(ecute and from the shell', len(free) == 3 and len(set(free)) == 1),
         ('the shell has less (its own code)', len(free) == 3 and len(shell) == 1 and int(shell[0]) < free[0]),
         ('exit statuses 7, -2 (execution error), 0 (the Filer), 1 5 42 0 4 2 (ARGS), 5 2 (searched), 7 (from $)',
-         status == ['7', '-2', '0', '1', '5', '42', '0', '4', '2', '5', '2', '7']),
+         status[:12] == ['7', '-2', '0', '1', '5', '42', '0', '4', '2', '5', '2', '7']),
+        ('Up Up Enter in a new shell: cd 13 from #4:SYSTEM.CMDS', tr.count('cd: no disk 13 on line') == 2),
+        ('Left Left Delete X: aXc, and Up Enter runs it again', tr.count('argv[2] = "aXc"') == 2),
+        ('Home Insert (type over) End: ARGS ECHO ow z', 'argv[2] = "ow"' in tr and 'argv[3] = "z"' in tr),
+        ('ESC cleared the line (no junk: no such program); Up Up Down: esc again', tr.count('argv[2] = "esc"') == 2
+         and 'no such program' not in tr[tr.rfind('$(hell'):]),
+        ('Backspace: bs', 'argv[2] = "bs"' in tr),
         ('WHERE on five disks: all listed', all(('%s:WHERE  (#%d:WHERE)' % (v, u)) in tr for v, u in
          (('WORK', 5), ('SPARE', 9), ('DISK10', 10), ('DISK11', 11), ('DISK12', 12)))),
         ('key 4, no RETURN: #11 ran', 'argv[0] = "#11:WHERE"' in tr and tr.count('args: argc 2') == 1),
@@ -286,7 +315,7 @@ def main():
          and re.search(r'#5 +WORK: +7 +\d+ of +\d+  \(prefix\)', part('volumes')) is not None
          and re.search(r'#10 +DISK10: +1 +14 of +400\n', part('volumes')) is not None),
         ('copy hello.c #10:', 'WORK:HELLO.C -> DISK10:HELLO.C\n' in part('copy hello.c #10:')),
-        ('copy *:system.c* #10:', 'BIGGY:SYSTEM.COMPILER -> DISK10:SYSTEM.COMPILER' in part('copy *:system.c* #10:')),
+        ('copy *:system.co* #10:', 'BIGGY:SYSTEM.COMPILER -> DISK10:SYSTEM.COMPILER' in part('copy *:system.co* #10:')),
         ('COPY hello.c #10: replaced', 'DISK10:HELLO.C (replaced)' in part('COPY hello.c #10')),
         ('copy hello.c hello2.c', 'WORK:HELLO.C -> WORK:HELLO2.C' in part('copy hello.c hello2.c')),
         ('move hello2.c #11:', 'WORK:HELLO2.C -> DISK11:HELLO2.C' in part('move hello2.c #11:')),
@@ -303,11 +332,13 @@ def main():
          and '1 of 7 files' in part('dir *.c')),
         ('dir *.text: only NOTES.TEXT left', 'NOTES.TEXT' in part('dir *.text') and '1 of 7 files' in part('dir *.text')),
         ('DIR disk11:w?ere.=: WHERE.CODE', 'DISK11: (#11)' in tr and tr.count('1 of 1 files') == 2),
-        ('dir *:system.c*: SYSTEM.COMPILER, dated', re.search(r'SYSTEM\.COMPILER +\d+ +\d+-[A-Z][a-z][a-z]-\d\d  Code', tr) is not None
+        ('dir *:system.co*: SYSTEM.COMPILER, dated', re.search(r'SYSTEM\.COMPILER +\d+ +\d+-[A-Z][a-z][a-z]-\d\d  Code', tr) is not None
          and '1 of ' in tr.split('SYSTEM.COMPILER')[-1]),
         ('dir nosuch:, cd 13: no such disk', 'dir: no disk nosuch on line' in tr and 'cd: no disk 13 on line' in tr),
     ]
     bad = [name for name, good in checks if not good]
+    if bad:                             # the $ shell's part, as it was on the screen
+        print(repr(tr[tr.rfind('$(hell'):]))
     for name, good in checks:
         print('%-5s %s' % ('ok' if good else 'FAIL', name))
     print('pexec test: %s   (work: %s)' % ('FAILED' if bad else 'PASSED', ps.dir))
