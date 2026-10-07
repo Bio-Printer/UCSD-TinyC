@@ -43,6 +43,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `buildtc.py` | host build of CC.CODE from the modules (`build/tcmod/`) |
 | `mkvolume.py` | build `volumes/` (TINY-C, TCSRC, TCEXTRA, TCTESTS, TOOLS, TOOLSRC) with FILES.TEXT listings; a new tool is one line in its `TOOLS` table |
 | `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with SYSTEM.SHELL (the Tiny-C shell); Tiny-C itself is only on TINY-C: (`X TINY-C:CC`; since BIGGY 1.15); only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
+| `findtest.py` | which disk CC takes `#include` files and a batch file's sources from (copies on several disks; the including file's disk, the prefix, an error) |
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; the shell's CD, DIR, TYPE and DELETE; `$` at the Command: prompt |
 | `voltest.py` | on the four volumes: `@LIBS`, `@BUILD` (on TCSRC:), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
 | `mkverify.py`, `tcverify.py [native\|z80]` | build / run the Tiny-C Verify pack (`TCV_MAX=seconds` for Z80 mode) |
@@ -75,6 +76,12 @@ The same commands can be given as arguments instead, e.g. from the shell
 one command, they run in turn without a prompt, and the first that fails stops CC
 (exit status 1).
 Sources are `NAME.C`, headers `NAME.H` (UCSD text format, text kind).
+Which disk a file comes from: a source, `#include` file or `@FILE` named with a
+volume (`TOOLSRC:VI.H`, `#5:X.C`) only from there; named without one, CC reads every
+disk's directory: on one disk only, that one; on several, the one on the disk of the
+file that names it (the including file, the `@FILE`), else the prefix volume's, else
+an error that lists the volumes (`findfile` in `pp.c`, code segment FIND;
+`tools/findtest.py` tests it).
 With the prefix on TCSRC: (and TINY-C: mounted), `X(ecute TINY-C:CC`
 `@BUILD` rebuilds the compiler (CC2.CODE), `@LIBS` the library (TCLIB2.OBJ);
 `@DEMOS` (on TCEXTRA:) and `@TESTS` (on TCTESTS:) every program there.

@@ -149,10 +149,12 @@ static void upper(char *s)
 
 #ifdef __TINYC__
 /* one command (see the top of this file); 0 = it failed */
-static int command(char *s, char *lib)
+/* from: the unit of the @batch file the command is in (0: typed) */
+static int command(char *s, char *lib, int from)
 {
     char *objs[MAXFILES];
     char src[25];                       /* UCSD file names are short */
+    char alt[16];
     char obj[25];
     char out[25];
     char *t;
@@ -216,7 +218,9 @@ static int command(char *s, char *lib)
                 s++;
         }
         /* NAME or NAME.C: the source is NAME.C, or NAME.TEXT when there
-           is no NAME.C */
+           is no NAME.C.  With a volume (VOL:, #n:, *): there.  Without:
+           on whichever disk findfile says (pp.c) -- the batch file's or
+           the prefix volume when several have it. */
         n = strlen(s);
         if (n > 5 && strcmp(s + n - 5, ".TEXT") == 0)
             s[n = n - 5] = 0;
@@ -224,9 +228,21 @@ static int command(char *s, char *lib)
             s[n - 2] = 0;
         strcpy(src, s);
         strcat(src, ".C");
-        if (!exists(src)) {
-            strcpy(src, s);
-            strcat(src, ".TEXT");
+        if (strchr(s, ':') || s[0] == '*') {
+            if (!exists(src)) {
+                strcpy(src, s);
+                strcat(src, ".TEXT");
+            }
+        } else if (n <= 13) {
+            alt[0] = 0;
+            if (n <= 10) {
+                strcpy(alt, s);
+                strcat(alt, ".TEXT");
+            }
+            strcpy(obj, src);
+            n = findfile(obj, alt, from, src, &n);
+            if (n < 0)
+                return 0;               /* on several disks: findfile said so */
         }
         strcpy(obj, s);
         strcat(obj, ".OBJ");
@@ -257,10 +273,24 @@ static int batch(char *name, char *lib, char *line)
     int done;
     int k;
     int n;
+    char found[25];
+    int from;
     strcpy(path, name);
     n = strlen(path);
     if (n <= 5 || strcmp(path + n - 5, ".TEXT") != 0)
         strcat(path, ".TEXT");
+    /* FILE.TEXT: on its volume if it names one, else as findfile says;
+       the sources its commands name are looked for on its disk first */
+    if (strchr(path, ':') || path[0] == '*')
+        from = fileunit(path);
+    else {
+        from = 0;
+        n = findfile(path, "", 0, found, &from);
+        if (n < 0)
+            return 0;
+        if (n > 0)
+            strcpy(path, found);
+    }
     for (done = 0;; done++) {
         __heapsave();                       /* the file's buffer: see exists */
         f = fopen(path, "r");
@@ -289,7 +319,7 @@ static int batch(char *name, char *lib, char *line)
         say("> ");
         say(line);
         say("\n");
-        if (!command(line, lib)) {
+        if (!command(line, lib, from)) {
             say("Stopped.\n");
             return 0;
         }
@@ -349,7 +379,7 @@ int main(int argc, char **argv)
             say("> ");
             say(line);
             say("\n");
-            if (!(line[0] == '@' ? batch(line + 1, lib, line) : command(line, lib)))
+            if (!(line[0] == '@' ? batch(line + 1, lib, line) : command(line, lib, 0)))
                 return 1;
         }
         say("Done.\n");
@@ -370,7 +400,7 @@ int main(int argc, char **argv)
     if (*s == '@')
         n = batch(s + 1, lib, line);
     else
-        n = command(s, lib);
+        n = command(s, lib, 0);
     if (!n)
         return 1;
     say("Done.\n");

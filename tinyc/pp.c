@@ -27,6 +27,7 @@ struct Incl {
     char *name;
     int line;
     int sys;                    /* a <system> header (or included from one) */
+    int unit;                   /* P-System: the disk unit it is on (0: not known) */
 };
 static struct Incl *istack;
 static int idepth;
@@ -134,22 +135,25 @@ static char *skiplit(char *s)
 #define INCPATH 200
 #endif
 
-static FILE *openinc(char *name, int sys)
+/* *unit: the disk unit it was found on (P-System; 0 not known); *many:
+   on several disks and none chosen (findfile said so) */
+static FILE *openinc(char *name, int sys, int *unit, int *many)
 {
     FILE *fp;
     char path[INCPATH];
     char *p;
 #ifdef __TINYC__
-    /* P-System: file names are upper case; "x.h" is X.H (or X.H.TEXT);
-       <x.h> is searched on the default volume, then on the boot volume,
-       then on TINY-C:.  A UCSD file name has at most 15 characters, a
-       volume name 7: a name with its own volume (or *) is tried only as
-       it is, so the longest path is TINY-C: + 15 + .TEXT (28) or
-       VOLNAME: + 15 + .TEXT (28); a longer name is no file at all. */
+    /* P-System: file names are upper case; "x.h" is X.H (or X.H.TEXT).
+       A name with its own volume (VOL:, #n:, *) is opened there and only
+       there.  Without one, findfile looks on every disk (see it): "x.h"
+       and <x.h> alike.  A UCSD file name has at most 15 characters, a
+       volume name 7, so the longest path is VOLNAME: + 15 + .TEXT (28);
+       a longer name is no file at all. */
     int i;
-    int v;
     int vol;
+    int n;
     char u[24];
+    char alt[24];
     vol = 0;
     for (i = 0; name[i] && i < 23; i++) {
         u[i] = name[i];
@@ -162,13 +166,29 @@ static FILE *openinc(char *name, int sys)
     fp = 0;
     if (name[i] || (!vol && i > 15))
         return 0;                   /* cannot be a file name */
-    for (v = 0; !fp && v < (sys && !vol ? 3 : 1); v++) {
-        strcpy(path, v == 0 ? "" : (v == 1 ? "*" : "TINY-C:"));
-        strcat(path, u);
+    if (vol) {
+        strcpy(path, u);
         fp = fopen(path, "r");
         if (!fp) {
             strcat(path, ".TEXT");
             fp = fopen(path, "r");
+        }
+        *unit = fp ? fileunit(path) : 0;
+    } else {
+        strcpy(alt, u);
+        if (i <= 10)
+            strcat(alt, ".TEXT");
+        else
+            alt[0] = 0;
+        n = findfile(u, alt, idepth > 0 ? istack[idepth - 1].unit : 0, path, unit);
+        *many = n < 0;
+        if (n > 0) {
+            fp = fopen(path, "r");
+            /* its name in messages as written, without the volume: the
+               compiler keeps the names, and memory is short */
+            p = strchr(path, ':') + 1;
+            strcpy(openedpath, p);
+            return fp;
         }
     }
     strcpy(openedpath, path);
@@ -1085,6 +1105,8 @@ static void dodefine(char *s)
 static void doinclude(char *s)
 {
     char name[MAXNAME];
+    int unit;
+    int many;
     int n;
     int sys;
     int close;
@@ -1114,15 +1136,19 @@ static void doinclude(char *s)
     name[n] = 0;
     if (idepth >= MAXINCL)
         fatal(16 /* #include nested too deeply */, name);
-    fp = openinc(name, sys);
+    unit = 0;
+    many = 0;
+    fp = openinc(name, sys, &unit, &many);
     if (!fp) {
-        error(17 /* cannot open include file */, name);
+        if (!many)
+            error(17 /* cannot open include file */, name);
         return;
     }
     istack[idepth].fp = fp;
     istack[idepth].name = pstrdup(openedpath);
     istack[idepth].line = 0;
     istack[idepth].sys = sys || istack[idepth - 1].sys;
+    istack[idepth].unit = unit;
     idepth++;
 }
 
@@ -1296,6 +1322,9 @@ int preprocess(char *src, char *out)
     istack[0].name = pstrdup(src);
     istack[0].line = 0;
     istack[0].sys = 0;
+#ifdef __TINYC__
+    istack[0].unit = fileunit(src);
+#endif
     idepth = 1;
     active = 1;
     iflevel = 0;
@@ -1351,3 +1380,152 @@ int preprocess(char *src, char *out)
     fclose(ppout);
     return nerrors == 0;
 }
+
+#ifdef __TINYC__
+#pragma segment FIND
+/* ---- which disk a file is on (P-System) ----
+   A file named without a volume: every disk unit's directory is read.
+   On one disk only: that one.  On several: the one on the disk of the
+   file that names it (the including file, the @batch file), else the one
+   on the prefix volume (the Filer's Prefix, the shell's CD), else none:
+   the volumes are listed and the name must say which.  Code segment FIND:
+   in memory only while it looks. */
+
+/* the disk units: 4, 5, 9..14 */
+#define FDUNIT(k) ((k) < 2 ? 4 + (k) : 7 + (k))
+
+/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
+static int fdread(int u, int *dir)
+{
+    unsigned char *d;
+    d = (unsigned char *)dir;
+    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
+    if (__cspi(34) != 0)
+        return 0;
+    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
+}
+
+/* entry i's name (0: the volume's) is s? */
+static int fdname(int *dir, int i, char *s)
+{
+    unsigned char *e;
+    int n;
+    e = (unsigned char *)dir + 26 * i + 6;
+    n = strlen(s);
+    if (n == 0 || e[0] != n)
+        return 0;
+    while (n > 0 && e[n] == s[n - 1])
+        n--;
+    return n == 0;
+}
+
+/* the prefix volume's name (the OS's DKVID: OS words 59..62) */
+static void fdprefix(char *s)
+{
+    unsigned char *v;
+    int n;
+    v = (unsigned char *)__osvaraddr(59);
+    for (n = 0; n < v[0] && n < 7; n++)
+        s[n] = v[1 + n];
+    s[n] = 0;
+}
+
+/* the unit a path's file is on: VOL:, #n:, * or (no volume) the prefix;
+   0 if no disk on line is that volume */
+int fileunit(char *path)
+{
+    int dir[1024];
+    char vol[8];
+    char *c;
+    int k;
+    int n;
+    if (path[0] == '*')
+        return ((int *)__osvar(1))[2];          /* SYSCOM^.SYSUNIT */
+    c = strchr(path, ':');
+    if (!c)
+        fdprefix(vol);
+    else {
+        n = c - path;
+        if (path[0] == '#') {
+            for (k = 0, c = path + 1; *c >= '0' && *c <= '9'; c++)
+                k = k * 10 + *c - '0';
+            return k;
+        }
+        if (n > 7)
+            return 0;
+        memcpy(vol, path, n);
+        vol[n] = 0;
+    }
+    for (k = 0; k < 8; k++)
+        if (fdread(FDUNIT(k), dir) && fdname(dir, 0, vol))
+            return FDUNIT(k);
+    return 0;
+}
+
+/* name (or, on a disk without it, alt): which disk's; into path VOL:NAME,
+   into *unit its unit.  from: the unit of the file that names it (0:
+   none).  1 found, 0 on no disk, -1 on several and none chosen (said so) */
+int findfile(char *name, char *alt, int from, char *path, int *unit)
+{
+    int dir[1024];
+    unsigned char *d;
+    int fu[8];
+    char fv[8][8];
+    char *fn[8];
+    char pre[8];
+    int n;
+    int k;
+    int i;
+    int j;
+    d = (unsigned char *)dir;
+    n = 0;
+    for (k = 0; k < 8; k++) {
+        if (!fdread(FDUNIT(k), dir))
+            continue;
+        fn[n] = 0;
+        for (i = 1; i <= dir[8] && !fn[n]; i++)
+            if (fdname(dir, i, name))
+                fn[n] = name;
+        for (i = 1; i <= dir[8] && !fn[n] && alt[0]; i++)
+            if (fdname(dir, i, alt))
+                fn[n] = alt;
+        if (!fn[n])
+            continue;
+        fu[n] = FDUNIT(k);
+        for (i = 0; i < d[6]; i++)
+            fv[n][i] = d[7 + i];
+        fv[n][i] = 0;
+        n++;
+    }
+    if (n == 0)
+        return 0;
+    j = -1;
+    if (n == 1)
+        j = 0;
+    for (i = 0; i < n && j < 0; i++)
+        if (fu[i] == from)
+            j = i;                  /* the including file's disk */
+    if (j < 0) {
+        fdprefix(pre);
+        for (i = 0; i < n && j < 0; i++)
+            if (strcmp(fv[i], pre) == 0)
+                j = i;              /* the prefix volume */
+    }
+    if (j < 0) {
+        error(117 /* on several disks: say which */, name);
+        say("   on");
+        for (i = 0; i < n; i++) {
+            say(" ");
+            say(fv[i]);
+            say(":");
+        }
+        say("\n");
+        return -1;
+    }
+    strcpy(path, fv[j]);
+    strcat(path, ":");
+    strcat(path, fn[j]);
+    *unit = fu[j];
+    return 1;
+}
+#endif

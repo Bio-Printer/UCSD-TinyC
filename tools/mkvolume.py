@@ -54,10 +54,15 @@ The same commands can be arguments instead (from the shell: $ at the
 Command: prompt): CC @BUILD @LIBS, CC /Z HANOI SIEVE.  Options and the
 word after them make one command; they run in turn, no prompt, and the
 first that fails stops CC.
-X(ecute NAME runs a program.  A program on another volume (e.g. TCEXTRA:)
-compiles with that volume as the prefix: headers, TCLIB.OBJ and
+X(ecute NAME runs a program.  WHICH DISK: a source, a #include file or
+an @FILE named with a volume (TOOLSRC:VI.H, #5:X.C) is taken from there
+only.  Named without one, CC looks on every disk: on one disk only, that
+one; on several, the one on the disk of the file that names it (the
+including file, the @FILE), else the one on the prefix volume, else it
+lists the volumes and stops (name one).  Objects, code and temporary
+files (TCTEMP.TEXT, TCTEMP.IR) go to the prefix volume; TCLIB.OBJ and
 TCMSGS.TEXT are found on TINY-C: when they are not on the prefix volume
-or the boot volume.  Temporary files: TCTEMP.TEXT, TCTEMP.IR.
+or the boot volume.
 
 THE SOURCES of the compiler and the library, and the batch files that
 rebuild them (@BUILD, @LIBS), are on TCSRC: (see its README.TEXT).

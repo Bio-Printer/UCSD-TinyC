@@ -381,6 +381,11 @@ void gen_objuse(char *name);
 /* passes */
 #pragma segment PP
 int preprocess(char *src, char *out);
+#ifdef __TINYC__
+#pragma segment FIND
+int fileunit(char *path);
+int findfile(char *name, char *alt, int from, char *path, int *unit);
+#endif
 #pragma segment REALLIT
 int realtoken(char *s, char *out);
 #pragma segment PARSE
