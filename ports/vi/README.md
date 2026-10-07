@@ -26,9 +26,9 @@ then `build/tc -z -L tinyc/include/tclibz.obj vimain.obj ... viucsd.obj -o VI.CO
 (`-z` and `tclibz.obj` so that it also runs in Z80 mode; `compile_modules` in
 `tools/tcrun.py` does it); `tools/mkvolume.py` puts VI.CODE on TOOLS: and the sources
 on TOOLSRC:. On the P-System, `@TOOLS` on TOOLSRC: compiles each module (`/Z /C`)
-and links them (`/L VI=...`): the same VI.CODE byte for byte, in P-Code mode with
-the Harvard layout (Options > Reclaim Z80 Interpreter and BIOS Memory, Options >
-Harvard Mode), where the compiler's code takes no data memory.
+and links them (`/L VI=...`): the same VI.CODE byte for byte, in Z80 mode and the
+normal layout too (`tools/vitest.py --build`). In one piece, vi.c needed P-Code mode
+with the Harvard layout, the only one with the memory to compile it.
 
 Run: from the shell, `VI NAME.C` (the name as typed: `.C`, `.H` and `.TEXT` files are
 UCSD text files); from X(ecute) it asks for the file.

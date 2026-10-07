@@ -221,9 +221,7 @@ VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
         text), VICOLON.C (the : commands), VICMD.C (the vi commands),
         VIPAGE.C and VIPAGE.H (the window into big files), VIUCSD.C (the
         P-System: keys, screen, files).  @TOOLS compiles each (/Z /C) and
-        links them (/L VI=...).  Rebuild it in P-Code mode with Options >
-        Reclaim Z80 Interpreter and BIOS Memory and Options > Harvard Mode
-        on (the compiler's code then takes no data memory).
+        links them (/L VI=...), in P-Code or Z80 mode.
 
 FILES.TEXT lists every file on this volume.
 """
