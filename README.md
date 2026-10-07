@@ -85,7 +85,7 @@ file that names it (the including file, the `@FILE`), else the prefix volume's, 
 an error that lists the volumes (`findfile` in `pp.c`, code segment FIND;
 `tools/findtest.py` tests it).
 With the prefix on TCSRC: (and TINY-C: mounted), `X(ecute TINY-C:CC`
-`@BUILD` rebuilds the compiler (CC2.CODE), `@LIBS` the library (TCLIB2.OBJ);
+`@BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `@LIBS` the library (TINY-C:TCLIB2.OBJ); `@TOOLS` (on TOOLSRC:) links every tool onto TOOLS:;
 `@DEMOS` (on TCEXTRA:) and `@TESTS` (on TCTESTS:) every program there.
 
 ## Calls through function pointers (`-z` / `/Z`)

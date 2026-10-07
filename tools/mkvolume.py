@@ -117,16 +117,17 @@ REBUILDING EVERYTHING:  set the prefix to TCSRC:, then from the shell
 
 REBUILDING THE COMPILER:  set the prefix to TCSRC:, X(ecute
 TINY-C:CC, answer  @BUILD.  BUILD.TEXT compiles the compiler's modules
-and links TCSRC:CC2.CODE, identical to TINY-C:CC.CODE apart from its
-name (check it with TCEXTRA:CMPCODE).  To use it, transfer it to
-TINY-C:CC.CODE with the Filer.
+and links TINY-C:CC2.CODE (next to the compiler), identical to
+TINY-C:CC.CODE apart from its name (check it with TCEXTRA:CMPCODE).  To
+use it, change its name to CC.CODE with the Filer.
 
 REBUILDING THE LIBRARY:  set the prefix to TCSRC:, X(ecute TINY-C:CC,
 answer  @LIBS.  LIBS.TEXT compiles the library modules and joins them
-(/J) into TCSRC:TCLIB2.OBJ, identical to TINY-C:TCLIB.OBJ (check it with
-CMPCODE).  To use it, transfer it to TINY-C:TCLIB.OBJ with the Filer.
+(/J) into TINY-C:TCLIB2.OBJ, identical to TINY-C:TCLIB.OBJ (check it
+with CMPCODE).  To use it, change its name to TCLIB.OBJ with the Filer.
 
-Each module leaves a NAME.OBJ; remove those with the Filer if you like.
+Each module leaves a NAME.OBJ here; remove those with the Filer if you
+like.
 
 FILES.TEXT lists every file on this volume.
 """
@@ -192,8 +193,8 @@ Options > Track Least Free Memory gives the exact figure.
 
 CMPCODE compares two files byte by byte (for .CODE files the program
 name in block 0 aside): after @BUILD on TCSRC:, compare
-TINY-C:CC.CODE with TCSRC:CC2.CODE, after @LIBS TINY-C:TCLIB.OBJ
-with TCSRC:TCLIB2.OBJ; it prints IDENTICAL.
+TINY-C:CC.CODE with TINY-C:CC2.CODE, after @LIBS TINY-C:TCLIB.OBJ
+with TINY-C:TCLIB2.OBJ; it prints IDENTICAL.
 
 FILES.TEXT lists every file on this volume.
 """
@@ -259,8 +260,9 @@ README_TOOLSRC = """TOOL SOURCES                                      volume TOO
 The sources of the tools on TOOLS:.
 
 REBUILDING THEM:  set the prefix to TOOLSRC:, X(ecute TINY-C:CC, answer
-@TOOLS.  TOOLS.TEXT compiles and links every tool (NAME.CODE here, and
-a NAME.OBJ); copy the new NAME.CODE to TOOLS: with the Filer.
+@TOOLS (TOOLS: on line too).  TOOLS.TEXT compiles every tool's modules
+(a NAME.OBJ here for each) and links the tool straight onto TOOLS:
+(TOOLS:NAME.CODE, replacing the one there).
 
 VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
         for Tiny-C, in modules: VI.H (what they share), VIMAIN.C (start,
@@ -283,12 +285,12 @@ LIBMODS_ = sorted(f[:-2] for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib'))
 LIBS = """; LIBS -- rebuild the C library: prefix TCSRC:, X(ecute TINY-C:CC, answer @LIBS
 ; Compiles every library module, then joins them into TCLIB2.OBJ.
 """ + ''.join('/Z /C %s\n' % m.upper() for m in LIBMODS_) + \
-    '/J TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
+    '/J TINY-C:TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
 
 BUILD = """; BUILD -- rebuild the Tiny-C compiler: prefix TCSRC:, X(ecute TINY-C:CC, answer @BUILD
 ; Compiles every module, then links them into CC2.CODE.
 """ + ''.join('/C %s\n' % m.upper() for m in MODULES) + \
-    '/L CC2=%s\n' % ','.join(m.upper() for m in MODULES)
+    '/L TINY-C:CC2=%s\n' % ','.join(m.upper() for m in MODULES)
 
 
 WHAT = {
@@ -420,8 +422,8 @@ def tiny_c():
 def sources():
     t = Vol('TCSRC', 4000)
     t.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C')
-    t.text('BUILD.TEXT', BUILD, 'X TINY-C:CC, @BUILD: rebuilds the compiler -> CC2.CODE')
-    t.text('LIBS.TEXT', LIBS, 'X TINY-C:CC, @LIBS: rebuilds the library -> TCLIB2.OBJ')
+    t.text('BUILD.TEXT', BUILD, 'X TINY-C:CC, @BUILD: rebuilds the compiler -> TINY-C:CC2.CODE')
+    t.text('LIBS.TEXT', LIBS, 'X TINY-C:CC, @LIBS: rebuilds the library -> TINY-C:TCLIB2.OBJ')
     for m in MODULES:
         p = os.path.join(SRC, m + '.c')
         t.textfile(m.upper() + '.C', p, 'compiler: ' + describe(p))
@@ -469,7 +471,7 @@ def tests():
 def tool_batch(name, mods):
     """TOOLS.TEXT's lines for a tool: each module compiled (/Z /C), then linked"""
     names = [os.path.splitext(os.path.basename(m))[0].upper() for m in mods]
-    return ''.join('/Z /C %s\n' % n for n in names) + '/L %s=%s\n' % (name, ','.join(names))
+    return ''.join('/Z /C %s\n' % n for n in names) + '/L TOOLS:%s=%s\n' % (name, ','.join(names))
 
 
 def tools():

@@ -15,10 +15,11 @@ Uses the mode of PSYS_MODE (native or z80) like the other tools; the
 P-System VI is built with -z (tclibz.obj) so that it runs in both.
 
   vitest.py --build   on the volumes (build/, tools/mkvolume.py): @TOOLS on
-                      TOOLSRC: with TINY-C:CC, in PSYS_MODE's mode and the
-                      normal layout; --build harvard: in P-Code mode with
-                      the Harvard layout; the VI.CODE it makes must be
-                      TOOLS:VI.CODE
+                      TOOLSRC: with TINY-C:CC (TOOLS: as unit 10, its tools
+                      removed), in PSYS_MODE's mode and the normal layout;
+                      --build harvard: in P-Code mode with the Harvard
+                      layout; the NAME.CODE it links onto TOOLS: must be
+                      the ones mkvolume made
 """
 import os, sys, pty, time, select, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -128,19 +129,25 @@ def build_on_psystem(harvard):
     sp = os.path.join(work, 'script')
     open(sp, 'w').write('\n'.join(script) + '\n')
     out = os.path.join(work, 'out')
-    r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'), os.path.join(work, 'TINY-C.BLK'),
-                        os.path.join(work, 'TOOLSRC.BLK'), sp, mode, out, '', '1800'], capture_output=True, text=True,
-                       env=dict(os.environ, VERIFY_RECLAIM='1', VERIFY_HARVARD='1') if harvard else os.environ)
-    tr = open(os.path.join(out, 'transcript.txt'), encoding='latin1').read()
     from mkvolume import TOOLS
+    tv = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK'))     # @TOOLS links onto TOOLS: (unit 10):
+    for name, mods, hdrs, desc in TOOLS:                    # the tools go first, so what is there after
+        tv.remove(name + '.CODE')                           # was made by this run
+    tv.save()
+    env = dict(os.environ, VERIFY_UNIT10=os.path.join(work, 'TOOLS.BLK'))
+    if harvard:
+        env.update(VERIFY_RECLAIM='1', VERIFY_HARVARD='1')
+    r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'), os.path.join(work, 'TINY-C.BLK'),
+                        os.path.join(work, 'TOOLSRC.BLK'), sp, mode, out, '', '1800'], capture_output=True, text=True, env=env)
+    tr = open(os.path.join(out, 'transcript.txt'), encoding='latin1').read()
     names = [name + '.CODE' for name, mods, hdrs, desc in TOOLS]
     built = {}
-    for f in os.listdir(out):
+    for f in [os.path.join(out, f) for f in os.listdir(out)] + [os.path.join(work, 'TOOLS.BLK')]:
         if f.endswith('.BLK'):
-            v = ucsdvol.Volume(os.path.join(out, f))
-            if v.volname == 'TOOLSRC':
-                built = {n: v.read(n)[0] for n in names if v.find(n)}
-    shipped = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK'))
+            v = ucsdvol.Volume(f)
+            if v.volname == 'TOOLS' and all(v.find(n) for n in names):
+                built = {n: v.read(n)[0] for n in names}
+    shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))     # as mkvolume made it
     same = [n for n in names if built.get(n) == shipped.read(n)[0]]
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout and (not harvard or 'harvard layout: yes' in r.stdout) and len(same) == len(names)
     print('@TOOLS on TOOLSRC: (%s): %s' % (layout, ', '.join('%s identical to TOOLS:%s' % (n, n) for n in same) if ok

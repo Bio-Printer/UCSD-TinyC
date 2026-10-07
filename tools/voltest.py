@@ -3,10 +3,10 @@
 TCEXTRA.BLK, TCTESTS.BLK, made by mkvolume.py) on the P-System: TINY-C: on
 unit #5, TCSRC: on #9, TCEXTRA: on #10, TCTESTS: on #11.
 
-  @LIBS    on TCSRC: (X TINY-C:CC) -> TCLIB2.OBJ (/Z /C), CMPCODE:
+  @LIBS    on TCSRC: (X TINY-C:CC) -> TINY-C:TCLIB2.OBJ (/Z /C), CMPCODE:
            IDENTICAL to TINY-C:TCLIB.OBJ
   @BUILD   on TCSRC:, from the shell ($, cc @build: CC takes its commands
-           as arguments) -> CC2.CODE, CMPCODE: IDENTICAL to TINY-C:CC.CODE
+           as arguments) -> TINY-C:CC2.CODE, CMPCODE: IDENTICAL to TINY-C:CC.CODE
   @DEMOS   on TCEXTRA: (compiler and headers from TINY-C:), then QUEENS runs
   @TESTS   on TCTESTS: (likewise), then LONGS runs
 
@@ -46,12 +46,12 @@ def cmpcode(a, b):
 
 def script():
     L = ['WAIT "Command:"'] + prefix('TCSRC:')
-    L += tinyc('TINY-C:CC', '@LIBS', ['> /Z /C ASSERT', '> /Z /C TCRT', 'Joining TCLIB2.OBJ'])
-    L += cmpcode('TINY-C:TCLIB.OBJ', 'TCSRC:TCLIB2.OBJ')
+    L += tinyc('TINY-C:CC', '@LIBS', ['> /Z /C ASSERT', '> /Z /C TCRT', 'Joining TINY-C:TCLIB2.OBJ'])
+    L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
     L += ['TYPE "$"', 'WAIT "shell> "', 'TYPE "cc @build\\r"', 'WAIT "> @BUILD"', 'WAIT "> /C MAIN"',
-          'WAIT "> /L CC2="', 'WAIT "Done."', 'WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"',
+          'WAIT "> /L TINY-C:CC2="', 'WAIT "Done."', 'WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"',
           'WAIT "Command:"']
-    L += cmpcode('TINY-C:CC.CODE', 'TCSRC:CC2.CODE')
+    L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')
     L += prefix('TCEXTRA:')
     L += tinyc('TINY-C:CC', '@DEMOS', ['> /Z BOXES', '> /Z CMPCODE', '> /Z SHELL'])
     L += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "QUEENS\\r"', 'WAIT "92"', 'WAIT "Command:"']

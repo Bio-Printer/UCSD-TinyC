@@ -3,8 +3,8 @@ TCSRC:  36 files  (a UCSD directory holds 77)
   FILE            BLOCKS  WHAT
 
   README.TEXT          6  how to rebuild Tiny-C
-  BUILD.TEXT           4  X TINY-C:CC, @BUILD: rebuilds the compiler -> CC2.CODE
-  LIBS.TEXT            4  X TINY-C:CC, @LIBS: rebuilds the library -> TCLIB2.OBJ
+  BUILD.TEXT           4  X TINY-C:CC, @BUILD: rebuilds the compiler -> TINY-C:CC2.CODE
+  LIBS.TEXT            4  X TINY-C:CC, @LIBS: rebuilds the library -> TINY-C:TCLIB2.OBJ
   MAIN.C              28  compiler: the driver: commands, @FILE, the passes
   UTIL.C              16  compiler: messages, output helpers, memory pools
   TYPES.C              6  compiler: type predicates
