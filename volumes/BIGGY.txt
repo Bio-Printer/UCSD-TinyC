@@ -27,7 +27,7 @@ BIGGY:  36 files  (the boot volume, with the Tiny-C shell)
   LIBMAP.CODE          7
   NEW.PASCAL           2
   MYGOTOXY.TEXT        4
-  SYSTEM.SHELL        23
+  SYSTEM.SHELL        28
   132X45.PASCAL       34
   SYSORIG.FILER       28
   SYSTEM.FILER        30

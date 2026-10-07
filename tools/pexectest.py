@@ -23,6 +23,14 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
     cd, dir #10              the prefix (the boot volume); unit 10's files
     cd #5, dir *.code        the prefix becomes WORK:; its code files
     DIR disk11:w?ere.=       a volume and a pattern (? and = wildcards)
+    type notes.text          a text file on the prefix volume
+    type #5:args.code        not a text file
+    type tmp?.text           two files, each under its name
+    type nosuch.c            no such file
+    delete tmp*.text, N      lists them, asks: N keeps them
+    DELETE work:tmp=.text, Y deletes them
+    del keep.text            no wildcards: deleted without asking
+    dir *.text               NOTES.TEXT is the only text file left
     dir *:system.c*          the system volume's SYSTEM.COMPILER (dated)
     dir nosuch:, cd 13       no such disk
     bye                      back to the Command: prompt
@@ -103,6 +111,26 @@ TYPE "dir *.code\r"
 WAIT "shell> "
 TYPE "DIR disk11:w?ere.=\r"
 WAIT "shell> "
+TYPE "type notes.text\r"
+WAIT "shell> "
+TYPE "type #5:args.code\r"
+WAIT "shell> "
+TYPE "type tmp?.text\r"
+WAIT "shell> "
+TYPE "type nosuch.c\r"
+WAIT "shell> "
+TYPE "delete tmp*.text\r"
+WAIT "(Y/N)?"
+TYPE "n"
+WAIT "shell> "
+TYPE "DELETE work:tmp=.text\r"
+WAIT "(Y/N)?"
+TYPE "Y"
+WAIT "shell> "
+TYPE "del keep.text\r"
+WAIT "shell> "
+TYPE "dir *.text\r"
+WAIT "shell> "
 TYPE "dir *:system.c*\r"
 WAIT "shell> "
 TYPE "dir nosuch:\r"
@@ -137,7 +165,9 @@ def main():
     # WHERE (ARGS under another name) on five disks: #5, #9 and three more
     where = open(os.path.join(ps.dir, 'ARGS.CODE'), 'rb').read()
     ps.put('WHERE.CODE', where)
-    ps.put('NOTES.TEXT', 'not a code file\n')     # dir *.code leaves it out
+    ps.put('NOTES.TEXT', 'not a code file\nits second line\n')     # dir *.code leaves it out
+    for name, text in (('TMP1.TEXT', 'tmp one\n'), ('TMP2.TEXT', 'tmp two\n'), ('KEEP.TEXT', 'keep me\n')):
+        ps.put(name, text)
     disks = [ps.spare]
     for u in (10, 11, 12):
         path = os.path.join(ps.dir, 'DISK%d.BLK' % u)
@@ -150,6 +180,12 @@ def main():
         v.save()
     ok, tr, info = ps.run_script(SCRIPT, 600)
     tr = tr.replace('\r', '\n')
+
+    def part(cmd):
+        """what the shell printed for cmd (up to its next prompt)"""
+        i = tr.find(cmd + '\n')
+        # (a line ends in CR LF or CR alone: no empty lines)
+        return re.sub(r'\n+', '\n', tr[i + len(cmd):tr.find('shell> ', i)]) if i >= 0 else ''
     free = [int(x) for x in re.findall(r'memfree: (\d+) words free', tr)]
     shell = re.findall(r'shell: (\d+) words free', tr)
     status = re.findall(r'\[exit status (-?\d+)\]', tr)
@@ -177,8 +213,19 @@ def main():
         ('dir #10: DISK10\'s one file', 'DISK10: (#10)' in tr and re.search(r'WHERE\.CODE +\d+ .*Code', tr) is not None
          and '1 of 1 files' in tr),
         ('cd #5: the prefix is WORK:', 'prefix is WORK: (#5)' in tr),
-        ('dir *.code: the 5 code files of WORK:, not NOTES.TEXT', '5 of 6 files' in tr and 'NOTES.TEXT' not in tr
+        ('dir *.code: the 5 code files of WORK:, not the text files', '5 of 9 files' in part('dir *.code')
+         and '.TEXT' not in part('dir *.code')
          and all(re.search(r'%s\.CODE +\d+ ' % n, tr) for n in ('SHELL', 'MEMFREE', 'ARGS', 'CRASH'))),
+        ('type notes.text: its two lines', 'not a code file\nits second line\n' in part('type notes.text')),
+        ('type #5:args.code: not a text file', 'ARGS.CODE: not a text file' in tr),
+        ('type tmp?.text: both, under their names', re.search(r'--- WORK:TMP1\.TEXT\ntmp one\n--- WORK:TMP2\.TEXT\ntmp two\n',
+                                                         part('type tmp?.text')) is not None),
+        ('type nosuch.c: no such file', 'type: no file nosuch.c on WORK:' in tr),
+        ('delete tmp*.text, N: listed, asked, kept', 'Delete these 2 files (Y/N)? n' in tr
+         and 'deleted' not in part('delete tmp*.text')),
+        ('DELETE work:tmp=.text, Y: both deleted', 'WORK:TMP1.TEXT deleted' in tr and 'WORK:TMP2.TEXT deleted' in tr),
+        ('del keep.text: deleted, not asked', 'WORK:KEEP.TEXT deleted' in part('del keep.text') and 'Y/N' not in part('del keep.text')),
+        ('dir *.text: only NOTES.TEXT left', 'NOTES.TEXT' in part('dir *.text') and '1 of 6 files' in part('dir *.text')),
         ('DIR disk11:w?ere.=: WHERE.CODE', 'DISK11: (#11)' in tr and tr.count('1 of 1 files') == 2),
         ('dir *:system.c*: SYSTEM.COMPILER, dated', re.search(r'SYSTEM\.COMPILER +\d+ +\d+-[A-Z][a-z][a-z]-\d\d  Code', tr) is not None
          and '1 of ' in tr.split('SYSTEM.COMPILER')[-1]),

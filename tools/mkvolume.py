@@ -151,6 +151,10 @@ and you choose with one key (no RETURN).  Its own commands:
   DIR [VOL: or #5:][PATTERN]     the files of the prefix volume (or VOL:,
         or unit 5) whose names match: * or = any characters, ? any one
         (DIR *.C, DIR #9:, DIR TOOLSRC:VI*.C); ESC stops a long list.
+  TYPE [VOL: or #5:]NAME         a text file on the console; with
+        wildcards each file that matches, under its name.
+  DELETE (or DEL) [VOL: or #5:]PATTERN   deletes the files that match;
+        with wildcards it lists them and asks first (Y deletes).
   MEM   the shell's free memory;  BYE leaves it.
 MEMFREE shows a program's free memory: run it with X(ecute and from
 SHELL, it is the same (pexec leaves nothing of the shell in memory).

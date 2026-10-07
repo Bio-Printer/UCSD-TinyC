@@ -12,6 +12,10 @@
                              unit n, whose names match PAT: * or = any
                              characters, ? any one (DIR #5, DIR *.C,
                              DIR TOOLSRC:VI*.C, DIR #9:?.TEXT)
+     TYPE [VOL: | #n:]NAME   a text file on the console (with wildcards:
+                             each file that matches, under its name)
+     DELETE [VOL: | #n:]PAT  the files that match (with wildcards it lists
+                             them and asks first, one key: Y deletes)
      MEM                     the shell's free memory
      BYE                     back to the Command: prompt */
 #include <stdio.h>
@@ -216,16 +220,12 @@ int more(int *lines)
     return c != 27;
 }
 
-/* DIR [VOL: | #n:][PAT] */
-void dir(char *arg)
+/* [VOL: | #n:][PAT]: the unit (its directory read into dir, its volume's
+   name into vol) and *pat; 0 (and a message for cmd) when no disk has it */
+int target(char *cmd, char *arg, int *dir, char *vol, char **pat)
 {
-    int dir[1024];
-    char vol[20];
-    char name[16];
-    char *pat;
     char *colon;
-    int *e;
-    int u, i, nf, shown, used, gap, largest, unused, last, lines, m;
+    int u, i;
     colon = strchr(arg, ':');
     if (colon) {
         i = colon - arg;
@@ -233,20 +233,40 @@ void dir(char *arg)
             i = 19;
         memcpy(vol, arg, i);
         vol[i] = 0;
-        pat = colon + 1;
+        *pat = colon + 1;
     } else if (arg[0] == '#') {
-        strcpy(vol, arg);               /* DIR #5: the unit, every file */
-        pat = "";
+        strcpy(vol, arg);               /* #5: the unit, every file */
+        *pat = "";
     } else {
         prefix(vol);
-        pat = arg;
+        *pat = arg;
     }
     u = unitof(vol, dir);
     if (u == 0 || !readdir(u, dir)) {
-        printf("dir: no disk %s on line\n", *vol ? vol : ":");
-        return;
+        printf("%s: no disk %s on line\n", cmd, *vol ? vol : ":");
+        return 0;
     }
     dirname(dir, 0, vol);
+    return u;
+}
+
+int wild(char *pat)
+{
+    return strpbrk(pat, "*=?") != NULL;
+}
+
+/* DIR [VOL: | #n:][PAT] */
+void dir(char *arg)
+{
+    int dir[1024];
+    char vol[20];
+    char name[16];
+    char *pat;
+    int *e;
+    int u, i, nf, shown, used, gap, largest, unused, last, lines, m;
+    u = target("dir", arg, dir, vol, &pat);
+    if (!u)
+        return;
     nf = dir[8];
     printf("%s: (#%d)\n", vol, u);
     lines = 1;
@@ -279,6 +299,100 @@ void dir(char *arg)
         largest = gap;
     printf("%d of %d files, %d blocks used, %d unused, %d in the largest area\n",
            shown, nf, used, unused, largest);
+}
+
+/* TYPE [VOL: | #n:]NAME: a text file on the console */
+void type(char *arg)
+{
+    int dir[1024];
+    char vol[20];
+    char name[16];
+    char path[24];
+    char line[256];
+    char *pat;
+    FILE *f;
+    int u, i, nf, found;
+    if (!*arg) {
+        printf("type: which file?\n");
+        return;
+    }
+    u = target("type", arg, dir, vol, &pat);
+    if (!u)
+        return;
+    nf = dir[8];
+    found = 0;
+    for (i = 1; i <= nf; i++) {
+        dirname(dir, i, name);
+        if (!match(pat, name))
+            continue;
+        found++;
+        if (wild(pat))
+            printf("--- %s:%s\n", vol, name);
+        if ((dir[13 * i + 2] & 15) != 3) {
+            printf("%s: not a text file\n", name);
+            continue;
+        }
+        sprintf(path, "#%d:%s", u, name);
+        f = fopen(path, "r");
+        if (!f) {
+            printf("%s: cannot open it\n", name);
+            continue;
+        }
+        while (fgets(line, sizeof line, f))
+            fputs(line, stdout);
+        fclose(f);
+    }
+    if (!found)
+        printf("type: no file %s on %s:\n", pat, vol);
+}
+
+/* DELETE [VOL: | #n:]PAT: with wildcards, after a Y */
+void delete(char *arg)
+{
+    int dir[1024];
+    char vol[20];
+    char names[77][16];
+    char path[24];
+    char *pat;
+    int u, i, n, nf, c;
+    if (!*arg) {
+        printf("delete: which files?\n");
+        return;
+    }
+    u = target("delete", arg, dir, vol, &pat);
+    if (!u)
+        return;
+    if (!*pat) {
+        printf("delete: which files on %s:? (* for all of them)\n", vol);
+        return;
+    }
+    nf = dir[8];
+    n = 0;
+    for (i = 1; i <= nf; i++) {
+        dirname(dir, i, names[n]);
+        if (match(pat, names[n]))
+            n++;
+    }
+    if (n == 0) {
+        printf("delete: no file %s on %s:\n", pat, vol);
+        return;
+    }
+    if (wild(pat)) {
+        for (i = 0; i < n; i++)
+            printf("  %s:%s\n", vol, names[i]);
+        printf("Delete %s %d file%s (Y/N)? ", n == 1 ? "this" : "these", n, n == 1 ? "" : "s");
+        c = getch();
+        printf("%c\n", c >= ' ' ? c : ' ');
+        if (c != 'Y' && c != 'y')
+            return;
+    }
+    for (i = 0; i < n; i++) {
+        sprintf(path, "#%d:%s", u, names[i]);
+        if (remove(path) == 0)
+            printf("%s:%s deleted\n", vol, names[i]);
+        else
+            printf("%s:%s: cannot delete it\n", vol, names[i]);
+    }
 }
 
 /* run NAME (with its arguments ARGS); returns only when it cannot */
@@ -364,6 +478,14 @@ int main(void)
         }
         if (same(name, "dir")) {
             dir(args);
+            continue;
+        }
+        if (same(name, "type")) {
+            type(args);
+            continue;
+        }
+        if (same(name, "delete") || same(name, "del")) {
+            delete(args);
             continue;
         }
         if (same(name, "mem")) {
