@@ -1,10 +1,11 @@
-/* viucsd.h -- vi.c on UCSD Pascal II.0 with Tiny-C: the routines that
+/* viucsd.c -- vi on UCSD Pascal II.0 with Tiny-C: the routines that
    talk to the terminal and the files, and the library functions Tiny-C
-   does not have.  Included by vi.c after its declarations. */
-/* ---- library functions Tiny-C does not have ---- */
-static void gracefulExit(void);
+   does not have. */
+#include "vi.h"
+#ifdef __UCSD__
 
-static void gracefulExit(void);
+/* ---- library functions Tiny-C does not have ---- */
+
 
 void *xmalloc(size_t size)
 {
@@ -48,7 +49,6 @@ void *xrealloc(void *old, size_t size)
 	return NULL;
 }
 
-#define isblank(c) ((c) == ' ' || (c) == '\t')
 
 char* last_char_is(const char *s, int c)
 {
@@ -92,14 +92,13 @@ int strncasecmp(const char *a, const char *b, size_t n)
 	return 0;
 }
 
-static char *strerror(int e)
+char *strerror(int e)
 {
 	return "I/O error";
 }
-#define errno (SYSCOM->iorslt)
 
 /* snprintf: format into a buffer big enough for any status line, then cut */
-static int snprintf(char *buf, size_t n, const char *fmt, ...)
+int snprintf(char *buf, size_t n, const char *fmt, ...)
 {
 	static char tmp[300];
 	va_list ap;
@@ -121,7 +120,7 @@ static int snprintf(char *buf, size_t n, const char *fmt, ...)
 /* getopt for the options vi knows: -R, -c CMD, -H */
 static int optind = 1;
 static char *optarg;
-static int getopt(int argc, char **argv, const char *opts)
+int getopt(int argc, char **argv, const char *opts)
 {
 	static int sp = 1;
 	char *o;
@@ -154,7 +153,7 @@ static int getopt(int argc, char **argv, const char *opts)
 }
 
 /* the Linux version is one string: too long for the P-machine (255 bytes) */
-static void show_help(void)
+void show_help(void)
 {
 	static const char *help[] = {
 		"These features are available:",
@@ -180,7 +179,7 @@ static void show_help(void)
    out free blocks whole (best fit), so these are the blocks fopen gets. */
 static char *ucsd_res[2];
 
-static void ucsd_reserve(void)
+void ucsd_reserve(void)
 {
 	if (!ucsd_res[0])
 		ucsd_res[0] = malloc(1024);
@@ -188,19 +187,16 @@ static void ucsd_reserve(void)
 		ucsd_res[1] = malloc(80);
 }
 
-static void ucsd_unreserve(void)
+void ucsd_unreserve(void)
 {
 	free(ucsd_res[1]);
 	free(ucsd_res[0]);
 	ucsd_res[0] = ucsd_res[1] = NULL;
 }
 
-#if ENABLE_FEATURE_VI_PAGING
-#include "vipage.h"
-#endif
 
 /* started from X(ecute): no arguments, so ask */
-static char *ucsd_askname(void)
+char *ucsd_askname(void)
 {
 	static char name[40];
 	int n;
@@ -216,7 +212,7 @@ static char *ucsd_askname(void)
 
 /* The console is always "raw" for vi: getch() reads keys unechoed, one at
    a time, straight from UNITREAD. */
-static int rawmode(void)
+int rawmode(void)
 {
 	ucsd_reserve();
 	erase_char = SYSCOM->crtinfo.chardel;
@@ -224,13 +220,13 @@ static int rawmode(void)
 	return 0;
 }
 
-static void cookmode(void)
+void cookmode(void)
 {
 }
 
 /* true if a key comes within tics/100 seconds: the system clock (1/60 s)
    when there is one, else a fixed number of polls */
-static int awaitInput(int tics)
+int awaitInput(int tics)
 {
 	unsigned start;
 	long polls;
@@ -254,7 +250,7 @@ static int awaitInput(int tics)
 
 /* one key; the P-System's cursor keys (SYSCOM's CRTINFO: the emulator
    sends ^T ^R ^Q ^U for the arrows) become vi's arrow keys */
-static char readit(void)
+char readit(void)
 {
 	int c;
 	struct crtinforec *ci;
@@ -280,7 +276,7 @@ static char readit(void)
 
 /* the size of a file in bytes as vi will hold it (text files: the lines
    without the UCSD page structure), -1 if it does not exist */
-static int file_size(const char *fn)
+int file_size(const char *fn)
 {
 	FILE *f;
 	long n;
@@ -311,7 +307,7 @@ static int file_size(const char *fn)
 #endif
 }
 
-static int file_insert(const char *fn, char *p, int update_ro_status)
+int file_insert(const char *fn, char *p, int update_ro_status)
 {
 	FILE *f;
 	int cnt, size, c;
@@ -345,7 +341,7 @@ static int file_insert(const char *fn, char *p, int update_ro_status)
 	return cnt;
 }
 
-static int file_write(char *fn, char *first, char *last)
+int file_write(char *fn, char *first, char *last)
 {
 	FILE *f;
 	int cnt;
@@ -377,7 +373,7 @@ static int file_write(char *fn, char *first, char *last)
 	return cnt;
 }
 
-static void place_cursor(int row, int col, int optimize)
+void place_cursor(int row, int col, int optimize)
 {
 	if (row < 0) row = 0;
 	if (row >= rows) row = rows - 1;
@@ -387,13 +383,15 @@ static void place_cursor(int row, int col, int optimize)
 	gotoxy(col, row);
 }
 
-static void clear_to_eol(void)
+void clear_to_eol(void)
 {
 	putc(SYSCOM->crtctrl.eraseeol, stdout);
 }
 
-static void clear_to_eos(void)
+void clear_to_eos(void)
 {
 	putc(SYSCOM->crtctrl.eraseeos, stdout);
 	*displayed_buffer=0;   //status line was also cleared
 }
+
+#endif

@@ -1,31 +1,43 @@
 # vi for the P-System (work in progress)
 
-`vi.c` is the BusyBox-derived "tiny vi" (Sterling Huxley; revised by brent@mbari.org
-2020 and Stefan Haubental 2024; GPL v2 or later, see the file's header), edited so
-that it builds with Tiny-C and runs on UCSD Pascal II.0. The same file still builds
-on Linux (`gcc -DSTANDALONE vi.c`). `viucsd.h` holds everything that is P-System
-specific.
+vi is the BusyBox-derived "tiny vi" (Sterling Huxley; revised by brent@mbari.org
+2020 and Stefan Haubental 2024; GPL v2 or later, see `vi.h`'s header), edited so
+that it builds with Tiny-C and runs on UCSD Pascal II.0. It was one file, `vi.c`
+(123 KB, too big to edit with vi itself); it is now modules of about 20 KB:
 
-Build (host): `build/tc -z -I tinyc/include -L tinyc/include/tclibz.obj ports/vi/vi.c -o VI.CODE`
-(`-z` and `tclibz.obj` so that it also runs in Z80 mode); `tools/mkvolume.py` puts VI.CODE
-on TOOLS: and the sources on TOOLSRC:. On the P-System, `@TOOLS` on TOOLSRC: rebuilds it
-(the same VI.CODE byte for byte) -- for now only in P-Code mode with the Harvard layout
-(Options > Reclaim Z80 Interpreter and BIOS Memory, Options > Harvard Mode), where the
-compiler's code takes no data memory: in the normal layout and in Z80 mode its compile pass
-runs out of memory on vi.c (the declarations of ~200 functions plus the compiler's
-segments).
+| File | What |
+|---|---|
+| `vi.h` | what the modules share: the configuration, the global state (`struct globals G`), the functions one module calls in another |
+| `vimain.c` | start, the main loop, keys, files, the terminal (Linux) |
+| `viscreen.c` | the screen: drawing, the status line, the cursor |
+| `vitext.c` | moving in and changing the text, searching, registers |
+| `vicolon.c` | the `:` commands |
+| `vicmd.c` | the vi commands (`do_cmd`) |
+| `vipage.c`, `vipage.h` | a window into big files |
+| `viucsd.c` | the P-System: keys, screen, files, the library functions Tiny-C lacks |
 
-Later: split vi.c into modules compiled separately (/C) and linked (/L), as the compiler
-itself is, so that Z80 mode and the normal layout can build it too.
+A function used in one module only is `static` there; the others are declared in
+`vi.h`. The same files still build on Linux
+(`gcc -DSTANDALONE vimain.c viscreen.c vitext.c vicolon.c vicmd.c vipage.c viucsd.c`;
+`viucsd.c` is empty there).
+
+Build (host): each module `build/tc -c -z -I tinyc/include ports/vi/NAME.c -o NAME.obj`,
+then `build/tc -z -L tinyc/include/tclibz.obj vimain.obj ... viucsd.obj -o VI.CODE`
+(`-z` and `tclibz.obj` so that it also runs in Z80 mode; `compile_modules` in
+`tools/tcrun.py` does it); `tools/mkvolume.py` puts VI.CODE on TOOLS: and the sources
+on TOOLSRC:. On the P-System, `@TOOLS` on TOOLSRC: compiles each module (`/Z /C`)
+and links them (`/L VI=...`): the same VI.CODE byte for byte, in P-Code mode with
+the Harvard layout (Options > Reclaim Z80 Interpreter and BIOS Memory, Options >
+Harvard Mode), where the compiler's code takes no data memory.
 
 Run: from the shell, `VI NAME.C` (the name as typed: `.C`, `.H` and `.TEXT` files are
 UCSD text files); from X(ecute) it asks for the file.
 
-## What was changed in vi.c
+## What was changed in vi
 
 * A `#ifdef __UCSD__` configuration ahead of the Linux one: no signals, no window
   resizing, no locale or 8-bit characters, no `:!` shell escape; the line buffers
-  sized for the P-System screen (132 columns); `#include "viucsd.h"`.
+  sized for the P-System screen (132 columns); `viucsd.c`.
 * The CRASHME test code removed.
 * Tiny-C has no variadic macros: the five `USE_FEATURE_VI_READONLY(, x)` uses are
   written out.
@@ -34,7 +46,7 @@ UCSD text files); from X(ecute) it asks for the file.
   `do_cmd2()`, and `colon()`'s `:s` and `:set` are `colon_s()` and `colon_set()`.
   Plain C, so Linux uses them too; the same 60 commands give the same file on Linux,
   in P-Code mode and in Z80 mode.
-* Ten routines have P-System versions in `viucsd.h` (the originals stay for Linux):
+* Ten routines have P-System versions in `viucsd.c` (the originals stay for Linux):
   `rawmode`, `cookmode`, `awaitInput`, `readit`, `file_size`, `file_insert`,
   `file_write`, `place_cursor`, `clear_to_eol`, `clear_to_eos`, and `show_help`
   (its one string is longer than the P-machine's 255-byte constants).
@@ -46,7 +58,7 @@ UCSD text files); from X(ecute) it asks for the file.
   status line with `printf` instead of `sprintf`; `p`/`P` with an empty register
   left `.` recording, so the `.` typed next repeated itself for ever (vi hung).
 
-## The P-System side (viucsd.h)
+## The P-System side (viucsd.c)
 
 * Keys: `getch()` (UNITREAD, raw); the P-System's cursor keys (CRTINFO: the emulator
   sends ^T ^R ^Q ^U for the arrows) become vi's arrow keys, so ^R and ^U are not
@@ -62,7 +74,7 @@ UCSD text files); from X(ecute) it asks for the file.
 * `strncasecmp`, `strchrnul`, `memrchr`, `snprintf`, `getopt`, ... that the library
   does not have.
 
-## Big files: a window (vipage.h)
+## Big files: a window (vipage.c)
 
 As the UCSD L2 editor does it, vi keeps only a window of the file in memory
 (`ENABLE_FEATURE_VI_PAGING`, on for the P-System). The whole file goes into a
@@ -90,7 +102,7 @@ open, and saving over it is safe). `VI.SWAP` is deleted when vi ends.
 * The window is allocated once, as big as memory allows, and never reallocated.
 
 Tested by giving the Linux build a tiny window (`gcc -DSTANDALONE
--DENABLE_FEATURE_VI_PAGING=1`, `VI_PAGECAP=2600`): random sessions of 60 commands on a
+-DENABLE_FEATURE_VI_PAGING=1 vi*.c`, `VI_PAGECAP=2600`): random sessions of 60 commands on a
 1500-line file must save the same file as the build without paging; and on the
 P-System by `tools/vitest.py` (a 1500-line file through a 4 KB window in Z80 mode).
 

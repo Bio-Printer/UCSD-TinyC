@@ -17,7 +17,7 @@
   @DEMOS and @TESTS leave a NAME.OBJ for every module or program.)
   TOOLS:    tools written in Tiny-C, ready to run (VI.CODE), README.TEXT,
             FILES.TEXT
-  TOOLSRC:  their sources (VI.C, VIUCSD.H), README.TEXT, FILES.TEXT
+  TOOLSRC:  their sources (VI.H, VIMAIN.C, ...), README.TEXT, FILES.TEXT
 
 FILES.TEXT lists every file on its volume with its size and what it is;
 the same listing is written next to the zips (volumes/NAME.txt).
@@ -27,7 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import ucsdvol
-from tcrun import build_lib, compile_c, INC
+from tcrun import build_lib, compile_c, compile_modules, INC
 from buildtc import build, MODULES
 
 SRC = os.path.join(ROOT, 'tinyc')
@@ -178,9 +178,12 @@ leaves a NAME.OBJ as well; remove those with the Filer if you like).
 FILES.TEXT lists every file on this volume.
 """
 
-# the tools (TOOLS:, TOOLSRC:): name, main source, other source files, what it is
+# the tools (TOOLS:, TOOLSRC:): name, its modules (compiled one by one, then
+# linked), its headers, what it is
+VI_MODULES = ['ports/vi/%s.c' % m for m in
+              ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'viucsd')]
 TOOLS = [
-    ('VI', 'ports/vi/vi.c', ['ports/vi/viucsd.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
+    ('VI', VI_MODULES, ['ports/vi/vi.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
 ]
 
 README_TOOLS = """TOOLS                                               volume TOOLS:
@@ -212,10 +215,13 @@ REBUILDING THEM:  set the prefix to TOOLSRC:, X(ecute TINY-C:CC, answer
 @TOOLS.  TOOLS.TEXT compiles and links every tool (NAME.CODE here, and
 a NAME.OBJ); copy the new NAME.CODE to TOOLS: with the Filer.
 
-VI.C, VIUCSD.H, VIPAGE.H   vi: the BusyBox "tiny vi" (GPL v2 or later,
-        see its header), edited for Tiny-C; VIUCSD.H is the P-System side
-        (keys, screen, files), VIPAGE.H the window into big files.  For now VI.C needs more memory than the compiler
-        has in the normal layout: rebuild it in P-Code mode with Options >
+VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
+        for Tiny-C, in modules: VI.H (what they share), VIMAIN.C (start,
+        main loop), VISCREEN.C (the screen), VITEXT.C (moving, changing
+        text), VICOLON.C (the : commands), VICMD.C (the vi commands),
+        VIPAGE.C and VIPAGE.H (the window into big files), VIUCSD.C (the
+        P-System: keys, screen, files).  @TOOLS compiles each (/Z /C) and
+        links them (/L VI=...).  Rebuild it in P-Code mode with Options >
         Reclaim Z80 Interpreter and BIOS Memory and Options > Harvard Mode
         on (the compiler's code then takes no data memory).
 
@@ -278,9 +284,8 @@ WHAT = {
     'pexec.c': 'pexec, main(argc, argv) (<psys.h>)',
     'strtold.c': 'strtold, atold (<stdlib.h>, P-Code mode)',
     'tcrt.c': 'runtime helpers: C division, shifts, unsigned, longs',
-    'vi.c': 'the editor (the BusyBox tiny vi, edited for Tiny-C)',
-    'viucsd.h': 'its P-System side: keys, screen, files',
-    'vipage.h': 'its window into big files (VI.SWAP)',
+    'vi.h': "vi's modules share this: configuration, globals",
+    'vipage.h': "vi's window into big files (VI.SWAP)",
 }
 
 
@@ -414,20 +419,28 @@ def tests():
     t.finish()
 
 
+def tool_batch(name, mods):
+    """TOOLS.TEXT's lines for a tool: each module compiled (/Z /C), then linked"""
+    names = [os.path.splitext(os.path.basename(m))[0].upper() for m in mods]
+    return ''.join('/Z /C %s\n' % n for n in names) + '/L %s=%s\n' % (name, ','.join(names))
+
+
 def tools():
     t = Vol('TOOLS', 4000)
     t.text('README.TEXT', README_TOOLS, 'what is on this volume')
-    for name, src, more, desc in TOOLS:
-        t.binary(name + '.CODE', compiled(os.path.join(ROOT, src)), desc)
+    os.makedirs(TMP, exist_ok=True)
+    for name, mods, hdrs, desc in TOOLS:
+        code = compile_modules([os.path.join(ROOT, m) for m in mods], os.path.join(TMP, name + '.CODE'), True)
+        t.binary(name + '.CODE', open(code, 'rb').read(), desc)
     t.finish()
     s = Vol('TOOLSRC', 4000)
     s.text('README.TEXT', README_TOOLSRC, 'what is on this volume')
     s.text('TOOLS.TEXT', '; TOOLS -- compile and link every tool on TOOLSRC:\n'
            '; prefix TOOLSRC:, X(ecute TINY-C:CC, answer @TOOLS\n' +
-           ''.join('/Z %s\n' % name for name, src, more, desc in TOOLS),
+           ''.join(tool_batch(name, mods) for name, mods, hdrs, desc in TOOLS),
            'X TINY-C:CC, @TOOLS: rebuilds every tool here')
-    for name, src, more, desc in TOOLS:
-        for f in [src] + more:
+    for name, mods, hdrs, desc in TOOLS:
+        for f in mods + hdrs:
             p = os.path.join(ROOT, f)
             s.textfile(os.path.basename(f).upper(), p, '%s: %s' % (name.lower(), describe(p)))
     s.finish()

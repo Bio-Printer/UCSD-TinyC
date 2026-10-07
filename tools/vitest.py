@@ -12,19 +12,21 @@ Uses the mode of PSYS_MODE (native or z80) like the other tools; the
 P-System VI is built with -z (tclibz.obj) so that it runs in both.
 
   vitest.py --build   on the volumes (build/, tools/mkvolume.py): @TOOLS on
-                      TOOLSRC: with TINY-C:CC, in P-Code mode with the
-                      Harvard layout (the only one with the memory for vi.c
-                      so far); the VI.CODE it makes must be TOOLS:VI.CODE
+                      TOOLSRC: with TINY-C:CC, in PSYS_MODE's mode and the
+                      normal layout; --build harvard: in P-Code mode with
+                      the Harvard layout; the VI.CODE it makes must be
+                      TOOLS:VI.CODE
 """
 import os, sys, pty, time, select, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from psys import PSystem
-from tcrun import compile_c, build_lib, TC, INC
+from tcrun import compile_c, compile_modules
+from mkvolume import VI_MODULES
 import ucsdvol
 
-VI = os.path.join(ROOT, 'ports', 'vi', 'vi.c')
+VI = [os.path.join(ROOT, m) for m in VI_MODULES]
 TEXT = "".join("%s line %d: the quick brown fox (jumps) over [the] lazy {dog}\n" % (w, i)
                for i, w in enumerate(["alpha", "beta", "gamma", "delta", "epsilon",
                                       "zeta", "eta", "theta", "iota", "kappa"] * 3))
@@ -48,7 +50,7 @@ SESSIONS = [('small file', TEXT, KEYS, True), ('1500 lines', BIG, BIGKEYS, False
 def linux(work, text, keys, y):
     exe = os.path.join(work, 'vilinux')
     if not os.path.exists(exe):
-        subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-o', exe, VI])
+        subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-o', exe] + VI)
     x = os.path.join(work, 'X.C')
     open(x, 'w').write(text)
     pid, fd = pty.fork()
@@ -77,11 +79,7 @@ def linux(work, text, keys, y):
 
 
 def psystem(work, text, keys, y):
-    lib = build_lib(True)
-    code = os.path.join(work, 'VI.CODE')
-    r = subprocess.run([TC, '-z', '-I', INC, '-L', lib, VI, '-o', code], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise SystemExit('vi.c does not compile:\n' + r.stdout + r.stderr)
+    code = compile_modules(VI, os.path.join(work, 'VI.CODE'), True)
     ps = PSystem()
     ps.put('VI.CODE', open(code, 'rb').read())
     base, sc = compile_c(os.path.join(ROOT, 'examples', 'shell.c'), ps.dir)
@@ -99,10 +97,12 @@ def psystem(work, text, keys, y):
     return text('X.C'), text('Y.C') if y else None
 
 
-def build_on_psystem():
+def build_on_psystem(harvard):
     import shutil
     from psys import BUILD
     from voltest import prefix
+    mode = 'native' if harvard else os.environ.get('PSYS_MODE', 'native')
+    layout = 'P-Code mode, Harvard layout' if harvard else '%s mode, normal layout' % mode
     work = tempfile.mkdtemp(prefix='vibuild_')
     for v in ('TINY-C', 'TOOLSRC', 'TOOLS'):
         shutil.copy(os.path.join(BUILD, v + '.BLK'), work)
@@ -113,8 +113,8 @@ def build_on_psystem():
     open(sp, 'w').write('\n'.join(script) + '\n')
     out = os.path.join(work, 'out')
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'), os.path.join(work, 'TINY-C.BLK'),
-                        os.path.join(work, 'TOOLSRC.BLK'), sp, 'native', out, '', '1800'], capture_output=True, text=True,
-                       env=dict(os.environ, VERIFY_RECLAIM='1', VERIFY_HARVARD='1'))
+                        os.path.join(work, 'TOOLSRC.BLK'), sp, mode, out, '', '1800'], capture_output=True, text=True,
+                       env=dict(os.environ, VERIFY_RECLAIM='1', VERIFY_HARVARD='1') if harvard else os.environ)
     tr = open(os.path.join(out, 'transcript.txt'), encoding='latin1').read()
     built = None
     for f in os.listdir(out):
@@ -123,8 +123,8 @@ def build_on_psystem():
             if v.volname == 'TOOLSRC' and v.find('VI.CODE'):
                 built = v.read('VI.CODE')[0]
     shipped = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK')).read('VI.CODE')[0]
-    ok = 'VERIFY SCRIPT COMPLETED' in r.stdout and 'harvard layout: yes' in r.stdout and built == shipped
-    print('@TOOLS on TOOLSRC: (Harvard layout): %s' % ('VI.CODE identical to TOOLS:VI.CODE' if ok else 'FAILED'))
+    ok = 'VERIFY SCRIPT COMPLETED' in r.stdout and (not harvard or 'harvard layout: yes' in r.stdout) and built == shipped
+    print('@TOOLS on TOOLSRC: (%s): %s' % (layout, 'VI.CODE identical to TOOLS:VI.CODE' if ok else 'FAILED'))
     if not ok:
         print(tr[tr.find('Compile what'):][-800:])
     print('vi build test: %s' % ('PASSED' if ok else 'FAILED'))
@@ -132,8 +132,8 @@ def build_on_psystem():
 
 
 def main():
-    if sys.argv[1:] == ['--build']:
-        return build_on_psystem()
+    if sys.argv[1:2] == ['--build']:
+        return build_on_psystem(sys.argv[2:] == ['harvard'])
     work = tempfile.mkdtemp(prefix='vitest_')
     mode = os.environ.get('PSYS_MODE', 'native')
     good = True

@@ -1,10 +1,16 @@
-TOOLSRC:  6 files  (a UCSD directory holds 77)
+TOOLSRC:  12 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
   README.TEXT          4  what is on this volume
   TOOLS.TEXT           4  X TINY-C:CC, @TOOLS: rebuilds every tool here
-  VI.C               258  vi: the editor (the BusyBox tiny vi, edited for Tiny-C)
-  VIUCSD.H            20  vi: its P-System side: keys, screen, files
-  VIPAGE.H            44  vi: its window into big files (VI.SWAP)
+  VIMAIN.C            48  vi: vi: start, main loop, keys, files, the terminal (Linux)
+  VISCREEN.C          40  vi: vi: the screen, the status line, the cursor
+  VITEXT.C            44  vi: vi: moving in and changing the text, searching ...
+  VICOLON.C           40  vi: vi: the : commands
+  VICMD.C             56  vi: vi: the vi commands
+  VIPAGE.C            42  vi: vi: a window into big files (see vipage.h)
+  VIUCSD.C            20  vi: vi on UCSD Pascal II.0 with Tiny-C: the routines that
+  VI.H                42  vi: vi's modules share this: configuration, globals
+  VIPAGE.H            10  vi: vi's window into big files (VI.SWAP)
   FILES.TEXT           4  this list

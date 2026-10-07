@@ -75,6 +75,26 @@ def compile_c(src, outdir, z80=None):
     return base, out
 
 
+def compile_modules(srcs, out, z80=None):
+    """a program of several modules: each compiled (-c) into out's
+    directory, then linked with the library into out (a .CODE file)"""
+    z = z80calls(z80)
+    outdir = os.path.dirname(out)
+    objs = []
+    for src in srcs:
+        obj = os.path.join(outdir, os.path.splitext(os.path.basename(src))[0] + '.obj')
+        r = subprocess.run([TC, '-c'] + (['-z'] if z else []) + ['-I', INC, src, '-o', obj],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            raise SystemExit('%s does not compile:\n%s%s' % (src, r.stdout, r.stderr))
+        objs.append(obj)
+    r = subprocess.run([TC] + (['-z'] if z else []) + ['-L', build_lib(z)] + objs + ['-o', out],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        raise SystemExit('link failed:\n' + r.stdout + r.stderr)
+    return out
+
+
 def run_c(src, keys='', extra_files=(), timeout=300):
     ps = PSystem()
     base, code = compile_c(src, ps.dir)
