@@ -180,7 +180,7 @@ FILES.TEXT lists every file on this volume.
 
 # the tools (TOOLS:, TOOLSRC:): name, main source, other source files, what it is
 TOOLS = [
-    ('VI', 'ports/vi/vi.c', ['ports/vi/viucsd.h'], 'vi, the screen editor: VI NAME.C from the shell'),
+    ('VI', 'ports/vi/vi.c', ['ports/vi/viucsd.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
 ]
 
 README_TOOLS = """TOOLS                                               volume TOOLS:
@@ -192,8 +192,14 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         files); from X(ecute TOOLS:VI it asks for the file.  Most of vi's
         commands: moving, i a o O, x dd dw cw D C J p P y yy, . u U,
         marks, / ? n N, :w :q :wq ZZ :s :set :r :e, ...  The cursor keys
-        are the P-System's (they take ^T ^R ^Q ^U); ^L redraws.  Memory
-        limits the file: about 6 KB in Z80 mode, 14 KB in P-Code mode.
+        are the P-System's (they take ^T ^R ^Q ^U); ^L redraws.
+        Big files: vi keeps a window of the file in memory (about 4 KB in
+        Z80 mode, 12 KB in P-Code mode, 30 KB with the Harvard layout) and
+        the rest in VI.SWAP, a temporary file on the prefix volume (deleted
+        when vi ends).  Moving, searching (/ ? n N go on through the whole
+        file), G and :N move the window; files up to about 125 KB.  A
+        command on more lines than fit in the window at once (500dd,
+        :1,$s/a/b/ on a big file) is refused with a message.
 
 FILES.TEXT lists every file on this volume.
 """
@@ -206,9 +212,9 @@ REBUILDING THEM:  set the prefix to TOOLSRC:, X(ecute TINY-C:CC, answer
 @TOOLS.  TOOLS.TEXT compiles and links every tool (NAME.CODE here, and
 a NAME.OBJ); copy the new NAME.CODE to TOOLS: with the Filer.
 
-VI.C, VIUCSD.H   vi: the BusyBox "tiny vi" (GPL v2 or later, see its
-        header), edited for Tiny-C; VIUCSD.H is the P-System side (keys,
-        screen, files).  For now VI.C needs more memory than the compiler
+VI.C, VIUCSD.H, VIPAGE.H   vi: the BusyBox "tiny vi" (GPL v2 or later,
+        see its header), edited for Tiny-C; VIUCSD.H is the P-System side
+        (keys, screen, files), VIPAGE.H the window into big files.  For now VI.C needs more memory than the compiler
         has in the normal layout: rebuild it in P-Code mode with Options >
         Reclaim Z80 Interpreter and BIOS Memory and Options > Harvard Mode
         on (the compiler's code then takes no data memory).
@@ -274,6 +280,7 @@ WHAT = {
     'tcrt.c': 'runtime helpers: C division, shifts, unsigned, longs',
     'vi.c': 'the editor (the BusyBox tiny vi, edited for Tiny-C)',
     'viucsd.h': 'its P-System side: keys, screen, files',
+    'vipage.h': 'its window into big files (VI.SWAP)',
 }
 
 

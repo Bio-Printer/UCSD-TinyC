@@ -65,14 +65,21 @@ void sayw(char *s, int w)
 }
 
 /* n right-justified in w characters */
-void saynw(int n, int w)
+/* n (unsigned: sizes up to 65535) right-aligned in w columns */
+void saynw(unsigned n, int w)
 {
     char b[8];
-    itoa10(n, b);
-    w = w - strlen(b);
+    int i;
+    i = 7;
+    b[i] = 0;
+    do {
+        b[--i] = '0' + n % 10;
+        n = n / 10;
+    } while (n != 0);
+    w = w - (7 - i);
     while (w-- > 0)
         putchar(' ');
-    say(b);
+    say(b + i);
 }
 
 /* Message texts live in a file (tcmsgs.txt; on the P-System TCMSGS.TEXT

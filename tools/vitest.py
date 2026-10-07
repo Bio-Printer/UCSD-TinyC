@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""vitest.py -- ports/vi: the same editing session (60 commands: moves,
-deletes, yank/put, change, join, marks, search, :s, :set, :w NAME, ZZ, ...)
-on Linux (gcc -DSTANDALONE, in a pseudo-terminal) and on the P-System (from
-the mini-shell: VI #5:X.C), and the files they save must be identical.
+"""vitest.py -- ports/vi: the same editing sessions on Linux (gcc
+-DSTANDALONE: the whole file in memory, in a pseudo-terminal) and on the
+P-System (from the mini-shell: VI #5:X.C; the file paged through VI.SWAP),
+and the files they save must be identical:
+  * 60 commands on a small file (moves, deletes, yank/put, change, join,
+    marks, search, :s, :set, :w NAME, ZZ, ...)
+  * a 1500-line file, many times VI's window: G, gg, NG, searches both
+    ways and wrapping, j over window edges, ^F ^B, marks, ranges, ZZ
 
 Uses the mode of PSYS_MODE (native or z80) like the other tools; the
 P-System VI is built with -z (tclibz.obj) so that it runs in both.
@@ -31,11 +35,22 @@ KEYS = ["3j", "dd", "p", "2k", "yy", "P", "w", "cw", "CHANGED", "\x1b", "$", "x"
         "e", "b", "B", "W", "E", ":set ts=4\r", ":w #5:Y.C\r", ":1\r", "x", "ZZ"]
 
 
-def linux(work):
+BIG = "".join("line %d: %s\n" % (i, " ".join(["alpha", "beta", "gamma", "delta"][(i * j) % 4]
+                                                for j in range(1 + i % 7))) if i % 13 else "\n"
+              for i in range(1, 1501))
+BIGKEYS = ["G", "o", "the end", "\x1b", "gg", "O", "the start", "\x1b", "700G", "dd", "x",
+           "/line 1234:\r", "x", "n", "?line 99:\r", "dw", "1400G", "yy", "gg", "p"] + ["j"] * 60 + \
+          ["x"] + ["\x06"] * 20 + ["dd"] + ["\x02"] * 7 + ["x", ":1000,1010d\r", "500G", "ma", "900G",
+           "'a", "x", ":1450\r", "5dd", "/line 3:\r", "x", "ZZ"]
+SESSIONS = [('small file', TEXT, KEYS, True), ('1500 lines', BIG, BIGKEYS, False)]
+
+
+def linux(work, text, keys, y):
     exe = os.path.join(work, 'vilinux')
-    subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-o', exe, VI])
+    if not os.path.exists(exe):
+        subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-o', exe, VI])
     x = os.path.join(work, 'X.C')
-    open(x, 'w').write(TEXT)
+    open(x, 'w').write(text)
     pid, fd = pty.fork()
     if pid == 0:
         os.chdir(work)
@@ -53,15 +68,15 @@ def linux(work):
                 except OSError:
                     return
     drain(1.0)
-    for k in KEYS:
+    for k in keys:
         os.write(fd, k.replace(':w #5:Y.C', ':w Y.C').encode())
         drain(0.15)
     drain(0.5)
     os.waitpid(pid, 0)
-    return open(x).read(), open(os.path.join(work, 'Y.C')).read()
+    return open(x).read(), open(os.path.join(work, 'Y.C')).read() if y else None
 
 
-def psystem(work):
+def psystem(work, text, keys, y):
     lib = build_lib(True)
     code = os.path.join(work, 'VI.CODE')
     r = subprocess.run([TC, '-z', '-I', INC, '-L', lib, VI, '-o', code], capture_output=True, text=True)
@@ -71,17 +86,17 @@ def psystem(work):
     ps.put('VI.CODE', open(code, 'rb').read())
     base, sc = compile_c(os.path.join(ROOT, 'examples', 'shell.c'), ps.dir)
     ps.put('SHELL.CODE', open(sc, 'rb').read())
-    ps.put('X.C', TEXT)
+    ps.put('X.C', text)
     esc = lambda s: s.replace('\\', '\\\\').replace('"', '\\"').replace('\r', '\\r').replace('\x1b', '\\e')
     script = ['WAIT "Command:"', 'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "#5:SHELL\\r"',
               'WAIT "shell> "', 'TYPE "#5:VI #5:X.C\\r"', 'WAIT "X.C"',
-              'TYPE "%s"' % esc(''.join(KEYS)), 'WAIT "shell> "']
-    ok, tr, info = ps.run_script('\n'.join(script) + '\n', 300)
+              'TYPE "%s"' % esc(''.join(keys)), 'WAIT "shell> "']
+    ok, tr, info = ps.run_script('\n'.join(script) + '\n', 900)
     if not ok:
         raise SystemExit('the P-System run did not complete:\n' + info[-500:])
     v = ucsdvol.Volume(os.path.join(ps.out, 'VERIFY_SOURCE.BLK'))
     text = lambda n: ucsdvol.ucsd_to_text(v.read(n)[0])
-    return text('X.C'), text('Y.C')
+    return text('X.C'), text('Y.C') if y else None
 
 
 def build_on_psystem():
@@ -120,18 +135,21 @@ def main():
     if sys.argv[1:] == ['--build']:
         return build_on_psystem()
     work = tempfile.mkdtemp(prefix='vitest_')
-    lx, ly = linux(work)
-    px, py = psystem(work)
     mode = os.environ.get('PSYS_MODE', 'native')
     good = True
-    for name, a, b in (('X.C (ZZ)', lx, px), ('Y.C (:w)', ly, py)):
-        same = a == b and a != TEXT
-        good = good and same
-        print('%-9s %s' % (name, 'same as Linux' if same else 'DIFFERENT from Linux' if a != b else 'NOT EDITED'))
-        if a != b:
-            import difflib
-            for l in difflib.unified_diff(a.split('\n'), b.split('\n'), 'linux', 'p-system', lineterm='', n=0):
-                print('  ' + l)
+    for title, text, keys, y in SESSIONS:
+        lx, ly = linux(work, text, keys, y)
+        px, py = psystem(work, text, keys, y)
+        for name, a, b in (('X.C (ZZ)', lx, px), ('Y.C (:w)', ly, py)):
+            if a is None:
+                continue
+            same = a == b and a != text
+            good = good and same
+            print('%-11s %-9s %s' % (title, name, 'same as Linux' if same else 'DIFFERENT from Linux' if a != b else 'NOT EDITED'))
+            if a != b:
+                import difflib
+                for l in list(difflib.unified_diff(a.split('\n'), b.split('\n'), 'linux', 'p-system', lineterm='', n=0))[:20]:
+                    print('  ' + l)
     print('vi test (%s): %s' % (mode, 'PASSED' if good else 'FAILED'))
     return 0 if good else 1
 

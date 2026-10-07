@@ -629,7 +629,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     struct LProc *exitp;
     struct LProc *p;
     FILE *out;
-    int seglen[24];
+    unsigned seglen[24];        /* a segment may pass 32767 bytes: unsigned */
     int segblk[24];
     int order[24];
     int pnum[24];
@@ -641,7 +641,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     int n;
     int blk;
     int pos;
-    int len;
+    unsigned len;
     unsigned char *blk0;
     char name[MAXNAME];
     char seg[MAXNAME];

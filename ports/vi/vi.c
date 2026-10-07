@@ -44,6 +44,10 @@
 #define vi_main			main
 #define CONFIG_FEATURE_VI_MAX_LEN 132
 #define TEXT_SLACK 1024	// free room in the text buffer: memory is small
+#define ENABLE_FEATURE_VI_PAGING 1	// a window into big files (vipage.h)
+#define VI_ROW_SUMS 1	// the screen as a checksum per row, not a copy
+#define PG_RESERVE 1024	// memory left out of the window: yanks, and so on
+#define PG_MAXCH 128	// chunks in VI.SWAP: files up to about 125 KB
 #define ENABLE_FEATURE_VI_COLON 1
 #define ENABLE_FEATURE_VI_YANKMARK 1
 #define ENABLE_FEATURE_VI_SEARCH 1
@@ -180,6 +184,10 @@ void *memrchr(const void *s, int c_in, size_t n)
 #endif
 
 #include <limits.h>
+
+#ifndef ENABLE_FEATURE_VI_PAGING
+#define ENABLE_FEATURE_VI_PAGING 0
+#endif
 
 #ifndef TEXT_SLACK
 #define TEXT_SLACK 10240	// free room in the text buffer
@@ -384,6 +392,10 @@ struct globals {
 	char *reg[28];          // named register a-z, "D", and "U" 0-25,26,27
 	char *mark[28];         // user marks points somewhere in text[]-  a-z and previous context ''
 	char *context_start, *context_end;
+#if ENABLE_FEATURE_VI_PAGING
+	int markl[28];          // marks as line numbers: the window moves
+	int ctx_s, ctx_e;       // the context, as line numbers
+#endif
 #endif
 #if ENABLE_FEATURE_VI_USE_SIGNALS
 	sigjmp_buf restart;     // catch_sig()
@@ -461,6 +473,9 @@ struct globals {
 #define mark           (G.mark          )
 #define context_start  (G.context_start )
 #define context_end    (G.context_end   )
+#define markl          (G.markl         )
+#define ctx_s          (G.ctx_s         )
+#define ctx_e          (G.ctx_e         )
 #define restart        (G.restart       )
 #define term_orig      (G.term_orig     )
 #define ticsPerChar	   (G.ticsPerChar   )
@@ -707,6 +722,18 @@ ssize_t full_write(int fd, const void *buf, size_t len)
 }
 #endif
 
+#if ENABLE_FEATURE_VI_PAGING
+#ifndef __UCSD__
+static void gracefulExit(void);
+#include "vipage.h"		// (viucsd.h includes it on the P-System)
+#endif
+#define ABSLINE(p) (pg_lb + count_lines(text, p))	// p's line in the file
+#define TOTLINES() (pg_lines())			// the file's lines
+#else
+#define ABSLINE(p) count_lines(text, p)
+#define TOTLINES() count_lines(text, end - 1)
+#endif
+
 static void write1(const char *out)
 {
 	fputs(out, stdout);
@@ -924,6 +951,9 @@ int vi_main(int argc, char **argv)
 	}
 	//-----------------------------------------------------------
 
+#if ENABLE_FEATURE_VI_PAGING
+	pg_close();
+#endif
 	return 0;
 }
 
@@ -934,10 +964,22 @@ static int init_text_buffer(char *fn)
 	int rc;
 	int size = file_size(fn);	// file size. -1 means does not exist.
 
+#if ENABLE_FEATURE_VI_PAGING
+	/* the window: allocated once, as big as memory allows */
+	if (!text) {
+		pg_init();
+		text_size = pg_cap;
+		text = xzalloc(text_size + 1);
+	}
+	memset(text, 0, text_size);
+	pg_reset();
+	screenbegin = dot = end = text;
+#else
 	/* allocate/reallocate text buffer */
 	free(text);
 	text_size = size + TEXT_SLACK;
 	screenbegin = dot = end = text = xzalloc(text_size);
+#endif
 
 	if (fn != current_filename) {
 		free(current_filename);
@@ -948,13 +990,21 @@ static int init_text_buffer(char *fn)
 		char_insert(text, '\n');
 		rc = 0;
 	} else {
+#if ENABLE_FEATURE_VI_PAGING
+		rc = pg_load(fn);
+#else
 		rc = file_insert(fn, text, 1);
+#endif
 	}
 	file_modified = 0;
 	last_file_modified = -1;
 #if ENABLE_FEATURE_VI_YANKMARK
 	/* init the marks. */
 	memset(mark, 0, sizeof(mark));
+#if ENABLE_FEATURE_VI_PAGING
+	memset(markl, 0, sizeof(markl));
+	ctx_s = ctx_e = 0;
+#endif
 #endif
 	return rc;
 }
@@ -977,6 +1027,9 @@ static void edit_file(char *fn)
 	YDreg = 26;			// default Yank/Delete reg
 	Ureg = 27;			// hold orig line for "U" cmd
 	mark[26] = mark[27] = text;	// init "previous context"
+#if ENABLE_FEATURE_VI_PAGING
+	markl[26] = markl[27] = 1;
+#endif
 #endif
 
 	last_forward_char = last_input_char = '\0';
@@ -1035,6 +1088,9 @@ static void edit_file(char *fn)
 
 	//------This is the main Vi cmd handling loop -----------------------
 	while (editing > 0) {
+#if ENABLE_FEATURE_VI_PAGING
+		pg_fix();
+#endif
 		refresh();
 		last_input_char = c = get_one_char();	// get a cmd from user
 		*status_buffer=0;
@@ -1075,7 +1131,7 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 	if (*p == '.') {	// the current line
 		p++;
 		q = begin_line(dot);
-		*addr = count_lines(text, q);
+		*addr = ABSLINE(q);
 	}
 #if ENABLE_FEATURE_VI_YANKMARK
 	else if (*p == '\'') {	// is this a mark addr
@@ -1085,10 +1141,15 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 		if (c >= 'a' && c <= 'z') {
 			// we have a mark
 			c = c - 'a';
+#if ENABLE_FEATURE_VI_PAGING
+			if (markl[(unsigned char) c])
+				*addr = markl[(unsigned char) c];
+#else
 			q = mark[(unsigned char) c];
 			if (q != NULL) {	// is mark valid
 				*addr = count_lines(text, q);	// count lines
 			}
+#endif
 		}
 	}
 #endif
@@ -1101,18 +1162,22 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 			p++;
 		q = char_search(dot, pat, FORWARD, FULL);
 		if (q != NULL) {
-			*addr = count_lines(text, q);
+			*addr = ABSLINE(q);
 		}
+#if ENABLE_FEATURE_VI_PAGING
+		else if (pg_find_line(pat))
+			*addr = pg_find_line(pat);
+#endif
 		free(pat);
 	}
 #endif
 	else if (*p == '$') {	// the last line in file
 		p++;
-		q = begin_line(end - 1);
-		*addr = count_lines(text, q);
+		*addr = TOTLINES();
 	} else if (isdigit(*p)) {	// specific line number
-		sscanf(p, "%d%n", addr, &st);
-		p += st;
+		// (by hand: sscanf would bring the library's whole scanf)
+		for (*addr = 0; isdigit(*p); p++)
+			*addr = *addr * 10 + (*p - '0');
 	} else {
 		// unrecognised address - assume -1
 		*addr = -1;
@@ -1129,7 +1194,7 @@ static char *get_address(char *p, int *b, int *e)	// get two colon addrs, if pre
 	if (*p == '%') {			// alias for 1,$
 		p++;
 		*b = 1;
-		*e = count_lines(text, end-1);
+		*e = TOTLINES();
 		goto ga0;
 	}
 	p = get_one_address(p, b);
@@ -1214,7 +1279,9 @@ static void colon_set(char *args)
 			setops(argp, "showmatch ", i, "sm", VI_SHOWMATCH);
 			/* tabstopXXXX */
 			if (strncasecmp(argp + i, "tabstop=%d ", 7) == 0) {
-				sscanf(strchr(argp + i, '='), "tabstop=%d" + 7, &ch);
+				char *t = strchr(argp + i, '=') + 1;
+				for (ch = 0; isdigit(*t); t++)
+					ch = ch * 10 + (*t - '0');
 				if (ch > 0 && ch <= MAX_TABSTOP)
 					tabstop = ch;
 			}
@@ -1283,7 +1350,7 @@ static int colon_s(char *orig_buf, char *q, int b, int e)
 		q = begin_line(q);
 		if (b < 0) {	// maybe :s/foo/bar/
 			q = begin_line(dot);	// start with cur line
-			b = count_lines(text, q);	// cur line number
+			b = ABSLINE(q);	// cur line number
 		}
 		if (e < 0)
 			e = b;		// maybe :.s/foo/bar/
@@ -1310,7 +1377,35 @@ vc4:
 	return 0;
 }
 
+#if ENABLE_FEATURE_VI_PAGING
+static void colon1(char *buf);
+// the lines a : command works on stay where they are until it is done
 static void colon(char *buf)
+{
+	int lines, l;
+
+	lines = TOTLINES();
+	pg_park = NULL;
+	pg_keep = 0;
+	colon1(buf);
+	pg_lock = 0;
+	if (pg_park && pg_keep && dot == pg_park) {
+		// its lines did not fit with the cursor's: back to the cursor's line
+		l = pg_park_l;
+		if (pg_park_a < l)
+			l += TOTLINES() - lines;
+		if (pg_park_a < pg_top)
+			pg_top += TOTLINES() - lines;
+		dot = find_line(l);
+		while (pg_park_c-- > 0 && *dot != '\n')
+			dot++;
+	}
+	pg_park = NULL;
+}
+#else
+#define colon1 colon
+#endif
+static void colon1(char *buf)
 {
 	char c, *orig_buf, *buf1, *q, *r;
 	char *fn, cmd[MAX_INPUT_LEN], args[MAX_INPUT_LEN];
@@ -1341,11 +1436,20 @@ static void colon(char *buf)
 	b = e = -1;
 	q = text;			// assume 1,$ for the range
 	r = end - 1;
-	li = count_lines(text, end - 1);
+	li = TOTLINES();
 	fn = current_filename;
 
 	// look for optional address(es)  :.  :1  :1,9   :'q,'a   :%
 	buf = get_address(buf, &b, &e);
+#if ENABLE_FEATURE_VI_PAGING
+	if (b >= 0 && !pg_hold(b, e >= 0 ? e : b)) {
+		status_line_bold("Lines %d to %d do not fit in memory", b, e >= 0 ? e : b);
+		return;
+	}
+	pg_lock = 1;
+	q = text;			// the window may have moved
+	r = end - 1;
+#endif
 
 	// remember orig command line
 	orig_buf = buf;
@@ -1386,6 +1490,10 @@ static void colon(char *buf)
 	}
 	// ------------ now look for the command ------------
 	i = strlen(cmd);
+#if ENABLE_FEATURE_VI_PAGING
+	// these leave the cursor where it was (colon() puts it back if pg_hold moved it)
+	pg_keep = i > 0 && strchr("swy=lf", cmd[0]) != NULL;
+#endif
 	if (i == 0) {		// :123CR goto line #123
 		if (b >= 0) {
 			dot = find_line(b);	// what line is #b
@@ -1411,7 +1519,7 @@ static void colon(char *buf)
 #endif
 	else if (strncmp(cmd, "=", i) == 0) {	// where is the address
 		if (b < 0) {	// no addr given- use defaults
-			b = e = count_lines(text, dot);
+			b = e = ABSLINE(dot);
 		}
 		status_line("%d", b);
 	} else if (strncasecmp(cmd, "delete", i) == 0) {	// delete lines
@@ -1453,7 +1561,7 @@ static void colon(char *buf)
 		}
 #endif
 		// how many lines in text[]?
-		li = count_lines(text, end - 1);
+		li = TOTLINES();
 		status_line("\"%s\"%s"
 			USE_FEATURE_VI_READONLY("%s")
 			" %dL, %dC", current_filename,
@@ -1603,6 +1711,10 @@ static void colon(char *buf)
 		// how many lines in text[]?
 		li = count_lines(q, r);
 		ch = r - q + 1;
+#if ENABLE_FEATURE_VI_PAGING
+		if (q == text && r == end - 1)
+			li = TOTLINES();
+#endif
 		// see if file exists- if not, its just a new file request
 		if (useforce) {
 			// if "fn" is not write-able, chmod u+w
@@ -1621,6 +1733,11 @@ static void colon(char *buf)
 			if (l == -1)
 				status_line_bold("\"%s\" %s", fn, strerror(errno));
 		} else {
+#if ENABLE_FEATURE_VI_PAGING
+			if (q == text && r == end - 1)
+				status_line("\"%s\" %dL, %ldC", fn, li, pg_bytes());
+			else
+#endif
 			status_line("\"%s\" %dL, %dC", fn, li, l);
 			if (q == text && r == end - 1 && l == ch) {
 				file_modified = 0;
@@ -1644,7 +1761,7 @@ static void colon(char *buf)
 		text_yank(q, r, YDreg);
 		li = count_lines(q, r);
 		status_line("Yank %d lines (%d chars) into [%c]",
-				li, strlen(reg[YDreg]), what_reg());
+				li, reg[YDreg] ? (int)strlen(reg[YDreg]) : 0, what_reg());
 #endif
 	} else {
 		// cmd unknown
@@ -1690,6 +1807,28 @@ static void sync_cursor(char *d, int *row, int *col)
 
 	beg_cur = begin_line(d);	// first char of cur line
 
+#if ENABLE_FEATURE_VI_PAGING
+	if (pg_top) {
+		// the screen's top line went out of the window: the same moves,
+		// counted in line numbers
+		ro = ABSLINE(beg_cur);
+		co = TOTLINES();
+		cnt = pg_top + rows - 2;	// the screen's last line
+		if (cnt > co)
+			cnt = co;
+		if (ro < pg_top && pg_top - ro + 1 > (rows - 1) / 2
+		 || ro > cnt && ro - cnt + 1 > (rows - 1) / 2)
+			ro -= (rows - 1) / 2;	// dot in the middle of the screen
+		else if (ro > cnt)
+			ro = pg_top + ro - cnt;	// scrolled up just enough
+		else if (ro > pg_top)
+			ro = pg_top;		// on the screen as it was
+		pg_top = 0;
+		screenbegin = pg_line(ro < 1 ? 1 : ro);
+		if (!screenbegin)
+			screenbegin = text;
+	} else
+#endif
 	if (beg_cur < screenbegin) {
 		// "d" is before top line on screen
 		// how many lines do we have to move
@@ -1864,6 +2003,10 @@ static char *find_line(int li)	// find begining of line #li
 {
 	char *q;
 
+#if ENABLE_FEATURE_VI_PAGING
+	if (pg_f)
+		return pg_goto(li);
+#endif
 	for (q = text; li > 1; li--) {
 		q = next_line(q);
 	}
@@ -1915,11 +2058,17 @@ static char *move_to_col(char *p, int l)
 
 static void dot_next(void)
 {
+#if ENABLE_FEATURE_VI_PAGING
+	pg_edge(FORWARD);
+#endif
 	dot = next_line(dot);
 }
 
 static void dot_prev(void)
 {
+#if ENABLE_FEATURE_VI_PAGING
+	pg_edge(BACK);
+#endif
 	dot = prev_line(dot);
 }
 
@@ -1927,6 +2076,9 @@ static void dot_scroll(int cnt, int dir)
 {
 	char *q;
 
+#if ENABLE_FEATURE_VI_PAGING
+	pg_scroll(cnt, dir);
+#endif
 	for (; cnt > 0; cnt--) {
 		if (dir < 0) {
 			// scroll Backwards
@@ -1988,7 +2140,11 @@ static char *bound_dot(char *p) // make sure  text[0] <= P < "end"
 static char *new_screen(int ro, int co)
 {
 	free(screen);
+#ifdef VI_ROW_SUMS
+	screensize = ro * sizeof(unsigned);
+#else
 	screensize = ro * co + 8;
+#endif
 	screen = xmalloc(screensize);
 	screen_erase();
 	return screen;
@@ -2150,7 +2306,12 @@ static char *char_insert(char *p, char c) // insert the char c at 'p'
 
 static char *stupid_insert(char *p, char c) // stupidly insert the char c at 'p'
 {
-	p = text_hole_make(p, 1);
+	char *q;
+
+	q = text_hole_make(p, 1);
+	if (!q)
+		return p;	// no room: the character is dropped
+	p = q;
 	*p = c;
 	//file_modified++; - done by text_hole_make()
 	return p + 1;
@@ -2161,6 +2322,27 @@ static int find_range(char **start, char **stop, char c)
 	char *save_dot, *p, *q, *t;
 	int cnt, multiline = 0;
 
+#if ENABLE_FEATURE_VI_PAGING
+	{
+		int n, l, ok;
+		n = cmdcnt > 1 ? cmdcnt : 1;
+		l = ABSLINE(dot);
+		ok = 1;
+		pg_over = 0;
+		if (strchr("cdy><", c))
+			ok = pg_hold(l, l + n - 1);
+		else if (strchr("L+j}\r\n", c))
+			ok = pg_hold(l, l + n);
+		else if (strchr("H-k{", c))
+			ok = pg_hold(l - n, l);
+		if (!ok) {
+			pg_over = 1;
+			*start = *stop = dot;
+			return 0;
+		}
+		pg_lock++;
+	}
+#endif
 	save_dot = dot;
 	p = q = dot;
 
@@ -2226,6 +2408,9 @@ static int find_range(char **start, char **stop, char c)
 	*start = p;
 	*stop = q;
 	dot = save_dot;
+#if ENABLE_FEATURE_VI_PAGING
+	pg_lock--;
+#endif
 	return multiline;
 }
 
@@ -2316,6 +2501,13 @@ static char *text_hole_make(char *p, int size)	// at "p", make a 'size' byte hol
 {
 	if (size <= 0)
 		return p;
+#if ENABLE_FEATURE_VI_PAGING
+	if (pg_room() < size) {
+		p = pg_makeroom(p, size);
+		if (!p)
+			return NULL;
+	}
+#endif
 	end += size;		// adjust the new END
 	if (end >= (text + text_size)) {
 		char *new_text;
@@ -2371,6 +2563,11 @@ static char *text_hole_delete(char *p, char *q) // delete "p" through "q", inclu
 	memmove(dest, src, cnt);
  thd_atend:
 	end = end - hole_size;	// adjust the new END
+#if ENABLE_FEATURE_VI_PAGING
+	// deleted to the window's end: the lines after it in (if they fit
+	// without moving what callers point at; else yank_delete does it)
+	pg_atend = dest >= end && pg_na && !pg_fill_bottom();
+#endif
 	if (dest >= end)
 		dest = end - 1;	// make sure dest in below end-1
 	if (end <= text)
@@ -2413,6 +2610,10 @@ static char *yank_delete(char *start, char *stop, int dist, int yf)
 #endif
 	if (yf == YANKDEL) {
 		p = text_hole_delete(start, stop);
+#if ENABLE_FEATURE_VI_PAGING
+		if (pg_atend)
+			p = pg_next_in(end);	// at the window's end: the next line in
+#endif
 	}					// delete lines
 	return p;
 }
@@ -2483,9 +2684,13 @@ static void end_cmd_q(void)
 static char *string_insert(char *p, char *s) // insert the string at 'p'
 {
 	int cnt, i;
+	char *s2;
 
 	i = strlen(s);
-	text_hole_make(p, i);
+	s2 = text_hole_make(p, i);
+	if (!s2)
+		return p;	// no room: nothing put
+	p = s2;
 	strncpy(p, s, i);
 	for (cnt = 0; *s != '\0'; s++) {
 		if (*s == '\n')
@@ -2512,7 +2717,12 @@ static char *text_yank(char *p, char *q, int dest)	// copy text into a register
 	cnt = q - p + 1;
 	t = reg[dest];
 	free(t);		//  if already a yank register, free it
-	t = xmalloc(cnt + 1);	// get a new register
+	t = malloc(cnt + 1);	// get a new register
+	reg[dest] = t;
+	if (!t) {
+		status_line_bold("Too much to yank for memory");
+		return p;
+	}
 	memset(t, '\0', cnt + 1);	// clear new text[]
 	strncpy(t, p, cnt);	// copy text[] into bufer
 	reg[dest] = t;
@@ -2538,6 +2748,18 @@ static void check_context(char cmd)
 	// A context is defined to be "modifying text"
 	// Any modifying command establishes a new context.
 
+#if ENABLE_FEATURE_VI_PAGING
+	int l = ABSLINE(dot);
+	if (l < ctx_s || l > ctx_e) {
+		if (strchr(modifying_cmds, cmd) != NULL) {
+			markl[27] = markl[26];
+			markl[26] = l;
+			ctx_s = ABSLINE(prev_line(prev_line(dot)));
+			ctx_e = ABSLINE(next_line(next_line(dot)));
+		}
+	}
+	return;
+#endif
 	if (dot < context_start || dot > context_end) {
 		if (strchr(modifying_cmds, cmd) != NULL) {
 			// we are trying to modify text[]- make this the current context
@@ -2557,6 +2779,18 @@ static char *swap_context(char *p) // goto new context for '' command make this 
 	// the current context is in mark[26]
 	// the previous context is in mark[27]
 	// only swap context if other context is valid
+#if ENABLE_FEATURE_VI_PAGING
+	int t;
+	if (markl[27] >= 1 && markl[27] <= TOTLINES()) {
+		t = markl[27];
+		markl[27] = markl[26];
+		markl[26] = t;
+		p = find_line(t);
+		ctx_s = t > 3 ? t - 3 : 1;
+		ctx_e = t + 3;
+	}
+	return p;
+#endif
 	if (text <= mark[27] && mark[27] <= end - 1) {
 		tmp = mark[27];
 		mark[27] = mark[26];
@@ -2915,6 +3149,10 @@ static int file_insert(const char *fn, char *p
 	}
 	size = statbuf.st_size;
 	p = text_hole_make(p, size);
+	if (!p) {
+		close(fd);
+		return -1;
+	}
 	cnt = safe_read(fd, p, size);
 	if (cnt < 0) {
 		status_line_bold("\"%s\" %s", fn, strerror(errno));
@@ -2952,6 +3190,12 @@ static int file_write(char *fn, char *first, char *last)
 		status_line_bold("No current filename");
 		return -2;
 	}
+#if ENABLE_FEATURE_VI_PAGING
+	if (pg_f && first == text && last == end - 1) {	// the whole file
+		cnt = pg_save(fn);
+		return cnt < 0 ? -1 : cnt ? last - first + 1 : 0;
+	}
+#endif
 	charcnt = 0;
 	/* By popular request we do not open file with O_TRUNC,
 	 * but instead ftruncate() it _after_ successful write.
@@ -3102,7 +3346,11 @@ static void Indicate_Error(void)
 //----- Erase the Screen[] memory ------------------------------
 static void screen_erase(void)
 {
+#ifdef VI_ROW_SUMS
+	memset(screen, 1, screensize);	// odd: no row's sum (they are even)
+#else
 	memset(screen, ' ', screensize);	// clear new screen
+#endif
 }
 
 static const char *scompare(const char *s, const char *ref)
@@ -3234,12 +3482,12 @@ static int format_edit_status(const char *fmt)
 	// it would be nice to do a similar optimization here -- if
 	// we haven't done a motion that could have changed which line
 	// we're on, then we shouldn't have to do this count_lines()
-	cur = count_lines(text, dot);
+	cur = ABSLINE(dot);
 
 	// reduce counting -- the total lines can't have
 	// changed if we haven't done any edits.
 	if (file_modified != last_file_modified) {
-		tot = cur + count_lines(dot, end - 1) - 1;
+		tot = TOTLINES();
 		last_file_modified = file_modified;
 	}
 
@@ -3247,7 +3495,7 @@ static int format_edit_status(const char *fmt)
 	//   -------------    ~~ ----------
 	//    total lines            100
 	if (tot > 0) {
-		percent = (100 * cur) / tot;
+		percent = (int)(100L * cur / tot);
 	} else {
 		cur = tot = 0;
 		percent = 100;
@@ -3373,6 +3621,29 @@ static void refresh(void)
 			tp = t + 1;
 		}
 
+#ifdef VI_ROW_SUMS
+		// Memory is small: the screen is kept as a sum per row, and a row
+		// whose sum changed is written again, up to its last non-blank
+		{
+			unsigned sum, *rs;
+			int n;
+			sum = 0;
+			for (n = 0; n < columns; n++)
+				sum = sum * 31 + (unsigned char)out_buf[n];
+			sum &= ~1;
+			rs = (unsigned *)screen + li;
+			if (sum != *rs || offset != old_offset) {
+				*rs = sum;
+				for (n = columns; n > 0 && out_buf[n - 1] == ' '; n--)
+					;
+				place_cursor(li, 0, TRUE);
+				fwrite(out_buf, n, 1, stdout);
+				if (n < columns)
+					clear_to_eol();
+			}
+			continue;
+		}
+#endif
 		// see if there are any changes between vitual screen and out_buf
 		changed = FALSE;	// assume no change
 		cs = 0;
@@ -3546,9 +3817,16 @@ static int do_cmd2(char *cp)
 		break;
 	case '<':			// <- Left  shift something
 	case '>':			// >- Right shift something
-		cnt = count_lines(text, dot);	// remember what line we are on
+		cnt = ABSLINE(dot);	// remember what line we are on
 		c1 = get_one_char();	// get the type of thing to delete
 		find_range(&p, &q, c1);
+#if ENABLE_FEATURE_VI_PAGING
+		if (pg_over) {
+			status_line_bold("Too many lines for memory");
+			end_cmd_q();
+			break;
+		}
+#endif
 		yank_delete(p, q, 1, YANKONLY);	// save copy before change
 		p = begin_line(p);
 		q = end_line(q);
@@ -3622,6 +3900,10 @@ static int do_cmd2(char *cp)
 			cmdcnt = 1;
 		/* fall through */
 	case 'G':		// G- goto to a line number (default= E-O-F)
+#if ENABLE_FEATURE_VI_PAGING
+		if (pg_f)
+			pg_goto(TOTLINES());	// the window to the file's end
+#endif
 		dot = end - 1;				// assume E-O-F
 		if (cmdcnt > 0) {
 			dot = find_line(cmdcnt);	// what line is #cmdcnt
@@ -3775,6 +4057,13 @@ dc5:
 			c1 = get_one_char();	// get the type of thing to delete
 		// determine range, and whether it spans lines
 		ml = find_range(&p, &q, c1);
+#if ENABLE_FEATURE_VI_PAGING
+		if (pg_over) {
+			status_line_bold("Too many lines for memory");
+			end_cmd_q();
+			break;
+		}
+#endif
 		if (c1 == 27) {	// ESC- user changed mind and wants out
 			c = c1 = 27;	// Escape- do nothing
 		} else if (strchr("wW", c1)) {
@@ -3825,14 +4114,14 @@ dc5:
 			if (c == 'y' || c == 'Y') {
 				strcpy(buf, "Yank");
 			}
-			p = reg[YDreg];
+			p = reg[YDreg] ? reg[YDreg] : "";
 			q = p + strlen(p);
 			for (cnt = 0; p <= q; p++) {
 				if (*p == '\n')
 					cnt++;
 			}
 			status_line("%s %d lines (%d chars) using [%c]",
-				buf, cnt, strlen(reg[YDreg]), what_reg());
+				buf, cnt, reg[YDreg] ? (int)strlen(reg[YDreg]) : 0, what_reg());
 #endif
 			end_cmd_q();	// stop adding to q
 		}
@@ -3925,6 +4214,9 @@ static void do_cmd(char c)
 	int dir, cnt, i, j;
 
 again:
+#if ENABLE_FEATURE_VI_PAGING
+	pg_fix();
+#endif
 	/* if this is a cursor key, skip these checks */
 	switch (c) {
 		case VI_K_UP:
@@ -4096,12 +4388,19 @@ repeat:
 		if (islower(c1)) {
 			c1 = c1 - 'a';
 			// get the b-o-l
+#if ENABLE_FEATURE_VI_PAGING
+			if (markl[(unsigned char) c1]) {
+				dot = find_line(markl[(unsigned char) c1]);
+				dot_skip_over_ws();
+			}
+#else
 			q = mark[(unsigned char) c1];
 			if (text <= q && q < end) {
 				dot = q;
 				dot_begin();	// go to B-o-l
 				dot_skip_over_ws();
 			}
+#endif
 		} else if (c1 == '\'') {	// goto previous context
 			dot = swap_context(dot);	// swap current and previous context
 			dot_begin();	// go to B-o-l
@@ -4121,6 +4420,9 @@ repeat:
 			c1 = c1 - 'a';
 			// remember the line
 			mark[(int) c1] = dot;
+#if ENABLE_FEATURE_VI_PAGING
+			markl[(int) c1] = ABSLINE(dot);
+#endif
 		} else {
 			indicate_error(c);
 		}
@@ -4130,6 +4432,7 @@ repeat:
 		p = reg[YDreg];
 		if (p == 0) {
 			status_line_bold("Nothing in register %c", what_reg());
+			end_cmd_q();	// not a command to repeat
 			break;
 		}
 		// are we putting whole lines or strings
@@ -4218,6 +4521,14 @@ repeat:
 	case '.':			// .- repeat the last modifying command
 		// Stuff the last_modifying_cmd back into stdin
 		// and let it be re-executed.
+		if (adding2q) {
+			// a command that failed is still being recorded, and
+			// now holds this '.': repeating it would repeat for ever
+			end_cmd_q();
+			lmc_len = 0;
+			indicate_error(c);
+			break;
+		}
 		if (lmc_len > 0) {
 			last_modifying_cmd[lmc_len] = 0;
 			ioq = ioq_start = xstrdup(last_modifying_cmd);
@@ -4259,16 +4570,27 @@ findPattern:
 			dir = -dir;  //relies on FORWARD/BACK being 1/-1, respectively
 		p = dot + dir;
 		q = char_search(p, last_search_pattern + 1, dir, FULL);
+#if ENABLE_FEATURE_VI_PAGING
+		if (q == NULL)		// on beyond the window
+			q = pg_search(last_search_pattern + 1, dir, 0);
+#endif
 		if (q != NULL) {
 			dot = q;	// good search, update "dot"
 			goto repeat;
 		}
 		// no pattern found between "dot" and "end"- continue at top
+#if ENABLE_FEATURE_VI_PAGING
+		q = pg_search(last_search_pattern + 1, dir, 1);
+		if (q == NULL) {	// the stores on the other side, then the window
+#endif
 		p = text;
 		if (dir == BACK) {
 			p = end - 1;
 		}
 		q = char_search(p, last_search_pattern + 1, dir, FULL);
+#if ENABLE_FEATURE_VI_PAGING
+		}
+#endif
 		if (q != NULL) {	// found something
 			dot = q;	// found new pattern- goto it
 			msg = "search hit BOTTOM, continuing at TOP";
@@ -4281,12 +4603,20 @@ dc2:
 		break;
 	case '{':			// {- move backward paragraph
 		q = char_search(dot, "\n\n", BACK, FULL);
+#if ENABLE_FEATURE_VI_PAGING
+		if (q == NULL)
+			q = pg_search("\n\n", BACK, 0);
+#endif
 		if (q != NULL) {	// found blank line
 			dot = next_line(q);	// move to next blank line
 		}
 		break;
 	case '}':			// }- move forward paragraph
 		q = char_search(dot, "\n\n", FORWARD, FULL);
+#if ENABLE_FEATURE_VI_PAGING
+		if (q == NULL)
+			q = pg_search("\n\n", FORWARD, 0);
+#endif
 		if (q != NULL) {	// found blank line
 			dot = next_line(q);	// move to next blank line
 		}

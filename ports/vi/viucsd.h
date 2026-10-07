@@ -195,6 +195,10 @@ static void ucsd_unreserve(void)
 	ucsd_res[0] = ucsd_res[1] = NULL;
 }
 
+#if ENABLE_FEATURE_VI_PAGING
+#include "vipage.h"
+#endif
+
 /* started from X(ecute): no arguments, so ask */
 static char *ucsd_askname(void)
 {
@@ -294,12 +298,17 @@ static int file_size(const char *fn)
 	ucsd_reserve();
 	if (!f)
 		return -1;
+#if ENABLE_FEATURE_VI_PAGING
+	/* paging: only :r takes a whole file into memory, and it must fit */
+	return n > 32000L ? 32000 : (int)n;
+#else
 	if (n > 30000L) {	/* an int holds no more; never edit (and save) part of it */
 		gracefulExit();
 		printf("vi: %s is too big (%ld characters, at most 30000)\n", fn, n);
 		exit(1);
 	}
 	return (int)n;
+#endif
 }
 
 static int file_insert(const char *fn, char *p, int update_ro_status)
@@ -317,6 +326,8 @@ static int file_insert(const char *fn, char *p, int update_ro_status)
 		return -1;
 	}
 	p = text_hole_make(p, size);
+	if (!p)
+		return -1;
 	ucsd_unreserve();
 	f = fopen(fn, "r");
 	cnt = 0;
@@ -344,6 +355,12 @@ static int file_write(char *fn, char *first, char *last)
 		status_line_bold("No current filename");
 		return -2;
 	}
+#if ENABLE_FEATURE_VI_PAGING
+	if (pg_f && first == text && last == end - 1) {	/* the whole file */
+		cnt = pg_save(fn);
+		return cnt < 0 ? -1 : cnt ? last - first + 1 : 0;
+	}
+#endif
 	ucsd_unreserve();
 	f = fopen(fn, "w");
 	if (!f) {
