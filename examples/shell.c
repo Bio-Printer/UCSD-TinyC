@@ -16,6 +16,10 @@
                              each file that matches, under its name)
      DELETE [VOL: | #n:]PAT  the files that match (with wildcards it lists
                              them and asks first, one key: Y deletes)
+     WHEREIS [VOL: | #n:]PAT the files that match on every disk on line
+                             (WHEREIS STDIO.H, WHEREIS *.C), or on one
+     VOLUMES                 every disk on line: unit, volume, files,
+                             blocks used of its size
      MEM                     the shell's free memory
      BYE                     back to the Command: prompt */
 #include <stdio.h>
@@ -255,6 +259,42 @@ int wild(char *pat)
     return strpbrk(pat, "*=?") != NULL;
 }
 
+/* a directory's blocks: in files, free, the largest free area */
+void space(int *dir, int *used, int *unused, int *largest)
+{
+    int *e;
+    int i, gap, last;
+    *used = *unused = *largest = 0;
+    last = dir[1];                      /* the directory's end: the first free block */
+    for (i = 1; i <= dir[8] + 1; i++) {
+        e = dir + 13 * i;
+        gap = (i <= dir[8] ? e[0] : dir[7]) - last;     /* the last: to DEOVBLK */
+        *unused += gap;
+        if (gap > *largest)
+            *largest = gap;
+        if (i <= dir[8]) {
+            last = e[1];
+            *used += e[1] - e[0];
+        }
+    }
+}
+
+/* entry i: name, blocks, date, kind */
+void fileline(int *dir, int i)
+{
+    char name[16];
+    int *e;
+    int m;
+    e = dir + 13 * i;
+    dirname(dir, i, name);
+    m = e[12] & 15;
+    if (m == 0)                         /* no date */
+        printf("%-15s %5d             %s\n", name, e[1] - e[0], kinds[e[2] & 7]);
+    else
+        printf("%-15s %5d  %2d-%s-%02d  %s\n", name, e[1] - e[0], (e[12] >> 4) & 31,
+               months[m <= 12 ? m : 0], (e[12] >> 9) & 127, kinds[e[2] & 7]);
+}
+
 /* DIR [VOL: | #n:][PAT] */
 void dir(char *arg)
 {
@@ -262,43 +302,95 @@ void dir(char *arg)
     char vol[20];
     char name[16];
     char *pat;
-    int *e;
-    int u, i, nf, shown, used, gap, largest, unused, last, lines, m;
+    int u, i, nf, shown, used, largest, unused, lines;
     u = target("dir", arg, dir, vol, &pat);
     if (!u)
         return;
     nf = dir[8];
     printf("%s: (#%d)\n", vol, u);
     lines = 1;
-    shown = used = unused = largest = 0;
-    last = dir[1];                      /* the directory's end: the first free block */
+    shown = 0;
     for (i = 1; i <= nf; i++) {
-        e = dir + 13 * i;
-        gap = e[0] - last;
-        unused += gap;
-        if (gap > largest)
-            largest = gap;
-        last = e[1];
-        used += e[1] - e[0];
         dirname(dir, i, name);
         if (*pat && !match(pat, name))
             continue;
-        m = e[12] & 15;
-        if (m == 0)                     /* no date */
-            printf("%-15s %5d             %s\n", name, e[1] - e[0], kinds[e[2] & 7]);
-        else
-            printf("%-15s %5d  %2d-%s-%02d  %s\n", name, e[1] - e[0], (e[12] >> 4) & 31,
-                   months[m <= 12 ? m : 0], (e[12] >> 9) & 127, kinds[e[2] & 7]);
+        fileline(dir, i);
         shown++;
         if (!more(&lines))
             return;
     }
-    gap = dir[7] - last;                /* DEOVBLK: to the volume's end */
-    unused += gap;
-    if (gap > largest)
-        largest = gap;
+    space(dir, &used, &unused, &largest);
     printf("%d of %d files, %d blocks used, %d unused, %d in the largest area\n",
            shown, nf, used, unused, largest);
+}
+
+/* WHEREIS [VOL: | #n:]PAT: the matching files on every disk (or on one) */
+void whereis(char *arg)
+{
+    int dir[1024];
+    char vol[20];
+    char name[16];
+    char *pat;
+    int k, u, one, i, found, vols, lines, here;
+    if (!*arg) {
+        printf("whereis: which files? (WHEREIS STDIO.H, WHEREIS *.C)\n");
+        return;
+    }
+    one = 0;
+    pat = arg;
+    if (strchr(arg, ':') || arg[0] == '#') {
+        one = target("whereis", arg, dir, vol, &pat);     /* a volume given: there only */
+        if (!one)
+            return;
+    }
+    found = vols = 0;
+    lines = 0;
+    for (k = 0; k < 8; k++) {
+        u = units[k];
+        if (one ? u != one : !readdir(u, dir))
+            continue;
+        dirname(dir, 0, vol);
+        strcat(vol, ":");
+        here = 0;
+        for (i = 1; i <= dir[8]; i++) {
+            dirname(dir, i, name);
+            if (*pat && !match(pat, name))
+                continue;
+            printf("#%-2d %-8s ", u, vol);
+            fileline(dir, i);
+            here++;
+            if (!more(&lines))
+                return;
+        }
+        found += here;
+        vols += here > 0;
+    }
+    if (found)
+        printf("%d file%s on %d volume%s\n", found, found == 1 ? "" : "s", vols, vols == 1 ? "" : "s");
+    else
+        printf("whereis: no file %s on %s\n", pat, one ? vol : "any disk on line");
+}
+
+/* VOLUMES: every disk on line */
+void volumes(void)
+{
+    int dir[1024];
+    char vol[16];
+    char pre[8];
+    int k, u, used, unused, largest;
+    prefix(pre);
+    printf("Unit  Volume    Files  Blocks used\n");
+    for (k = 0; k < 8; k++) {
+        u = units[k];
+        if (!readdir(u, dir))
+            continue;
+        dirname(dir, 0, vol);
+        space(dir, &used, &unused, &largest);
+        strcat(vol, ":");
+        printf(" #%-2d  %-8s  %5d  %5d of %5d%s%s\n", u, vol, dir[8], used, dir[7],
+               u == SYSCOM->sysunit ? "  (boot)" : "",
+               strncmp(vol, pre, strlen(pre)) == 0 && vol[strlen(pre)] == ':' ? "  (prefix)" : "");
+    }
 }
 
 /* TYPE [VOL: | #n:]NAME: a text file on the console */
@@ -486,6 +578,14 @@ int main(void)
         }
         if (same(name, "delete") || same(name, "del")) {
             delete(args);
+            continue;
+        }
+        if (same(name, "whereis")) {
+            whereis(args);
+            continue;
+        }
+        if (same(name, "volumes") || same(name, "vols")) {
+            volumes();
             continue;
         }
         if (same(name, "mem")) {

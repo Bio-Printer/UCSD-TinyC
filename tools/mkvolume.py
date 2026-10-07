@@ -160,6 +160,10 @@ and you choose with one key (no RETURN).  Its own commands:
         wildcards each file that matches, under its name.
   DELETE (or DEL) [VOL: or #5:]PATTERN   deletes the files that match;
         with wildcards it lists them and asks first (Y deletes).
+  WHEREIS [VOL: or #5:]PATTERN   the files that match on every disk on
+        line (WHEREIS STDIO.H, WHEREIS *.C), or on the volume named.
+  VOLUMES (or VOLS)              every disk on line: unit, volume,
+        files, blocks used of its size; (boot) and (prefix) marked.
   MEM   the shell's free memory;  BYE leaves it.
 MEMFREE shows a program's free memory: run it with X(ecute and from
 SHELL, it is the same (pexec leaves nothing of the shell in memory).

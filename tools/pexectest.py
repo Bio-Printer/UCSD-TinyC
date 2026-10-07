@@ -31,6 +31,10 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
     DELETE work:tmp=.text, Y deletes them
     del keep.text            no wildcards: deleted without asking
     dir *.text               NOTES.TEXT is the only text file left
+    whereis where.code       on all five disks
+    WHEREIS #10:*            a volume given: there only
+    whereis nosuch.x         on no disk
+    volumes                  every disk: unit, name, files, blocks used
     dir *:system.c*          the system volume's SYSTEM.COMPILER (dated)
     dir nosuch:, cd 13       no such disk
     bye                      back to the Command: prompt
@@ -131,6 +135,14 @@ TYPE "del keep.text\r"
 WAIT "shell> "
 TYPE "dir *.text\r"
 WAIT "shell> "
+TYPE "whereis where.code\r"
+WAIT "shell> "
+TYPE "WHEREIS #10:*\r"
+WAIT "shell> "
+TYPE "whereis nosuch.x\r"
+WAIT "shell> "
+TYPE "volumes\r"
+WAIT "shell> "
 TYPE "dir *:system.c*\r"
 WAIT "shell> "
 TYPE "dir nosuch:\r"
@@ -183,13 +195,16 @@ def main():
 
     def part(cmd):
         """what the shell printed for cmd (up to its next prompt)"""
-        i = tr.find(cmd + '\n')
+        i = tr.find('shell> ' + cmd + '\n')
+        if i < 0:
+            return ''
+        i += 7 + len(cmd)
         # (a line ends in CR LF or CR alone: no empty lines)
-        return re.sub(r'\n+', '\n', tr[i + len(cmd):tr.find('shell> ', i)]) if i >= 0 else ''
+        return re.sub(r'\n+', '\n', tr[i:tr.find('shell> ', i)])
     free = [int(x) for x in re.findall(r'memfree: (\d+) words free', tr)]
     shell = re.findall(r'shell: (\d+) words free', tr)
     status = re.findall(r'\[exit status (-?\d+)\]', tr)
-    print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init|args:|too long|prefix|files|\(#\d+\)$|  Code|  Text|no disk', l)))
+    print('\n'.join(l for l in tr.split('\n') if re.search(r'free|status|no such|re-init|args:|too long|prefix|files|\(#\d+\)$|  Code|  Text|no disk|^ ?#\d|Unit  Vol|whereis', l)))
     checks = [
         ('the script completed', ok),
         ('memfree ran three times', len(free) == 3),
@@ -225,6 +240,15 @@ def main():
          and 'deleted' not in part('delete tmp*.text')),
         ('DELETE work:tmp=.text, Y: both deleted', 'WORK:TMP1.TEXT deleted' in tr and 'WORK:TMP2.TEXT deleted' in tr),
         ('del keep.text: deleted, not asked', 'WORK:KEEP.TEXT deleted' in part('del keep.text') and 'Y/N' not in part('del keep.text')),
+        ('whereis where.code: on all five disks', '5 files on 5 volumes' in part('whereis where.code')
+         and all(re.search(r'#%d +%s: +WHERE\.CODE +\d+ ' % (u, v), part('whereis where.code')) for v, u in
+                 (('WORK', 5), ('SPARE', 9), ('DISK10', 10), ('DISK11', 11), ('DISK12', 12)))),
+        ('WHEREIS #10:*: DISK10: only', '1 file on 1 volume' in part('WHEREIS #10:*') and 'DISK11' not in part('WHEREIS #10:*')),
+        ('whereis nosuch.x: on no disk', 'whereis: no file nosuch.x on any disk on line' in tr),
+        ('volumes: units, names, files, blocks; boot and prefix marked',
+         re.search(r'#4 +BIGGY: +\d+ +\d+ of +\d+  \(boot\)', part('volumes')) is not None
+         and re.search(r'#5 +WORK: +6 +\d+ of +\d+  \(prefix\)', part('volumes')) is not None
+         and re.search(r'#10 +DISK10: +1 +14 of +400\n', part('volumes')) is not None),
         ('dir *.text: only NOTES.TEXT left', 'NOTES.TEXT' in part('dir *.text') and '1 of 6 files' in part('dir *.text')),
         ('DIR disk11:w?ere.=: WHERE.CODE', 'DISK11: (#11)' in tr and tr.count('1 of 1 files') == 2),
         ('dir *:system.c*: SYSTEM.COMPILER, dated', re.search(r'SYSTEM\.COMPILER +\d+ +\d+-[A-Z][a-z][a-z]-\d\d  Code', tr) is not None
