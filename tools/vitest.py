@@ -8,8 +8,9 @@ and the files they save must be identical:
   * a 1500-line file, many times VI's window: G, gg, NG, searches both
     ways and wrapping, j over window edges, ^F ^B, marks, ranges, ZZ
   * the PC's Page Up, Page Down, Home, End, Insert and Delete keys, in
-    command and insert mode (Linux: the terminal's sequences; the
-    P-System: the one-byte codes the emulator sends for vi)
+    command and insert mode, and the mouse wheel (Linux: the terminal's
+    sequences, ^Y / ^E for a notch; the P-System: the one-byte codes the
+    emulator sends for vi -- a notch in insert mode is ignored)
 
 Uses the mode of PSYS_MODE (native or z80) like the other tools; the
 P-System VI is built with -z (tclibz.obj) so that it runs in both.
@@ -52,11 +53,16 @@ BIGKEYS = ["G", "o", "the end", "\x1b", "gg", "O", "the start", "\x1b", "700G", 
 # P-System one code each (psys.h KEY_PGUP ...: what the emulator sends while
 # vi has set SYSCOM->expansion[1] = PX_KEYS)
 PCKEYS = {'<PGDN>': ('\x1b[6~', '\x89'), '<PGUP>': ('\x1b[5~', '\x88'), '<HOME>': ('\x1b[H', '\x84'),
-          '<END>': ('\x1b[F', '\x85'), '<INS>': ('\x1b[2~', '\x86'), '<DEL>': ('\x1b[3~', '\x87')}
+          '<END>': ('\x1b[F', '\x85'), '<INS>': ('\x1b[2~', '\x86'), '<DEL>': ('\x1b[3~', '\x87'),
+          # the mouse wheel (emulator 2.01): a notch is 3 lines, as ^Y / ^E; typing ignores it
+          '<WHUP>': ('\x19\x19\x19', '\x96'), '<WHDN>': ('\x05\x05\x05', '\x97'), '<WHDN-INSERT>': ('', '\x97')}
 KEYKEYS = ["<PGDN>", "x", "<PGUP>", "j", "<END>", "x", "<HOME>", "x", "3j", "<DEL>", "<DEL>", "<INS>", "abc",
-           "<END>", " end", "<HOME>", "start ", "\x1b", "<PGDN>", "<PGUP>", "5j", "<HOME>", "<DEL>", "ZZ"]
+           "<END>", " end", "<HOME>", "start ", "\x1b", "<PGDN>", "<PGUP>", "5j", "<HOME>", "<DEL>",
+           "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>",
+           "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "x", "<WHUP>", "<WHUP>", "x",
+           "i", "<WHDN-INSERT>", "wheel", "\x1b", "ZZ"]
 SESSIONS = [('small file', TEXT, KEYS, True), ('1500 lines', BIG, BIGKEYS, False),
-            ('PC keys', TEXT, KEYKEYS, False)]
+            ('PC keys', BIG, KEYKEYS, False)]
 
 
 def pckeys(keys, which):

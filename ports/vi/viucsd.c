@@ -264,6 +264,16 @@ char readit(void)
 	}
 	fflush(stdout);
 	c = getch();
+	/* the mouse wheel (emulator 2.01): 3 lines a notch, as ^Y / ^E, in
+	   command mode only (typing, or a : or / line, ignores it) */
+	while ((c == KEY_WHEELUP || c == KEY_WHEELDN) && cmd_mode != CMODE_COMMAND)
+		c = getch();
+	if (c == KEY_WHEELUP || c == KEY_WHEELDN) {
+		c = c == KEY_WHEELUP ? 25 : 5;
+		readbuffer[0] = readbuffer[1] = c;
+		chars_to_parse = 2;
+		return c;
+	}
 	ci = &SYSCOM->crtinfo;
 	if (c == ci->up)
 		return VI_K_UP;

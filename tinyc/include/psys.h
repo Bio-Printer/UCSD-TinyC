@@ -105,6 +105,9 @@ int __pxsum(unsigned char *s);
 #define KEY_DELETE 0x87
 #define KEY_PGUP   0x88
 #define KEY_PGDN   0x89
+/* and the mouse wheel (emulator 2.01), one code a notch */
+#define KEY_WHEELUP 0x96
+#define KEY_WHEELDN 0x97
 
 /* this run was started again by pexec, after the program it ran */
 #define pexec_returned() (SYSCOM->expansion[0] == PX_BACK)
