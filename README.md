@@ -45,6 +45,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `mkvolume.py` | build `volumes/` (TINY-C, TCSRC, TCEXTRA, TCTESTS, TOOLS, TOOLSRC) with FILES.TEXT listings; a new tool is one line in its `TOOLS` table |
 | `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with SYSTEM.SHELL (the Tiny-C shell); Tiny-C itself is only on TINY-C: (`X TINY-C:CC`; since BIGGY 1.15); only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
 | `greptest.py` | GREP from the shell: case, `-i`, regular expressions, wildcards on every disk or one volume, line numbers across pages |
+| `alltest.py` | TOOLSRC:ALL.TEXT: one batch file running BUILD, LIBS and TOOLS; the compiler, library and tools identical to the shipped ones, the objects on TCSRC: |
 | `findtest.py` | which disk CC takes `#include` files and a batch file's sources from (copies on several disks; the including file's disk, the prefix, an error) |
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; the shell's CD, DIR, TYPE, DELETE, WHEREIS, VOLUMES, COPY, MOVE and RENAME, its command history and line editing; `$` at the Command: prompt |
 | `voltest.py` | on the four volumes: `@LIBS`, `@BUILD` (on TCSRC:), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
@@ -85,7 +86,7 @@ file that names it (the including file, the `@FILE`), else the prefix volume's, 
 an error that lists the volumes (`findfile` in `pp.c`, code segment FIND;
 `tools/findtest.py` tests it).
 With the prefix on TCSRC: (and TINY-C: mounted), `X(ecute TINY-C:CC`
-`@BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `@LIBS` the library (TINY-C:TCLIB2.OBJ); `@TOOLS` (on TOOLSRC:) links every tool onto TOOLS:;
+`@BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `@LIBS` the library (TINY-C:TCLIB2.OBJ); `@TOOLS` (on TOOLSRC:) links every tool onto TOOLS:; `@ALL` (on TOOLSRC:) runs `@TCSRC:BUILD`, `@TCSRC:LIBS` and `@TOOLS` (a batch file may name others; `/C` puts NAME.OBJ on its source's volume, `/L` and `/J` find objects the way sources are found);
 `@DEMOS` (on TCEXTRA:) and `@TESTS` (on TCTESTS:) every program there.
 
 ## Calls through function pointers (`-z` / `/Z`)

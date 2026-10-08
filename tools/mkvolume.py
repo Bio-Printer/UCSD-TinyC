@@ -49,7 +49,8 @@ answer "Compile what file?" with
     /L OUT=A,B,...       link A.OBJ, B.OBJ, ... and TCLIB.OBJ -> OUT.CODE
     /J LIB=A,B,...       join A.OBJ, B.OBJ, ... into the library LIB.OBJ
     @FILE                run the commands in FILE.TEXT, one per line
-                         (blank lines and lines starting with ; skipped)
+                         (blank lines and lines starting with ; skipped;
+                         a line @OTHER runs OTHER.TEXT, then goes on)
 The same commands can be arguments instead (from the shell: $ at the
 Command: prompt): CC @BUILD @LIBS, CC /Z HANOI SIEVE.  Options and the
 word after them make one command; they run in turn, no prompt, and the
@@ -59,8 +60,10 @@ an @FILE named with a volume (TOOLSRC:VI.H, #5:X.C) is taken from there
 only.  Named without one, CC looks on every disk: on one disk only, that
 one; on several, the one on the disk of the file that names it (the
 including file, the @FILE), else the one on the prefix volume, else it
-lists the volumes and stops (name one).  Objects, code and temporary
-files (TCTEMP.TEXT, TCTEMP.IR) go to the prefix volume; TCLIB.OBJ and
+lists the volumes and stops (name one).  An object (NAME.OBJ) goes on
+its source's volume, and /L and /J find objects the same way as
+sources; code and temporary files (TCTEMP.TEXT, TCTEMP.IR) go to the
+prefix volume unless named with a volume; TCLIB.OBJ and
 TCMSGS.TEXT are found on TINY-C: when they are not on the prefix volume
 or the boot volume.
 
@@ -263,6 +266,11 @@ REBUILDING THEM:  set the prefix to TOOLSRC:, X(ecute TINY-C:CC, answer
 @TOOLS (TOOLS: on line too).  TOOLS.TEXT compiles every tool's modules
 (a NAME.OBJ here for each) and links the tool straight onto TOOLS:
 (TOOLS:NAME.CODE, replacing the one there).
+
+EVERYTHING AT ONCE:  @ALL instead (TCSRC: and TINY-C: on line too).
+ALL.TEXT runs TCSRC:BUILD (the compiler -> TINY-C:CC2.CODE), TCSRC:LIBS
+(the library -> TINY-C:TCLIB2.OBJ) and TOOLS; a batch file can name
+other batch files (@NAME), and their objects stay on TCSRC:.
 
 VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
         for Tiny-C, in modules: VI.H (what they share), VIMAIN.C (start,
@@ -468,6 +476,14 @@ def tests():
     t.finish()
 
 
+ALL = """; ALL -- rebuild the compiler, the library and every tool
+; prefix TOOLSRC:, X(ecute TINY-C:CC, answer @ALL (TCSRC:, TINY-C: and TOOLS: on line)
+@TCSRC:BUILD
+@TCSRC:LIBS
+@TOOLS
+"""
+
+
 def tool_batch(name, mods):
     """TOOLS.TEXT's lines for a tool: each module compiled (/Z /C), then linked"""
     names = [os.path.splitext(os.path.basename(m))[0].upper() for m in mods]
@@ -488,6 +504,7 @@ def tools():
            '; prefix TOOLSRC:, X(ecute TINY-C:CC, answer @TOOLS\n' +
            ''.join(tool_batch(name, mods) for name, mods, hdrs, desc in TOOLS),
            'X TINY-C:CC, @TOOLS: rebuilds every tool here')
+    s.text('ALL.TEXT', ALL, 'X TINY-C:CC, @ALL: the compiler, the library and every tool')
     for name, mods, hdrs, desc in TOOLS:
         for f in mods + hdrs:
             p = os.path.join(ROOT, f)

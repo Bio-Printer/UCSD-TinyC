@@ -149,10 +149,91 @@ static void upper(char *s)
 
 #ifdef __TINYC__
 /* one command (see the top of this file); 0 = it failed */
+/* /L OUT=A,B,... or /J LIB=A,B,...: its own function, so that the objects'
+   names (on the stack: gone with the command -- on the heap they outlived
+   it and @ALL ran out of memory) take no room while a source compiles */
+static int linkcmd(char *s, char *lib, int from)
+{
+    char *objs[MAXFILES];
+    char names[360];
+    char src[25];
+    char obj[25];
+    char out[25];
+    char *t;
+    int used;
+    int nobjs;
+    int n;
+    int joining;
+    nobjs = 0;
+    used = 0;
+    /* /L OUT=A,B,...  or  /J OUT=A,B,... */
+    joining = s[1] == 'J';
+    s = s + 2;
+    while (*s == ' ')
+        s++;
+    t = strchr(s, '=');
+    if (!t) {
+        say("use: /L OUT=A,B,...  or  /J LIB=A,B,...\n");
+        return 0;
+    }
+    *t++ = 0;
+    strcpy(out, s);
+    strcat(out, joining ? ".OBJ" : ".CODE");
+    while (*t) {
+        s = t;
+        while (*t && *t != ',')
+            t++;
+        if (*t)
+            *t++ = 0;
+        while (*s == ' ')
+            s++;
+        if (!*s)
+            continue;
+        if (nobjs >= MAXFILES - 1)
+            break;
+        /* NAME.OBJ: with a volume there, else where findfile says (the
+           batch file's disk, where /C put it, or the prefix) */
+        strcpy(src, s);
+        strcat(src, ".OBJ");
+        if (!strchr(s, ':') && s[0] != '*' && strlen(src) <= 15) {
+            n = findfile(src, "", from, obj, &n);
+            if (n < 0)
+                return 0;           /* on several disks: findfile said so */
+            if (n > 0)
+                strcpy(src, obj);
+        }
+        n = strlen(src) + 1;
+        if (used + n > (int)sizeof names) {
+            say("too many objects\n");
+            return 0;
+        }
+        objs[nobjs] = names + used;
+        strcpy(objs[nobjs], src);
+        used = used + n;
+        nobjs++;
+    }
+    if (joining) {
+        say("Joining ");
+        say(out);
+        say("\n");
+#ifdef __TINYC__
+        __heapsave();               /* the files' buffers: see exists */
+#endif
+        n = join(objs, nobjs, out);
+#ifdef __TINYC__
+        __heaprestore();
+#endif
+        return n;
+    }
+    if (lib[0])                         /* found once, at the start (see main) */
+        objs[nobjs++] = lib;
+    return linkall(objs, nobjs, out);
+}
+
 /* from: the unit of the @batch file the command is in (0: typed) */
 static int command(char *s, char *lib, int from)
 {
-    char *objs[MAXFILES];
+    char *objs[2];                      /* the object and the library */
     char src[25];                       /* UCSD file names are short */
     char alt[16];
     char obj[25];
@@ -161,7 +242,6 @@ static int command(char *s, char *lib, int from)
     int nobjs;
     int n;
     int conly;
-    int joining;
     nobjs = 0;
     z80calls = 0;                       /* /Z applies to this command only */
     while (*s == ' ')
@@ -172,44 +252,9 @@ static int command(char *s, char *lib, int from)
         while (*s == ' ')
             s++;
     }
-    if (s[0] == '/' && (s[1] == 'L' || s[1] == 'J')) {
-        /* /L OUT=A,B,...  or  /J OUT=A,B,... */
-        joining = s[1] == 'J';
-        s = s + 2;
-        while (*s == ' ')
-            s++;
-        t = strchr(s, '=');
-        if (!t) {
-            say("use: /L OUT=A,B,...  or  /J LIB=A,B,...\n");
-            return 0;
-        }
-        *t++ = 0;
-        strcpy(out, s);
-        strcat(out, joining ? ".OBJ" : ".CODE");
-        while (*t) {
-            s = t;
-            while (*t && *t != ',')
-                t++;
-            if (*t)
-                *t++ = 0;
-            while (*s == ' ')
-                s++;
-            if (!*s)
-                continue;
-            if (nobjs >= MAXFILES - 1)
-                break;
-            objs[nobjs] = (char *)malloc(strlen(s) + 5);
-            strcpy(objs[nobjs], s);
-            strcat(objs[nobjs], ".OBJ");
-            nobjs++;
-        }
-        if (joining) {
-            say("Joining ");
-            say(out);
-            say("\n");
-            return join(objs, nobjs, out);
-        }
-    } else {
+    if (s[0] == '/' && (s[1] == 'L' || s[1] == 'J'))
+        return linkcmd(s, lib, from);
+    {
         conly = 0;
         if (s[0] == '/' && s[1] == 'C') {
             conly = 1;
@@ -244,7 +289,15 @@ static int command(char *s, char *lib, int from)
             if (n < 0)
                 return 0;               /* on several disks: findfile said so */
         }
-        strcpy(obj, s);
+        /* NAME.OBJ goes on its source's volume; NAME.CODE on the prefix */
+        obj[0] = 0;
+        t = strchr(src, ':');
+        if (t && !strchr(s, ':') && s[0] != '*') {
+            n = t - src + 1;
+            memcpy(obj, src, n);
+            obj[n] = 0;
+        }
+        strcat(obj, s);
         strcat(obj, ".OBJ");
         strcpy(out, s);
         strcat(out, ".CODE");
@@ -264,7 +317,10 @@ static int command(char *s, char *lib, int from)
    opened, the lines already done are skipped, the next one is read and
    the file is closed again.  line is the caller's command buffer
    (BATCHLINE bytes), which name may point into: name is copied first,
-   and no buffer of its own stays on the stack through every pass. */
+   and no buffer of its own stays on the stack through every pass.
+   A line @OTHER runs OTHER.TEXT, then this file goes on (it is read
+   afresh for each line anyway); the sources and objects its commands
+   name are looked for on its own disk first. */
 #define BATCHLINE 150
 static int batch(char *name, char *lib, char *line)
 {
@@ -319,6 +375,13 @@ static int batch(char *name, char *lib, char *line)
         say("> ");
         say(line);
         say("\n");
+        if (line[0] == '@') {               /* another batch file, then on with this one */
+            if (!batch(line + 1, lib, line)) {
+                say("Stopped.\n");
+                return 0;
+            }
+            continue;
+        }
         if (!command(line, lib, from)) {
             say("Stopped.\n");
             return 0;

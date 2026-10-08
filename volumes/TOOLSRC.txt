@@ -1,9 +1,10 @@
-TOOLSRC:  13 files  (a UCSD directory holds 77)
+TOOLSRC:  14 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
-  README.TEXT          4  what is on this volume
+  README.TEXT          6  what is on this volume
   TOOLS.TEXT           4  X TINY-C:CC, @TOOLS: rebuilds every tool here
+  ALL.TEXT             4  X TINY-C:CC, @ALL: the compiler, the library and every tool
   VIMAIN.C            48  vi: vi: start, main loop, keys, files, the terminal (Linux)
   VISCREEN.C          40  vi: vi: the screen, the status line, the cursor
   VITEXT.C            44  vi: vi: moving in and changing the text, searching ...
@@ -14,4 +15,4 @@ TOOLSRC:  13 files  (a UCSD directory holds 77)
   VI.H                42  vi: vi's modules share this: configuration, globals
   VIPAGE.H            10  vi: vi's window into big files (VI.SWAP)
   GREP.C              20  grep: GREP [-i] PATTERN [VOL: | #n:]FILES ...: the lines of ...
-  FILES.TEXT           4  this list
+  FILES.TEXT           6  this list
