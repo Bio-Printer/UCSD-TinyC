@@ -236,8 +236,9 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         marks, / ? n N, :w :q :wq ZZ :s :set :r :e, ...  The cursor keys
         are the P-System's (they take ^T ^R ^Q ^U); ^L redraws.  Page Up,
         Page Down, Home, End, Insert and Delete work with emulator 2.00
-        or later, and the mouse wheel (3 lines a notch) with 2.01 or
-        later (UCSD-C emulator/KEYS.md).
+        or later, the mouse wheel (3 lines a notch) with 2.01 or later;
+        with 2.02 or later the cursor is a block while vi runs (UCSD-C
+        emulator/KEYS.md).
         Big files: vi keeps a window of the file in memory (about 4 KB in
         Z80 mode, 12 KB in P-Code mode, 30 KB with the Harvard layout) and
         the rest in VI.SWAP, a temporary file on the prefix volume (deleted

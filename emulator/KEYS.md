@@ -29,6 +29,10 @@ From **version 2.01** the mouse wheel too, while the word is set: a notch
 away from you sends 0x96 (`KEY_WHEELUP`), towards you 0x97 (`KEY_WHEELDN`);
 vi scrolls 3 lines a notch (as ^Y / ^E) in command mode.
 
+From **version 2.02** the word may be 25606 (`PX_KEYS_BLOCK`) instead: the
+same keys and wheel, and the cursor drawn as a block (its cell inverted)
+rather than a line under the character. vi sets 25606; the shell, 25605.
+
 vi (TOOLS:VI.CODE) sets the word when it starts and clears it when it ends,
 so the L2 editor and everything else get the keys as before. (If vi ever
 stops with an execution error the word can stay set; running vi again and

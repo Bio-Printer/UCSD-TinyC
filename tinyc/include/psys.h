@@ -99,6 +99,9 @@ int __pxsum(unsigned char *s);
    (pexec's own use of expansion[1..4] is over before the program it
    starts runs: the OS reads [1] and [2] to load it, [3] and [4] after.) */
 #define PX_KEYS  25605
+/* PX_KEYS_BLOCK: the same, and the cursor drawn as a block instead of a
+   line under the character (emulator 2.02) -- easy to find on the screen */
+#define PX_KEYS_BLOCK 25606
 #define KEY_HOME   0x84
 #define KEY_END    0x85
 #define KEY_INSERT 0x86

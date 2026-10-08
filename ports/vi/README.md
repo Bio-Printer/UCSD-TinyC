@@ -68,6 +68,8 @@ UCSD text files); from X(ecute) it asks for the file.
   `PX_KEYS` (psys.h; cleared when it ends), and the emulator (from version 2.00;
   `emulator/KEYS.md`) then sends one code each, vi's own VI_K_HOME ...
   VI_K_PAGEDOWN (0x84..0x89): a screen down/up, start/end of the line, insert, x.
+* The cursor (emulator 2.02): vi sets `PX_KEYS_BLOCK` rather than `PX_KEYS`, and the
+  emulator draws the cursor as a block while vi runs; a line again when it ends.
 * The mouse wheel (emulator 2.01): KEY_WHEELUP / KEY_WHEELDN (0x96, 0x97), one a
   notch, scroll 3 lines (as ^Y / ^E) in command mode; typing and : lines ignore them.
 * Screen: FGOTOXY for the cursor, CRTCTRL's erase-to-end-of-line/screen.

@@ -215,7 +215,7 @@ char *ucsd_askname(void)
 int rawmode(void)
 {
 	ucsd_reserve();
-	SYSCOM->expansion[1] = PX_KEYS;	// Page Up ... Delete: one code each (psys.h)
+	SYSCOM->expansion[1] = PX_KEYS_BLOCK;	// Page Up ... Delete: one code each, and a block cursor (psys.h)
 	erase_char = SYSCOM->crtinfo.chardel;
 	ticsPerChar = 1;
 	return 0;
@@ -223,7 +223,7 @@ int rawmode(void)
 
 void cookmode(void)
 {
-	SYSCOM->expansion[1] = 0;	// the keys as the L2 editor wants them again
+	SYSCOM->expansion[1] = 0;	// the keys as the L2 editor wants them again, the cursor a line
 }
 
 /* true if a key comes within tics/100 seconds: the system clock (1/60 s)
