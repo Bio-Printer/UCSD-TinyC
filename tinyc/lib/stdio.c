@@ -633,6 +633,14 @@ void __stdio_exit(void)
     __conflush();
 }
 
+/* printf's flags (%-0+ #, and l), one bit each in one word */
+#define F_LEFT 1
+#define F_ZERO 2
+#define F_PLUS 4
+#define F_SPACE 8
+#define F_ALT 16
+#define F_LONG 32
+
 FILE *__of;
 char *__os;
 int __on;
@@ -651,88 +659,127 @@ void __opad(int n, int c)
         __oc(c);
 }
 
-int __udigits(unsigned long v, int base, int upper, char *buf)
+/* the digits of v in base b, written backwards to end just before end:
+   the first digit's address */
+char *__udigits(unsigned long v, int base, int upper, char *end)
 {
-    int n;
     int d;
-    n = 0;
     do {
         d = (int)(v % base);
-        buf[n++] = d < 10 ? '0' + d : (upper ? 'A' : 'a') + d - 10;
+        *--end = d < 10 ? '0' + d : (upper ? 'A' : 'a') + d - 10;
         v = v / base;
     } while (v != 0);
-    return n;
+    return end;
 }
 
-void __ofield(char *pre, char *body, int n, int reversed, int width, int left, int zero)
+/* a field: pre (a sign, 0x), zeros more '0's, then body's n characters,
+   padded to width; fl: F_LEFT (pad after), F_ZERO (pad with '0's) */
+void __ofield(char *pre, char *body, int n, int zeros, int width, int fl)
 {
-    int plen;
     int pad;
-    int i;
-    plen = strlen(pre);
-    pad = width - plen - n;
-    if (!left && !zero)
+    pad = width - strlen(pre) - zeros - n;
+    if (!(fl & (F_LEFT | F_ZERO)))
         __opad(pad, ' ');
-    for (i = 0; i < plen; i++)
-        __oc(pre[i]);
-    if (!left && zero)
+    while (*pre)
+        __oc(*pre++);
+    if ((fl & (F_LEFT | F_ZERO)) == F_ZERO)
         __opad(pad, '0');
-    for (i = 0; i < n; i++)
-        __oc(reversed ? body[n - 1 - i] : body[i]);
-    if (left)
+    __opad(zeros, '0');
+    while (n-- > 0)
+        __oc(*body++);
+    if (fl & F_LEFT)
         __opad(pad, ' ');
+}
+
+/* a number's sign: "-", or the "+" or " " the flags ask for */
+char *__osign(int neg, int fl)
+{
+    if (neg)
+        return "-";
+    if (fl & F_PLUS)
+        return "+";
+    if (fl & F_SPACE)
+        return " ";
+    return "";
 }
 
 /* float formatting lives in fltfmt.c: it is linked (and installs itself
    here) only in programs that use floating point */
 int (*__fltfmt)(float v, int prec, int style, int alt, char *out);
 
-int __vformat(char *fmt, va_list ap)
+#ifndef NO_FLOAT_PRINTF
+/* %f %e %g %E %G (c): a procedure of its own, so that its buffer and
+   numbers are on the stack only while a number is formatted; *ap is
+   moved past the argument (a double with F_LONG) */
+void __ofloat(int c, int fl, int width, int prec, va_list *ap)
 {
     char buf[48];
-    char pre[3];
-    int left;
-    int zero;
-    int plus;
-    int space;
-    int alt;
+    char *s;
+    int n;
+    int i;
+    int neg;
+    float dv;
+    double dd;
+    s = buf;
+    if (fl & F_LONG) {
+        /* a double (8 bytes): the engine formats it (CSP 133,
+           P-Code mode); %g's default precision is 10, not 6 */
+        dd = va_arg(*ap, double);
+        if (prec < 0)
+            prec = c == 'g' || c == 'G' ? 10 : 6;
+        __cspv(133, dd, c == 'E' ? 'e' : (c == 'G' ? 'g' : c), prec, buf);
+        neg = *s == '-';
+        if (neg)
+            s++;
+        n = strlen(s);
+    } else {
+        dv = va_arg(*ap, float);
+        neg = dv < 0.0;
+        if (neg)
+            dv = -dv;
+        if (__fltfmt)
+            n = __fltfmt(dv, prec < 0 ? 6 : prec, c == 'E' ? 'e' : (c == 'G' ? 'g' : c), (fl & F_ALT) != 0, buf);
+        else {
+            buf[0] = '?';
+            n = 1;
+        }
+    }
+    if (c == 'E' || c == 'G')
+        for (i = 0; i < n; i++)
+            s[i] = toupper(s[i]);
+    __ofield(__osign(neg, fl), s, n, 0, width, fl);
+}
+#endif
+
+int __vformat(char *fmt, va_list ap)
+{
+    char buf[12];                       /* a long's digits: 11 in octal */
+    char *s;
+    int fl;
     int width;
     int prec;
-    int lng;
     int c;
     int n;
-    int neg;
     long lv;
-    unsigned long uv;
-    float dv;
-#ifndef NO_FLOAT_PRINTF
-    double dd;
-    char *du;
-#endif
-    char *s;
     __on = 0;
     while ((c = *fmt++) != 0) {
         if (c != '%') {
             __oc(c);
             continue;
         }
-        left = 0;
-        zero = 0;
-        plus = 0;
-        space = 0;
-        alt = 0;
+        fl = 0;
         for (;;) {
             c = *fmt;
             if (c == '-')
-                left = 1;
+                fl = fl | F_LEFT;
             else if (c == '0')
-                zero = 1;
+                fl = fl | F_ZERO;
             else if (c == '+')
-                plus = 1;
+                fl = fl | F_PLUS;
             else if (c == ' ')
-                space = 1;
+                fl = fl | F_SPACE;
             else if (c == '#')
-                alt = 1;
+                fl = fl | F_ALT;
             else
                 break;
             fmt++;
@@ -742,7 +789,7 @@ int __vformat(char *fmt, va_list ap)
             width = va_arg(ap, int);
             fmt++;
             if (width < 0) {
-                left = 1;
+                fl = fl | F_LEFT;
                 width = -width;
             }
         } else
@@ -759,55 +806,43 @@ int __vformat(char *fmt, va_list ap)
                 while (*fmt >= '0' && *fmt <= '9')
                     prec = prec * 10 + *fmt++ - '0';
         }
-        lng = 0;
         while (*fmt == 'l' || *fmt == 'h' || *fmt == 'L') {
             if (*fmt == 'l' || *fmt == 'L')
-                lng = 1;                /* %ld; %lf %Lf: a double */
+                fl = fl | F_LONG;       /* %ld; %lf %Lf: a double */
             fmt++;
         }
         c = *fmt++;
-        pre[0] = 0;
         switch (c) {
         case 'd':
         case 'i':
-            lv = lng ? va_arg(ap, long) : va_arg(ap, int);
-            neg = lv < 0;
-            uv = neg ? -lv : lv;
-            n = __udigits(uv, 10, 0, buf);
-            while (n < prec)
-                buf[n++] = '0';
-            if (neg)
-                strcpy(pre, "-");
-            else if (plus)
-                strcpy(pre, "+");
-            else if (space)
-                strcpy(pre, " ");
-            __ofield(pre, buf, n, 1, width, left, zero && prec < 0);
+            lv = fl & F_LONG ? va_arg(ap, long) : va_arg(ap, int);
+            s = __udigits(lv < 0 ? -lv : lv, 10, 0, buf + 12);
+            n = buf + 12 - s;
+            if (prec >= 0)
+                fl = fl & ~F_ZERO;
+            __ofield(__osign(lv < 0, fl), s, n, prec > n ? prec - n : 0, width, fl);
             break;
         case 'u':
         case 'x':
         case 'X':
         case 'o':
-            uv = lng ? va_arg(ap, unsigned long) : va_arg(ap, unsigned);
-            n = __udigits(uv, c == 'u' ? 10 : (c == 'o' ? 8 : 16), c == 'X', buf);
-            while (n < prec)
-                buf[n++] = '0';
-            if (alt && c == 'o')
-                strcpy(pre, "0");
-            else if (alt && c != 'u' && uv != 0)
-                strcpy(pre, c == 'X' ? "0X" : "0x");
-            __ofield(pre, buf, n, 1, width, left, zero && prec < 0);
+            lv = fl & F_LONG ? va_arg(ap, unsigned long) : va_arg(ap, unsigned);
+            s = __udigits(lv, c == 'u' ? 10 : (c == 'o' ? 8 : 16), c == 'X', buf + 12);
+            n = buf + 12 - s;
+            if (prec >= 0)
+                fl = fl & ~F_ZERO;
+            __ofield(!(fl & F_ALT) || c == 'u' ? "" : (c == 'o' ? "0"
+                     : (lv == 0 ? "" : (c == 'X' ? "0X" : "0x"))),
+                     s, n, prec > n ? prec - n : 0, width, fl);
             break;
         case 'p':
-            uv = va_arg(ap, unsigned);
-            n = __udigits(uv, 16, 0, buf);
-            while (n < 4)
-                buf[n++] = '0';
-            __ofield("", buf, n, 1, width, left, 0);
+            s = __udigits(va_arg(ap, unsigned), 16, 0, buf + 12);
+            n = buf + 12 - s;
+            __ofield("", s, n, 4 - n, width, fl & F_LEFT);
             break;
         case 'c':
             buf[0] = va_arg(ap, int);
-            __ofield("", buf, 1, 0, width, left, 0);
+            __ofield("", buf, 1, 0, width, fl & F_LEFT);
             break;
         case 's':
             s = va_arg(ap, char *);
@@ -816,7 +851,7 @@ int __vformat(char *fmt, va_list ap)
             n = strlen(s);
             if (prec >= 0 && n > prec)
                 n = prec;
-            __ofield("", s, n, 0, width, left, 0);
+            __ofield("", s, n, 0, width, fl & F_LEFT);
             break;
 #ifndef NO_FLOAT_PRINTF
         case 'f':
@@ -824,47 +859,7 @@ int __vformat(char *fmt, va_list ap)
         case 'E':
         case 'g':
         case 'G':
-            if (lng) {
-                /* a double (8 bytes): the engine formats it (CSP 133,
-                   P-Code mode); %g's default precision is 10, not 6 */
-                dd = va_arg(ap, double);
-                if (prec < 0)
-                    prec = c == 'g' || c == 'G' ? 10 : 6;
-                __cspv(133, dd, c == 'E' ? 'e' : (c == 'G' ? 'g' : c), prec, buf);
-                s = buf;
-                neg = *s == '-';
-                if (neg)
-                    s++;
-                n = strlen(s);
-                if (c == 'E' || c == 'G')
-                    for (du = s; *du; du++)
-                        *du = toupper(*du);
-                if (neg)
-                    strcpy(pre, "-");
-                else if (plus)
-                    strcpy(pre, "+");
-                else if (space)
-                    strcpy(pre, " ");
-                __ofield(pre, s, n, 0, width, left, zero);
-                break;
-            }
-            dv = va_arg(ap, float);
-            neg = dv < 0.0;
-            if (neg)
-                dv = -dv;
-            if (__fltfmt)
-                n = __fltfmt(dv, prec < 0 ? 6 : prec, c == 'E' ? 'e' : (c == 'G' ? 'g' : c), alt, buf);
-            else {
-                buf[0] = '?';
-                n = 1;
-            }
-            if (neg)
-                strcpy(pre, "-");
-            else if (plus)
-                strcpy(pre, "+");
-            else if (space)
-                strcpy(pre, " ");
-            __ofield(pre, buf, n, 0, width, left, zero);
+            __ofloat(c, fl, width, prec, &ap);
             break;
 #endif
         case 'n':
