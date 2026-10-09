@@ -7,7 +7,7 @@ TCEXTRA:  29 files  (a UCSD directory holds 77)
   BOXES.C              4  conio.h: clear the screen, draw boxes with gotoxy ...
   BOXES.CODE           4    (ready to run)
   CALC.C               6  a calculator: recursive descent over + - * / % ( ) ...
-  CALC.CODE           15    (ready to run)
+  CALC.CODE           14    (ready to run)
   DEMO.C               4  the smallest program: no stdio.h (much less to link)
   DEMO.CODE            6    (ready to run)
   GUESS.C              4  guess the number: rand, scanf
@@ -15,7 +15,7 @@ TCEXTRA:  29 files  (a UCSD directory holds 77)
   HANOI.C              4  Towers of Hanoi, recursion
   HANOI.CODE          11    (ready to run)
   PI.C                 6  Archimedes' method with doubles (P-Code mode only)
-  PI.CODE             14    (ready to run)
+  PI.CODE             13    (ready to run)
   QUEENS.C             4  Eight queens: count all solutions, print the first
   QUEENS.CODE         11    (ready to run)
   SIEVE.C              4  Sieve of Eratosthenes: primes below 2000
@@ -23,11 +23,11 @@ TCEXTRA:  29 files  (a UCSD directory holds 77)
   CMPCODE.C            6  compare two code files byte by byte (Tiny-C Verify)
   CMPCODE.CODE        15    (ready to run)
   ARGS.C               6  main(argc, argv): does what its arguments say (run it ...
-  ARGS.CODE           14    (ready to run)
+  ARGS.CODE           13    (ready to run)
   MEMFREE.C            4  prints the memory free to it (stack to heap) and exits ...
-  MEMFREE.CODE        11    (ready to run)
+  MEMFREE.CODE        10    (ready to run)
   MEMMARK.C            6  the least free memory of another program
   MEMMARK.CODE        12    (ready to run)
   SHELL.C             56  a mini-shell: runs programs with pexec() and comes back
-  SHELL.CODE          38    (ready to run)
+  SHELL.CODE          37    (ready to run)
   FILES.TEXT           6  this list

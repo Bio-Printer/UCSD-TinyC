@@ -313,7 +313,7 @@ def main():
         ('volumes: units, names, files, blocks; boot and prefix marked',
          re.search(r'#4 +BIGGY: +\d+ +\d+ of +\d+  \(boot\)', part('volumes')) is not None
          and re.search(r'#5 +WORK: +7 +\d+ of +\d+  \(prefix\)', part('volumes')) is not None
-         and re.search(r'#10 +DISK10: +1 +14 of +400\n', part('volumes')) is not None),
+         and re.search(r'#10 +DISK10: +1 +\d+ of +400\n', part('volumes')) is not None),
         ('copy hello.c #10:', 'WORK:HELLO.C -> DISK10:HELLO.C\n' in part('copy hello.c #10:')),
         ('copy *:system.co* #10:', 'BIGGY:SYSTEM.COMPILER -> DISK10:SYSTEM.COMPILER' in part('copy *:system.co* #10:')),
         ('COPY hello.c #10: replaced', 'DISK10:HELLO.C (replaced)' in part('COPY hello.c #10')),

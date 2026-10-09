@@ -4,5 +4,5 @@ TOOLS:  4 files  (a UCSD directory holds 77)
 
   README.TEXT          6  what is on this volume
   VI.CODE             72  vi, the screen editor: VI NAME.C from the shell
-  GREP.CODE           18  grep: GREP [-i] PATTERN FILES from the shell
+  GREP.CODE           17  grep: GREP [-i] PATTERN FILES from the shell
   FILES.TEXT           4  this list

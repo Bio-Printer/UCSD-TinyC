@@ -129,7 +129,7 @@ void perror(char *s);
 
 
 
-/* the digits of an unsigned long in base b, into buf (reversed) */
+/* the digits of an unsigned long in base b, backwards to the end of a buffer */
 
 
 #ifndef NO_FLOAT_PRINTF
