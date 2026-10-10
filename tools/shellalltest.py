@@ -14,7 +14,7 @@ at the Command: prompt has less memory than the rebuild.
 
 Reported: the emulator's tracked least free memory (SP - NP at every P-code
 instruction, VERIFY_LOWWATER) of the whole run, and the lowest passes by the
-"(N words free)" CC prints after each (its pass's least: memleast(), psys.h).
+"(N free)" CC prints after each (its pass's least: memleast(), psys.h).
 Z80 mode and P-Code mode without reclaimed memory (the default here) have the
 same layout, so the same figures; PSYS_MODE=z80 takes about 25 minutes.
 
@@ -38,9 +38,9 @@ def passes(tr):
         m = re.match(r'> (.*)', line)
         if m:
             cmd = m.group(1).strip()
-        for m in re.finditer(r'(Preprocessing|Compiling|Generating code)[^(]*\((\d+) words free', line):
+        for m in re.finditer(r'(Preprocessing|Compiling|Generating code)[^(]*\((\d+) free', line):
             res.append((int(m.group(2)), m.group(1), cmd))
-        m = re.match(r'\s*\((\d+) words free\)', line)       # the linker's, on a line of its own
+        m = re.match(r'\s*\((\d+) free\)', line)       # the linker's, on a line of its own
         if m:
             res.append((int(m.group(1)), 'Linking', cmd))
     return sorted(res)

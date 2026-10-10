@@ -132,7 +132,7 @@ docs/DESIGN.md for how.
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
   mode without reclaim).  **A total rebuild started the way a user does it
   -- the shell (`$` at the Command: prompt), then `cc @all`: the compiler,
-  the library, vi and grep -- has 2,898 words free at the least** (was 589;
+  the library, vi and grep -- has 2,909 words free at the least** (was 589;
   `tools/shellalltest.py`): compiling vi's VICOLON.C, then linking CC2.CODE
   2,918, compiling VITEXT.C 2,925, VIPAGE.C 3,046 and VICMD.C 3,097,
   preprocessing the vi modules 3,322, the compiler's own LINK.C 3,494, EXPR.C
@@ -144,7 +144,7 @@ docs/DESIGN.md for how.
   not counted, and they were the worst: VICMD.C 589.  The Filer, setting the
   prefix, has 1,993 -- which is why shellalltest.py does not set it.)
   With reclaimed memory, 3,915 words more.  CC's "(N
-  words free)" after each pass is that pass's least (`memleast()` in
+  free)" after each pass is that pass's least (`memleast()` in
   psys.h, emulator 1.99; elsewhere the free memory at the pass's end), so
   the least of them is the status bar's figure; `voltest.py` prints both.
   What took the memory, and what was done in the last round (a code segment

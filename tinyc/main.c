@@ -72,9 +72,9 @@ static void passend(void)
     int least;
     least = memleast();
     memleast_stop();
-    say("  (");
-    sayn(least >= 0 ? least : __cspi(40));
-    say(" words free) ");
+    say("(");
+    saynw(least >= 0 ? least : __cspi(40), 4);
+    say(" free)  ");
     fflush(stdout);
     __heaprestore();
 #endif
@@ -87,20 +87,17 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
     char mod[10];
     basename8(src, mod);
     say("Preprocessing ");
-    say(src);
-    say(" ");
+    sayw(src, 18);                      /* the passes' figures line up in columns */
     passbegin(8000);
     if (!preprocess(src, tmpi))
         return 0;
     passend();
-    say("  Compiling ");
+    say("Compiling ");
     passbegin(1600);
     if (!compile(tmpi, tmpr, mod) || !compileend())
         return 0;
     passend();
     say("Generating code ");
-    say(obj);
-    say(" ");
     passbegin(1900);
     if (!gencode(tmpr, obj))
         return 0;
