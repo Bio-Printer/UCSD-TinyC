@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""viscreentest.py [REF_DIR] -- the screen vi shows after every key, compared
+with a reference vi (REF_DIR: the ports/vi sources of an earlier version;
+default: the committed ones, git HEAD) on Linux (gcc -DSTANDALONE
+-DVI_ROW_SUMS: the checksum-per-row screen and refresh's skipping of an
+unchanged screen; in a pseudo-terminal, a small terminal emulator reads what
+vi writes).  Edits, motions, scrolling, ^L, :s, undo, a long line with
+horizontal scrolling: every screen after every key must be the same.
+"""
+import os, sys, pty, time, select, subprocess, tempfile
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+MODS = ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'viucsd')
+ROWS, COLS = 24, 80
+
+TEXT = ''.join('line %d:\t%s\n' % (i, 'abcabc xyz ' * (1 + i % 9)) for i in range(1, 120)) + 'x' * 300 + '\n' + 'a   a\n' * 5
+KEYS = ['j'] * 5 + ['l'] * 10 + ['\x06', '\x06', '\x02', 'G', 'gg', '30G', 'x', 'u', 'dd', 'p', 'u', 'k', 'k', 'h',
+        ':s/a/b/g\r', 'u', 'ia', '\x1b', 'j', 'ZZ'[:0], '$', 'j', 'j', '0', '/line 9\r', 'n', 'N', '\x0c', 'w', 'w',
+        '~', '~', 'r!', 'J', 'yy', '3p', 'dw', '.', 'G', 'k', 'k', '$', 'l', 'l', '5l', 'x', '120G', '$', 'j', 'j', '0',
+        ':set ts=4\r', 'j', ':set ts=8\r', '2G', 'ma', '90G', "'a", 'D', 'u', 'O', 'new\x1b', 'u', 'U', ':1,3d\r', 'u',
+        'cwXYZ\x1b', 'j', '.', 'j', '.', '100G', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k',
+        '\x05', '\x05', '\x19', '\x04', '\x15', 'H', 'L', 'M', ':q!\r']
+
+
+def build(srcdir, exe, paged):
+    subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-DVI_ROW_SUMS'] + (['-DENABLE_FEATURE_VI_PAGING=1'] if paged else []) + ['-o', exe] +
+                          [os.path.join(srcdir, m + '.c') for m in MODS])
+
+
+class Term:
+    def __init__(self):
+        self.g = [[' '] * COLS for _ in range(ROWS)]
+        self.r = self.c = 0
+        self.buf = ''
+
+    def feed(self, s):
+        s = self.buf + s
+        self.buf = ''
+        i = 0
+        while i < len(s):
+            ch = s[i]
+            if ch == '\x1b':
+                if i + 1 >= len(s):
+                    self.buf = s[i:]
+                    break
+                if s[i + 1] == '[':
+                    j = i + 2
+                    while j < len(s) and not ('@' <= s[j] <= '~'):
+                        j += 1
+                    if j >= len(s):
+                        self.buf = s[i:]
+                        break
+                    self.csi(s[i + 2:j], s[j])
+                    i = j + 1
+                    continue
+                i += 2
+                continue
+            if ch == '\r':
+                self.c = 0
+            elif ch == '\n':
+                self.r = min(ROWS - 1, self.r + 1)
+            elif ch == '\b':
+                self.c = max(0, self.c - 1)
+            elif ch >= ' ':
+                if self.c < COLS:
+                    self.g[self.r][self.c] = ch
+                self.c = min(COLS, self.c + 1)
+            i += 1
+
+    def csi(self, args, cmd):
+        n = [int(a) if a.isdigit() else 0 for a in args.split(';')] if args and args[0] != '?' else [0]
+        if cmd == 'H':
+            self.r = min(ROWS - 1, max(0, (n[0] or 1) - 1))
+            self.c = min(COLS - 1, max(0, ((n[1] if len(n) > 1 else 0) or 1) - 1))
+        elif cmd == 'A':
+            self.r = max(0, self.r - (n[0] or 1))
+        elif cmd == 'K':
+            for x in range(self.c, COLS):
+                self.g[self.r][x] = ' '
+        elif cmd == 'J':
+            for x in range(self.c, COLS):
+                self.g[self.r][x] = ' '
+            for y in range(self.r + 1, ROWS):
+                self.g[y] = [' '] * COLS
+
+    def snap(self):
+        return ['' .join(r).rstrip() for r in self.g], (self.r, self.c)
+
+
+def session(exe, work):
+    x = os.path.join(work, 'X.C')
+    open(x, 'w').write(TEXT)
+    pid, fd = pty.fork()
+    if pid == 0:
+        os.chdir(work)
+        os.environ['LINES'] = str(ROWS)
+        os.environ['COLUMNS'] = str(COLS)
+        os.environ['VI_PAGECAP'] = '2600'
+        os.execv(exe, [exe, 'X.C'])
+    t = Term()
+
+    def drain(quiet):
+        last = time.time()
+        while time.time() - last < quiet:
+            r, _, _ = select.select([fd], [], [], 0.02)
+            if r:
+                try:
+                    d = os.read(fd, 65536)
+                except OSError:
+                    return False
+                if not d:
+                    return False
+                t.feed(d.decode('latin1'))
+                last = time.time()
+        return True
+    drain(0.4)
+    shots = [t.snap()]
+    for k in KEYS:
+        if not k:
+            continue
+        os.write(fd, k.encode())
+        if not drain(0.08):
+            break
+        shots.append(t.snap())
+    try:
+        os.waitpid(pid, 0)
+    except ChildProcessError:
+        pass
+    return shots
+
+
+def main():
+    ref = sys.argv[1] if len(sys.argv) > 1 else None
+    work = tempfile.mkdtemp(prefix='viscreen_')
+    if not ref:
+        ref = os.path.join(work, 'ref')
+        os.makedirs(ref)
+        for f in os.listdir(os.path.join(ROOT, 'ports', 'vi')):
+            if f.endswith(('.c', '.h')):
+                open(os.path.join(ref, f), 'wb').write(subprocess.check_output(
+                    ['git', '-C', ROOT, 'show', 'HEAD:ports/vi/' + f]))
+    ok = True
+    for paged in (False, True):         # the whole file in memory; a 2600 byte window
+        out = {}
+        for name, src in (('ref', ref), ('new', os.path.join(ROOT, 'ports', 'vi'))):
+            d = os.path.join(work, 'run_%s%d' % (name, paged))
+            os.makedirs(d)
+            build(src, os.path.join(d, 'vi'), paged)
+            out[name] = session(os.path.join(d, 'vi'), d)
+        a, b = out['ref'], out['new']
+        bad = [i for i in range(min(len(a), len(b))) if a[i] != b[i]]
+        print('%s: %d screens compared; %d differ; reference %d screens, new %d' %
+              ('paged' if paged else 'unpaged', min(len(a), len(b)), len(bad), len(a), len(b)))
+        for i in bad[:3]:
+            print('after key %d (%r):' % (i, KEYS[i - 1] if i else 'start'))
+            for y in range(ROWS):
+                if a[i][0][y] != b[i][0][y]:
+                    print('  row %2d ref: %r\n         new: %r' % (y, a[i][0][y], b[i][0][y]))
+        ok = ok and not bad and len(a) == len(b) and len(a) > 50
+    print('viscreentest: %s' % ('PASSED' if ok else 'FAILED'))
+    return 0 if ok else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

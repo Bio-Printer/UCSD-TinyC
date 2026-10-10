@@ -120,7 +120,7 @@ static int do_cmd2(char *cp)
 				if (cnt == -1)
 					status_line_bold("Write error: %s", strerror(errno));
 			} else {
-				file_modified = 0;
+				(file_modified = 0, scr_gen++);
 				last_file_modified = -1;
 				status_line("\"%s\" %dL, %dC", current_filename, count_lines(text, end - 1), cnt);
 				if (p[0] == 'x' || p[1] == 'q' || p[1] == 'n'
@@ -223,7 +223,7 @@ dc_i:
 		dot_end();		// move to NL
 		if (dot < end - 1) {	// make sure not last char in text[]
 			*dot++ = ' ';	// replace NL with space
-			file_modified++;
+			(file_modified++, scr_gen++);
 			while (isblank(*dot)) {	// delete leading WS
 				dot_delete();
 			}
@@ -426,7 +426,7 @@ dc5:
 		c1 = get_one_char();	// get the replacement char
 		if (*dot != '\n') {
 			*dot = c1;
-			file_modified++;
+			(file_modified++, scr_gen++);
 		}
 		end_cmd_q();	// stop adding to q
 		break;
@@ -465,10 +465,10 @@ dc5:
 	case '~':			// ~- flip the case of letters   a-z -> A-Z
 		if (islower(*dot)) {
 			*dot = toupper(*dot);
-			file_modified++;
+			(file_modified++, scr_gen++);
 		} else if (isupper(*dot)) {
 			*dot = tolower(*dot);
-			file_modified++;
+			(file_modified++, scr_gen++);
 		}
 		dot_right();
 		end_cmd_q();	// stop adding to q

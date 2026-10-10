@@ -515,6 +515,7 @@ int rawmode(void);
 void cookmode(void);
 void catch_sig(int sig);
 int awaitInput(int tics);
+extern int scr_gen;	// +1 whenever the text or the screen image changes (refresh skips an unchanged screen)
 char readit(void);
 char get_one_char(void);
 char *get_input_line(const char *prompt);

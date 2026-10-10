@@ -350,7 +350,7 @@ int file_insert(const char *fn, char *p, int update_ro_status)
 		text_hole_delete(p + cnt, p + size - 1);
 		status_line_bold("cannot read all of file \"%s\"", fn);
 	} else
-		file_modified++;
+		(file_modified++, scr_gen++);
 	return cnt;
 }
 
@@ -392,8 +392,11 @@ void place_cursor(int row, int col, int optimize)
 	if (row >= rows) row = rows - 1;
 	if (col < 0) col = 0;
 	if (col >= columns) col = columns - 1;
-	fflush(stdout);
-	gotoxy(col, row);
+	// the OS's FGOTOXY (MYGOTOXY.TEXT, BIGGY 1.11 or later) is CHR(1), X+32, Y+32:
+	// into the output buffer with the text, not a flush and a call for each move
+	putc(1, stdout);
+	putc(col + 32, stdout);
+	putc(row + 32, stdout);
 }
 
 void clear_to_eol(void)

@@ -25,6 +25,11 @@ static const char CMdown[] ALIGN1 = "\n";
 #endif
 
 
+int scr_gen;		// +1 whenever the text or the screen image changes
+static int scr_key[11];	// what the rows depend on, now
+static int scr_keyed_for[11];	// ... when they were last all compared
+static int scr_keyed;		// scr_keyed_for is valid
+
 static const char *cmd_mode_indicator[] =
 	{"COMMAND", "INSERT", "REPLACE", "?!?" };
 
@@ -297,6 +302,7 @@ void Indicate_Error(void)
 //----- Erase the Screen[] memory ------------------------------
 void screen_erase(void)
 {
+	scr_gen++;		// every row is drawn again
 #ifdef VI_ROW_SUMS
 	memset(screen, 1, screensize);	// odd: no row's sum (they are even)
 #else
@@ -546,7 +552,7 @@ void refresh(void)
 {
 #define old_offset refresh__old_offset
 
-	int li, changed;
+	int li, changed, same;
 	char *tp, *sp;		// pointer into text[] and screen[]
 
 	// poll to see if there is input already waiting. if we are
@@ -558,8 +564,30 @@ void refresh(void)
 	sync_cursor(dot, &crow, &ccol);	// where cursor will be (on "dot")
 	tp = screenbegin;	// index into text[] of top line
 
+	// the screen's rows depend on this and nothing else: when none of it
+	// has changed since all rows were last compared (the cursor only moved
+	// on the screen), the compare below would find nothing
+	{
+		int *k = scr_key;
+		k[0] = scr_gen;
+		k[1] = (int)(size_t)screenbegin;
+		k[2] = (int)(size_t)end;
+		k[3] = (int)(size_t)text;
+		k[4] = offset;
+		k[5] = tabstop;
+		k[6] = rows;
+		k[7] = columns;
+#if ENABLE_FEATURE_VI_PAGING
+		k[8] = pg_nb;
+		k[9] = pg_na;
+		k[10] = pg_lb;
+#endif
+		same = scr_keyed && offset == old_offset
+			&& memcmp(k, scr_keyed_for, sizeof(scr_key)) == 0;
+	}
+
 	// compare text[] to screen[] and mark screen[] lines that need updating
-	for (li = 0; li < rows - 1 && !awaitInput(0); li++) {
+	for (li = same ? rows - 1 : 0; li < rows - 1 && ((li & 7) || !awaitInput(0)); li++) {
 		int cs, ce;				// column start & end
 		char *out_buf;
 		// format current text line
@@ -648,6 +676,11 @@ void refresh(void)
 
 	place_cursor(crow, ccol, TRUE);
 
+	if (li >= rows - 1) {	// all rows compared (not cut short by a key)
+		memcpy(scr_keyed_for, scr_key, sizeof(scr_key));
+		scr_keyed = 1;
+	} else
+		scr_keyed = 0;
 	old_offset = offset;
 #undef old_offset
 	show_status_line();

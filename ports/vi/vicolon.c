@@ -559,7 +559,7 @@ void colon1(char *buf)
 			// if the insert is before "dot" then we need to update
 			if (q <= dot)
 				dot += ch;
-			file_modified++;
+			(file_modified++, scr_gen++);
 		}
 	} else if (strncasecmp(cmd, "rewind", i) == 0) {	// rewind cmd line args
 		if (file_modified && !useforce) {
@@ -629,7 +629,7 @@ void colon1(char *buf)
 #endif
 			status_line("\"%s\" %dL, %dC", fn, li, l);
 			if (q == text && r == end - 1 && l == ch) {
-				file_modified = 0;
+				(file_modified = 0, scr_gen++);
 				last_file_modified = -1;
 			}
 			if ((cmd[0] == 'x' || cmd[1] == 'q' || cmd[1] == 'n' ||

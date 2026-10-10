@@ -115,6 +115,24 @@ Tested by giving the Linux build a tiny window (`gcc -DSTANDALONE
 1500-line file must save the same file as the build without paging; and on the
 P-System by `tools/vitest.py` (a 1500-line file through a 4 KB window in Z80 mode).
 
+## Speed of the screen
+
+* `refresh()` compares all rows (format, checksum) only when something they
+  depend on has changed: the text (`scr_gen`, +1 at every edit and at every
+  screen erase), the top line, the horizontal offset, the tab stop, the size or
+  the window's place in the file. A cursor move within the screen (h j k l,
+  w, b ...) redraws nothing but the cursor and the status line: about 4 times
+  faster.
+* The cursor is placed by writing the OS's FGOTOXY codes (CHR(1), X+32, Y+32:
+  MYGOTOXY.TEXT, built into BIGGY 1.11 and later) into the output buffer with
+  the text, not by a flush and a call to GOTOXY for every row; the keyboard
+  is polled every 8th row, not every row. A page of text is about 30% faster.
+* The row checksum stays a multiply-add (`sum * 31 + c`): the P-machine has a
+  multiply but no shift, rotate or xor, so a rotate-and-xor sum costs more
+  (a right shift or ^ is a library call with a loop; measured slower).
+* `tools/viscreentest.py` compares the screen after every key with an earlier
+  version's on Linux.
+
 ## Status
 
 Works: moving, inserting, deleting, yank/put, marks, searching, `.`, `J`, `<` `>`,

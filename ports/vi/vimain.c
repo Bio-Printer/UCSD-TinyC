@@ -426,7 +426,7 @@ int init_text_buffer(char *fn)
 		rc = file_insert(fn, text, 1);
 #endif
 	}
-	file_modified = 0;
+	(file_modified = 0, scr_gen++);
 	last_file_modified = -1;
 #if ENABLE_FEATURE_VI_YANKMARK
 	/* init the marks. */
@@ -909,7 +909,7 @@ int file_insert(const char *fn, char *p
 		status_line_bold("cannot read all of file \"%s\"", fn);
 	}
 	if (cnt >= size)
-		file_modified++;
+		(file_modified++, scr_gen++);
 	close(fd);
  fi0:
 #if ENABLE_FEATURE_VI_READONLY

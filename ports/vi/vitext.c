@@ -354,7 +354,7 @@ char *char_insert(char *p, char c) // insert the char c at 'p'
 		c = get_one_char();
 		*p = c;
 		p++;
-		file_modified++;
+		(file_modified++, scr_gen++);
 	} else if (c == 27) {	// Is this an ESC?
 		cmd_mode = CMODE_COMMAND;
 		cmdcnt = 0;
@@ -402,7 +402,7 @@ static char *stupid_insert(char *p, char c) // stupidly insert the char c at 'p'
 		return p;	// no room: the character is dropped
 	p = q;
 	*p = c;
-	//file_modified++; - done by text_hole_make()
+	//(file_modified++, scr_gen++); - done by text_hole_make()
 	return p + 1;
 }
 
@@ -623,7 +623,7 @@ char *text_hole_make(char *p, int size)	// at "p", make a 'size' byte hole
 	}
 	memmove(p + size, p, end - size - p);
 	memset(p, ' ', size);	// clear new hole
-	file_modified++;
+	(file_modified++, scr_gen++);
 	return p;
 }
 
@@ -661,7 +661,7 @@ char *text_hole_delete(char *p, char *q) // delete "p" through "q", inclusive
 		dest = end - 1;	// make sure dest in below end-1
 	if (end <= text)
 		dest = end = text;	// keep pointers valid
-	file_modified++;
+	(file_modified++, scr_gen++);
  thd0:
 	return dest;
 }
