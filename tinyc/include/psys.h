@@ -102,6 +102,13 @@ int __pxsum(unsigned char *s);
 /* PX_KEYS_BLOCK: the same, and the cursor drawn as a block instead of a
    line under the character (emulator 2.02) -- easy to find on the screen */
 #define PX_KEYS_BLOCK 25606
+/* PX_KEYS_SCROLL: the same, and the console's scroll codes (emulator 2.03):
+   ESC [ n S scrolls the scroll region up n lines, ESC [ n T down, ESC [ top ;
+   bottom r sets the region (rows from 1; ESC [ r: the whole screen).  The
+   emulator answers by changing the word to PX_SCROLL_OK; another one leaves
+   it and does not take the keys, so then store PX_KEYS_BLOCK. */
+#define PX_KEYS_SCROLL 25607
+#define PX_SCROLL_OK   25608
 #define KEY_HOME   0x84
 #define KEY_END    0x85
 #define KEY_INSERT 0x86

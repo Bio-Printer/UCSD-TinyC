@@ -19,7 +19,7 @@ KEYS = ['j'] * 5 + ['l'] * 10 + ['\x06', '\x06', '\x02', 'G', 'gg', '30G', 'x', 
         '~', '~', 'r!', 'J', 'yy', '3p', 'dw', '.', 'G', 'k', 'k', '$', 'l', 'l', '5l', 'x', '120G', '$', 'j', 'j', '0',
         ':set ts=4\r', 'j', ':set ts=8\r', '2G', 'ma', '90G', "'a", 'D', 'u', 'O', 'new\x1b', 'u', 'U', ':1,3d\r', 'u',
         'cwXYZ\x1b', 'j', '.', 'j', '.', '100G', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k',
-        '\x05', '\x05', '\x19', '\x04', '\x15', 'H', 'L', 'M', ':q!\r']
+        '\x05', '\x05', '\x19', '\x04', '\x15', 'H', 'L', 'M'] + ['j'] * 40 + ['k'] * 45 + ['\x05'] * 6 + ['\x19'] * 7 + ['G'] + ['k'] * 3 + ['\x06', '\x02', '3\x04', '3\x15', ':q!\r']
 
 
 def build(srcdir, exe, paged):
@@ -32,6 +32,8 @@ class Term:
         self.g = [[' '] * COLS for _ in range(ROWS)]
         self.r = self.c = 0
         self.buf = ''
+        self.top, self.bot = 0, ROWS - 1
+        self.scrolls = 0
 
     def feed(self, s):
         s = self.buf + s
@@ -72,6 +74,16 @@ class Term:
         if cmd == 'H':
             self.r = min(ROWS - 1, max(0, (n[0] or 1) - 1))
             self.c = min(COLS - 1, max(0, ((n[1] if len(n) > 1 else 0) or 1) - 1))
+        elif cmd == 'r':
+            t = n[0] or 1
+            b = (n[1] if len(n) > 1 else 0) or ROWS
+            self.top, self.bot = (t - 1, b - 1) if t < b else (0, ROWS - 1)
+        elif cmd in 'ST':
+            k = min(n[0] or 1, self.bot - self.top + 1)
+            reg = self.g[self.top:self.bot + 1]
+            blank = [[' '] * COLS for _ in range(k)]
+            self.g[self.top:self.bot + 1] = reg[k:] + blank if cmd == 'S' else blank + reg[:len(reg) - k]
+            self.scrolls += 1
         elif cmd == 'A':
             self.r = max(0, self.r - (n[0] or 1))
         elif cmd == 'K':
@@ -126,6 +138,7 @@ def session(exe, work):
         os.waitpid(pid, 0)
     except ChildProcessError:
         pass
+    shots.append(t.scrolls)
     return shots
 
 
@@ -148,15 +161,17 @@ def main():
             build(src, os.path.join(d, 'vi'), paged)
             out[name] = session(os.path.join(d, 'vi'), d)
         a, b = out['ref'], out['new']
+        nscroll = b.pop()
+        a.pop()
         bad = [i for i in range(min(len(a), len(b))) if a[i] != b[i]]
-        print('%s: %d screens compared; %d differ; reference %d screens, new %d' %
-              ('paged' if paged else 'unpaged', min(len(a), len(b)), len(bad), len(a), len(b)))
+        print('%s: %d screens compared; %d differ; reference %d screens, new %d; the new vi scrolled %d times' %
+              ('paged' if paged else 'unpaged', min(len(a), len(b)), len(bad), len(a), len(b), nscroll))
         for i in bad[:3]:
             print('after key %d (%r):' % (i, KEYS[i - 1] if i else 'start'))
             for y in range(ROWS):
                 if a[i][0][y] != b[i][0][y]:
                     print('  row %2d ref: %r\n         new: %r' % (y, a[i][0][y], b[i][0][y]))
-        ok = ok and not bad and len(a) == len(b) and len(a) > 50
+        ok = ok and not bad and len(a) == len(b) and len(a) > 50 and nscroll > 5
     print('viscreentest: %s' % ('PASSED' if ok else 'FAILED'))
     return 0 if ok else 1
 

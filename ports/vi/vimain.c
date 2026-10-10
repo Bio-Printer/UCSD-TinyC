@@ -451,6 +451,9 @@ static void edit_file(char *fn)
 		exit(5);
 	}
 	createScreen();
+#if !defined(__UCSD__) && defined(VI_ROW_SUMS)
+	scroll_ok = getenv("VI_NOSCROLL") == NULL;	// (the Linux build, to test the scrolling)
+#endif
 	init_text_buffer(fn);
 
 #if ENABLE_FEATURE_VI_YANKMARK

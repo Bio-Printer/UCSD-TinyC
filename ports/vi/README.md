@@ -113,7 +113,7 @@ open, and saving over it is safe). `VI.SWAP` is deleted when vi ends.
 Tested by giving the Linux build a tiny window (`gcc -DSTANDALONE
 -DENABLE_FEATURE_VI_PAGING=1 vi*.c`, `VI_PAGECAP=2600`): random sessions of 60 commands on a
 1500-line file must save the same file as the build without paging; and on the
-P-System by `tools/vitest.py` (a 1500-line file through a 4 KB window in Z80 mode).
+P-System by `tools/vitest.py` (a 1500-line file through a 2.8 KB window in Z80 mode).
 
 ## Speed of the screen
 
@@ -127,6 +127,21 @@ P-System by `tools/vitest.py` (a 1500-line file through a 4 KB window in Z80 mod
   MYGOTOXY.TEXT, built into BIGGY 1.11 and later) into the output buffer with
   the text, not by a flush and a call to GOTOXY for every row; the keyboard
   is polled every 8th row, not every row. A page of text is about 30% faster.
+* With emulator 2.03 or later (SYSCOM->expansion[1] = 25607 is answered 25608:
+  emulator/KEYS.md, PX_KEYS_SCROLL in psys.h) a scroll of the screen is done by
+  the console: ESC [ 1 ; N r (the text rows as the scroll region), ESC [ n S or
+  ESC [ n T, ESC [ r. The rows' checksums move with the rows, and only the rows
+  that come in are formatted, compared and drawn: j or k past the screen's edge,
+  ^E, ^Y, the mouse wheel and a short ^D / ^U draw 1 to 3 rows instead of 43.
+  A page (^F, ^B, Page Down, Page Up) moves the top line by nearly the whole
+  screen, so it still draws nearly every row. Without 2.03 (the answer does not
+  come) vi stores PX_KEYS_BLOCK as before and redraws every row that changed.
+  `tools/viscrolltest.py` runs vi on the P-System with and without the codes and
+  compares the screen after every key.
+* Every byte of code is a byte less for the window in Z80 mode (vi is one
+  resident 35 KB segment): the scroll code and the shorter status buffers
+  (148 bytes) took the window from 3072 to 2802 bytes there; the 1500-line
+  session of `tools/vitest.py` needs about 2.8 KB.
 * The row checksum stays a multiply-add (`sum * 31 + c`): the P-machine has a
   multiply but no shift, rotate or xor, so a rotate-and-xor sum costs more
   (a right shift or ^ is a library call with a loop; measured slower).
@@ -139,7 +154,7 @@ Works: moving, inserting, deleting, yank/put, marks, searching, `.`, `J`, `<` `>
 `:w` `:w NAME` `:q` `:wq` `ZZ` `:s` `:set` `:r NAME` `:e! NAME`, ... from the shell and
 from X(ecute), in P-Code and in Z80 mode.
 
-Files up to about 125 KB (128 chunks). The window: about 4 KB in Z80 mode, 12 KB in
+Files up to about 125 KB (128 chunks). The window: about 2.8 KB in Z80 mode, 12 KB in
 P-Code mode, 30 KB with the Harvard layout (where the 34 KB of code takes no data
 memory).
 

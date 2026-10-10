@@ -215,7 +215,13 @@ char *ucsd_askname(void)
 int rawmode(void)
 {
 	ucsd_reserve();
-	SYSCOM->expansion[1] = PX_KEYS_BLOCK;	// Page Up ... Delete: one code each, and a block cursor (psys.h)
+	// Page Up ... Delete: one code each, a block cursor and the scroll codes (psys.h);
+	// the emulator answers PX_SCROLL_OK at its next P-code instruction, an older one
+	// leaves the word (and does not take the keys: PX_KEYS_BLOCK for those)
+	SYSCOM->expansion[1] = PX_KEYS_SCROLL;
+	scroll_ok = SYSCOM->expansion[1] == PX_SCROLL_OK;
+	if (!scroll_ok)
+		SYSCOM->expansion[1] = PX_KEYS_BLOCK;
 	erase_char = SYSCOM->crtinfo.chardel;
 	ticsPerChar = 1;
 	return 0;

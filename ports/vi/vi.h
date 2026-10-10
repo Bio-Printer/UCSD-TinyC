@@ -393,7 +393,7 @@ struct globals {
 	// Should be just enough to hold a key sequence,
 	// but CRASME mode uses it as generated command buffer too
 	char readbuffer[128];
-#define STATUS_BUFFER_LEN  200
+#define STATUS_BUFFER_LEN  148
 	char status_buffer[STATUS_BUFFER_LEN]; // messages to the user
 	char displayed_buffer[STATUS_BUFFER_LEN];  //  displayed status
 #if ENABLE_FEATURE_VI_DOT_CMD
@@ -515,6 +515,8 @@ int rawmode(void);
 void cookmode(void);
 void catch_sig(int sig);
 int awaitInput(int tics);
+extern int scroll_ok;	// the console scrolls on request (ESC [ n S, ESC [ n T)
+void scroll_rows(int nrows, int n);	// the first rows screen rows up (n > 0) or down (n < 0) n lines
 extern int scr_gen;	// +1 whenever the text or the screen image changes (refresh skips an unchanged screen)
 char readit(void);
 char get_one_char(void);

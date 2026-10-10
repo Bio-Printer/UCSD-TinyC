@@ -172,8 +172,10 @@ static void colon_set(char *args)
 				char *t = strchr(argp + i, '=') + 1;
 				for (ch = 0; isdigit(*t); t++)
 					ch = ch * 10 + (*t - '0');
-				if (ch > 0 && ch <= MAX_TABSTOP)
+				if (ch > 0 && ch <= MAX_TABSTOP) {
 					tabstop = ch;
+					scr_gen++;
+				}
 			}
 			while (*argp && *argp != ' ')
 				argp++; // skip to arg delimiter (i.e. blank)

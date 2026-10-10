@@ -88,3 +88,21 @@ Then the Editor (E at the Command: prompt): the keys do what they did.
 
 Test: `tools/vitest.py` ("PC keys": vi given these codes on the P-System
 saves the same file as the Linux build given the terminal's sequences).
+
+## Scroll codes (emulator 2.03)
+
+A program that stores `PX_KEYS_SCROLL` (25607, psys.h) in SYSCOM->expansion[1]
+gets what 25606 gives (the keys, the block cursor) and the console's scroll
+codes; the emulator changes the word to `PX_SCROLL_OK` (25608) at the next
+P-code instruction, so the program knows (an older emulator leaves it, and
+does not take the keys: store `PX_KEYS_BLOCK` then).
+
+| Sequence | Does |
+|---|---|
+| `ESC [ n S` | the scroll region up n lines (1 if n is left out) |
+| `ESC [ n T` | down n lines |
+| `ESC [ top ; bottom r` | the scroll region, rows from 1 (`ESC [ r`: the whole screen) |
+
+The cursor does not move. These are the ANSI / VT100 scroll codes (the VT52
+has none). vi uses them (ports/vi/README.md, Speed of the screen). The
+emulator's README.md has the details.
