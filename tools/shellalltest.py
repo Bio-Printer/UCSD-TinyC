@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """shellalltest.py -- a total system rebuild the way a user starts it: at the
-Command: prompt, $ (the Tiny-C shell), then  cc @all  (TOOLSRC:ALL.TEXT:
+Command: prompt, S (the Tiny-C shell), then  cc @all  (TOOLSRC:ALL.TEXT:
 the compiler, the library and every tool), and the least free memory of it.
 
   @TCSRC:BUILD   the compiler -> TINY-C:CC2.CODE: CMPCODE IDENTICAL to CC.CODE
@@ -56,7 +56,7 @@ def main():
     for n in names:                     # what is there after the run, @TOOLS made
         tv.remove(n)
     tv.save()
-    L = ['WAIT "Command:"', 'TYPE "$"', 'WAIT "shell> "', 'TYPE "cc @all\\r"',
+    L = ['WAIT "Command:"', 'TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @all\\r"',
          'WAIT "> @TCSRC:BUILD"', 'WAIT "> /L TINY-C:CC2="', 'WAIT "> @TCSRC:LIBS"',
          'WAIT "Joining TINY-C:TCLIB2.OBJ"', 'WAIT "> @TOOLS"', 'WAIT "> /L TOOLS:GREP="',
          'WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']

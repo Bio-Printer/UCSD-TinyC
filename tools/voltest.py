@@ -5,7 +5,7 @@ unit #5, TCSRC: on #9, TCEXTRA: on #10, TCTESTS: on #11.
 
   @LIBS    on TCSRC: (X TINY-C:CC) -> TINY-C:TCLIB2.OBJ (/Z /C), CMPCODE:
            IDENTICAL to TINY-C:TCLIB.OBJ
-  @BUILD   on TCSRC:, from the shell ($, cc @build: CC takes its commands
+  @BUILD   on TCSRC:, from the shell (S, cc @build: CC takes its commands
            as arguments) -> TINY-C:CC2.CODE, CMPCODE: IDENTICAL to TINY-C:CC.CODE
   @DEMOS   on TCEXTRA: (compiler and headers from TINY-C:), then QUEENS runs
   @TESTS   on TCTESTS: (likewise), then LONGS runs
@@ -48,7 +48,7 @@ def script():
     L = ['WAIT "Command:"'] + prefix('TCSRC:')
     L += tinyc('TINY-C:CC', '@LIBS', ['> /Z /C ASSERT', '> /Z /C TCRT', 'Joining TINY-C:TCLIB2.OBJ'])
     L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
-    L += ['TYPE "$"', 'WAIT "shell> "', 'TYPE "cc @build\\r"', 'WAIT "> @BUILD"', 'WAIT "> /C MAIN"',
+    L += ['TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @build\\r"', 'WAIT "> @BUILD"', 'WAIT "> /C MAIN"',
           'WAIT "> /L TINY-C:CC2="', 'WAIT "Done."', 'WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"',
           'WAIT "Command:"']
     L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')

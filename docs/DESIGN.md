@@ -215,3 +215,6 @@ from `examples/shell.c` (GETCMD's segment: 3176 bytes). Its FGOTOXY is
 MYGOTOXY.TEXT's, in the source, so SYSTEM.PASCAL is simply the compiled
 SYSTEM (no BINDER), and the resident operating system is smaller: 7756
 bytes.
+
+BIGGY 1.22 (U134.4_OS_SOURCE_v1.12) uses `S`, not `$`, for it (the `?` prompt says
+`S(hell`); GETCMD's segment is 3118 bytes, the case table being smaller.

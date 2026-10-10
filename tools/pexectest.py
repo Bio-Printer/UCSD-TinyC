@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """pexectest.py -- test pexec() (psys.h) and the operating system's part of
-it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
+it (BIGGY 1.10; the S part BIGGY 1.22 (BIGGY 1.11 to 1.21: $)) with the mini-shell examples/shell.c:
 
   X MEMFREE                  free memory of a program started by the OS
   X SHELL, then in the shell
@@ -49,7 +49,7 @@ it (BIGGY 1.10; the $ part BIGGY 1.11) with the mini-shell examples/shell.c:
     bye                      back to the Command: prompt
   X ARGS                     no volume: found on the prefix (WORK:, set by
                              cd #5), started by the OS: no arguments
-  ?, $                       the Command: prompt's $ starts the shell
+  ?, S                       the Command: prompt's S starts the shell
                              (*SYSTEM.SHELL), MEMFREE from it, then the
                              command line (keys as emulator 2.00 sends them):
     Up Up Enter              #4:SYSTEM.CMDS outlasts the shell: cd 13 again
@@ -200,8 +200,8 @@ WAIT "Execute what file?"
 TYPE "ARGS\r"
 WAIT "Command:"
 TYPE "?"
-WAIT "$(hell"
-TYPE "$"
+WAIT "S(hell"
+TYPE "S"
 WAIT "shell> "
 TYPE "#5:MEMFREE\r"
 WAIT "shell> "
@@ -275,7 +275,7 @@ def main():
         ('Left Left Delete X: aXc, and Up Enter runs it again', tr.count('argv[2] = "aXc"') == 2),
         ('Home Insert (type over) End: ARGS ECHO ow z', 'argv[2] = "ow"' in tr and 'argv[3] = "z"' in tr),
         ('ESC cleared the line (no junk: no such program); Up Up Down: esc again', tr.count('argv[2] = "esc"') == 2
-         and 'no such program' not in tr[tr.rfind('$(hell'):]),
+         and 'no such program' not in tr[tr.rfind('S(hell'):]),
         ('Backspace: bs', 'argv[2] = "bs"' in tr),
         ('WHERE on five disks: all listed', all(('%s:WHERE  (#%d:WHERE)' % (v, u)) in tr for v, u in
          (('WORK', 5), ('SPARE', 9), ('DISK10', 10), ('DISK11', 11), ('DISK12', 12)))),
@@ -287,7 +287,7 @@ def main():
          and 'argv[1] = "ECHO"' in tr and 'argv[2] = "A"' in tr and 'argv[3] = "B"' in tr),
         ('ARGS FOO: unknown', "args: don't know FOO with 1 arguments" in tr),
         ('81 characters: too long', 'command line too long' in tr),
-        ('the ? prompt offers $(hell', 'H(alt, $(hell' in tr),
+        ('the ? prompt offers S(hell', 'H(alt, S(hell' in tr),
         ('NOSUCH: no such program', 'NOSUCH: no such program' in tr),
         ('cd: the prefix is the boot volume, unit 4', re.search(r'prefix is \w+: \(#4\)', tr) is not None),
         ('dir #10: DISK10\'s one file', 'DISK10: (#10)' in tr and re.search(r'WHERE\.CODE +\d+ .*Code', tr) is not None
@@ -337,8 +337,8 @@ def main():
         ('dir nosuch:, cd 13: no such disk', 'dir: no disk nosuch on line' in tr and 'cd: no disk 13 on line' in tr),
     ]
     bad = [name for name, good in checks if not good]
-    if bad:                             # the $ shell's part, as it was on the screen
-        print(repr(tr[tr.rfind('$(hell'):]))
+    if bad:                             # the S shell's part, as it was on the screen
+        print(repr(tr[tr.rfind('S(hell'):]))
     for name, good in checks:
         print('%-5s %s' % ('ok' if good else 'FAIL', name))
     print('pexec test: %s   (work: %s)' % ('FAILED' if bad else 'PASSED', ps.dir))

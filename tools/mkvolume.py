@@ -51,7 +51,7 @@ answer "Compile what file?" with
     @FILE                run the commands in FILE.TEXT, one per line
                          (blank lines and lines starting with ; skipped;
                          a line @OTHER runs OTHER.TEXT, then goes on)
-The same commands can be arguments instead (from the shell: $ at the
+The same commands can be arguments instead (from the shell: S at the
 Command: prompt): CC @BUILD @LIBS, CC /Z HANOI SIEVE.  Options and the
 word after them make one command; they run in turn, no prompt, and the
 first that fails stops CC.
@@ -116,7 +116,7 @@ Mount TINY-C: as well: the compiler, the headers, TCLIB.OBJ and
 TCMSGS.TEXT come from there.
 
 REBUILDING EVERYTHING:  set the prefix to TCSRC:, then from the shell
-($ at the Command: prompt) type  CC @BUILD @LIBS.
+(S at the Command: prompt) type  CC @BUILD @LIBS.
 
 REBUILDING THE COMPILER:  set the prefix to TCSRC:, X(ecute
 TINY-C:CC, answer  @BUILD.  BUILD.TEXT compiles the compiler's modules

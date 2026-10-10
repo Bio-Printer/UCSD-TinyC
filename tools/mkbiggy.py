@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mkbiggy.py -- volumes/BIGGY.zip: the emulator's boot volume BIGGY:
 (data/Big_Disk.BLK in the P-Machine zip) with SYSTEM.SHELL, the Tiny-C shell
-(examples/shell.c), which the Command: prompt's $ runs.  Tiny-C itself --
+(examples/shell.c), which the Command: prompt's S runs.  Tiny-C itself --
 CC.CODE, TCLIB.OBJ, TCMSGS.TEXT, the headers -- is only on TINY-C: (since
 BIGGY 1.15; one copy of each file): X(ecute TINY-C:CC.  The compiler looks
 for TCLIB.OBJ, TCMSGS.TEXT and headers on the prefix volume, the boot volume
@@ -44,7 +44,7 @@ def main():
         if v.find(name):
             v.remove(name)
             changed.append('-' + name)
-    # the Tiny-C shell, which the Command: prompt's $ runs (BIGGY 1.11)
+    # the Tiny-C shell, which the Command: prompt's S runs (BIGGY 1.11)
     base, shell = compile_c(os.path.join(ROOT, 'examples', 'shell.c'), os.path.join(ROOT, 'build'), z80=True)
     put('SYSTEM.SHELL', open(shell, 'rb').read(), 2)
     if changed:
