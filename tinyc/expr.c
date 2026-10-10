@@ -811,8 +811,11 @@ struct Node *postfix(void)
                 n->val = 1;             /* the callee is in this segment: CGP */
             c->b = arglist(ft, &na);
             c->val = na;
-            if (n->op == N_FUNC && ft && (ft->flags & TF_VARIADIC))
-                fmtfix(n->sym->name, c->b);
+            if (n->op == N_FUNC && ft && (ft->flags & TF_VARIADIC)) {
+                na = fmtfam(n->sym->name);      /* (fmtfix's segment is only loaded for these) */
+                if (na)
+                    fmtfix(na, c->b);
+            }
             if (n->op == N_FUNC && c->b && c->b->op == N_CAST && isdblty(c->b->a->type) &&
                 (na = dmathcsp(n->sym->name)) != 0)
                 c = dmathcall(c, na);
@@ -1140,13 +1143,28 @@ int constexpr(void)
 
 /* ---- declarations ---- */
 
-#pragma segment REALLIT
+/* Is name a printf or scanf function?  0 no; else 1 + the position of the
+   format (1: the first argument, 2: the second) in the low bits, 16 for scanf */
+int fmtfam(char *name)
+{
+    if (strcmp(name, "printf") == 0)
+        return 1;
+    if (strcmp(name, "fprintf") == 0 || strcmp(name, "sprintf") == 0)
+        return 2;
+    if (strcmp(name, "scanf") == 0)
+        return 17;
+    if (strcmp(name, "fscanf") == 0 || strcmp(name, "sscanf") == 0)
+        return 18;
+    return 0;
+}
+
+#pragma segment REFSCAN
 
 /* printf/scanf families with a literal format: a double argument meeting
    %f %e %g (no l or L) gets the l inserted, as C prints a double with %g
    (here %g is a float: floats are not widened); printf's %lf with a float
    argument widens the argument */
-void fmtfix(char *name, struct Node *args)
+void fmtfix(int fam, struct Node *args)
 {
     struct Node *f;
     struct Node *a;
@@ -1158,18 +1176,8 @@ void fmtfix(char *name, struct Node *args)
     int scan;
     int lng;
     int c;
-    k = 0;
-    scan = 0;
-    if (strcmp(name, "printf") == 0)
-        k = 1;
-    else if (strcmp(name, "fprintf") == 0 || strcmp(name, "sprintf") == 0)
-        k = 2;
-    else if (strcmp(name, "scanf") == 0)
-        k = scan = 1;
-    else if (strcmp(name, "fscanf") == 0 || strcmp(name, "sscanf") == 0) {
-        k = 2;
-        scan = 1;
-    }
+    k = fam & 15;
+    scan = fam >> 4;
     pa = &args;
     while (k > 1 && *pa) {
         pa = &(*pa)->next;
