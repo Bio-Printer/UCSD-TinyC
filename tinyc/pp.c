@@ -1394,27 +1394,70 @@ int preprocess(char *src, char *out)
 /* the disk units: 4, 5, 9..14 */
 #define FDUNIT(k) ((k) < 2 ? 4 + (k) : 7 + (k))
 
-/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
-static int fdread(int u, int *dir)
+/* A window on unit u's directory (blocks 2..5, 26-byte entries: the volume's
+   and up to 77 files'): one block at a time.  The whole 2048 bytes on the
+   stack made the preprocessor's least free memory (a #include deep in a
+   header with many macros), and no entry is more than two blocks. */
+struct FDWin {
+    int unit;
+    int blk;                    /* the directory block in buf, -1 none */
+    unsigned char buf[512];
+};
+
+static int fdblock(struct FDWin *w, int b)
 {
-    unsigned char *d;
-    d = (unsigned char *)dir;
-    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
-    if (__cspi(34) != 0)
-        return 0;
-    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
+    if (w->blk != b) {
+        w->blk = -1;
+        __cspv(5, w->unit, w->buf, 0, 512, 2 + b, 0);   /* UNITREAD */
+        if (__cspi(34) != 0)
+            return 0;
+        w->blk = b;
+    }
+    return 1;
 }
 
-/* entry i's name (0: the volume's) is s? */
-static int fdname(int *dir, int i, char *s)
+/* entry i (0: the volume's) into e[26]; 0 if the block cannot be read */
+static int fdent(struct FDWin *w, int i, unsigned char *e)
 {
-    unsigned char *e;
+    int off;
     int n;
-    e = (unsigned char *)dir + 26 * i + 6;
-    n = strlen(s);
-    if (n == 0 || e[0] != n)
+    off = 26 * i;
+    n = 512 - off % 512;
+    if (n > 26)
+        n = 26;
+    if (!fdblock(w, off / 512))
         return 0;
-    while (n > 0 && e[n] == s[n - 1])
+    memcpy(e, w->buf + off % 512, n);
+    if (n < 26) {
+        if (!fdblock(w, off / 512 + 1))
+            return 0;
+        memcpy(e + n, w->buf, 26 - n);
+    }
+    return 1;
+}
+
+/* unit u's volume entry into h[26] and the number of files there; -1 if no disk is there */
+static int fdopen(struct FDWin *w, int u, unsigned char *h)
+{
+    int n;
+    w->unit = u;
+    w->blk = -1;
+    if (!fdent(w, 0, h))
+        return -1;
+    n = h[16] | (h[17] << 8);
+    if (h[6] < 1 || h[6] > 7 || n < 0 || n > 77)
+        return -1;
+    return n;
+}
+
+/* entry e's name (entry 0: the volume's) is s? */
+static int fdname(unsigned char *e, char *s)
+{
+    int n;
+    n = strlen(s);
+    if (n == 0 || e[6] != n)
+        return 0;
+    while (n > 0 && e[6 + n] == s[n - 1])
         n--;
     return n == 0;
 }
@@ -1434,7 +1477,8 @@ static void fdprefix(char *s)
    0 if no disk on line is that volume */
 int fileunit(char *path)
 {
-    int dir[1024];
+    struct FDWin w;
+    unsigned char h[26];
     char vol[8];
     char *c;
     int k;
@@ -1457,7 +1501,7 @@ int fileunit(char *path)
         vol[n] = 0;
     }
     for (k = 0; k < 8; k++)
-        if (fdread(FDUNIT(k), dir) && fdname(dir, 0, vol))
+        if (fdopen(&w, FDUNIT(k), h) >= 0 && fdname(h, vol))
             return FDUNIT(k);
     return 0;
 }
@@ -1467,8 +1511,9 @@ int fileunit(char *path)
    none).  1 found, 0 on no disk, -1 on several and none chosen (said so) */
 int findfile(char *name, char *alt, int from, char *path, int *unit)
 {
-    int dir[1024];
-    unsigned char *d;
+    struct FDWin w;
+    unsigned char h[26];
+    unsigned char e[26];
     int fu[8];
     char fv[8][8];
     char *fn[8];
@@ -1477,23 +1522,24 @@ int findfile(char *name, char *alt, int from, char *path, int *unit)
     int k;
     int i;
     int j;
-    d = (unsigned char *)dir;
+    int files;
     n = 0;
     for (k = 0; k < 8; k++) {
-        if (!fdread(FDUNIT(k), dir))
+        files = fdopen(&w, FDUNIT(k), h);
+        if (files < 0)
             continue;
         fn[n] = 0;
-        for (i = 1; i <= dir[8] && !fn[n]; i++)
-            if (fdname(dir, i, name))
+        for (i = 1; i <= files && !fn[n]; i++)
+            if (fdent(&w, i, e) && fdname(e, name))
                 fn[n] = name;
-        for (i = 1; i <= dir[8] && !fn[n] && alt[0]; i++)
-            if (fdname(dir, i, alt))
+        for (i = 1; i <= files && !fn[n] && alt[0]; i++)
+            if (fdent(&w, i, e) && fdname(e, alt))
                 fn[n] = alt;
         if (!fn[n])
             continue;
         fu[n] = FDUNIT(k);
-        for (i = 0; i < d[6]; i++)
-            fv[n][i] = d[7 + i];
+        for (i = 0; i < h[6]; i++)
+            fv[n][i] = h[7 + i];
         fv[n][i] = 0;
         n++;
     }

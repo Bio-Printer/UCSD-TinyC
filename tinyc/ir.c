@@ -234,16 +234,21 @@ void ir_return(struct Node *n, struct Type *ft, int sretoff)
         irnode(n);
 }
 
-void ir_switch(int t, int *vals, int *labs, int n, int deflab)
+/* a case of the switch being parsed: the code generator keeps these until
+   the switch's S record (the table was in the parser's memory, a switch of
+   100 cases or more doubled it) */
+void ir_case(int value, int label)
 {
-    int i;
+    irb('C');
+    irw(value);
+    irw(label);
+}
+
+void ir_switch(int t, int n, int deflab)
+{
     irb('S');
     irw(t);
     irw(n);
-    for (i = 0; i < n; i++) {
-        irw(vals[i]);
-        irw(labs[i]);
-    }
     irw(deflab);
 }
 
@@ -459,6 +464,10 @@ static void setcur(void)
     }
 }
 
+static int *cstk;                  /* the cases waiting for their switch: value, label, ... */
+static int cn;
+static int cmax;
+
 int gencode(char *irname, char *obj)
 {
     char magic[5];
@@ -489,6 +498,9 @@ int gencode(char *irname, char *obj)
     objout = fopen(obj, "wb");
     if (!objout)
         fatal(24 /* cannot create */, obj);
+    cstk = 0;
+    cn = 0;
+    cmax = 0;
     nlmap = MAXLABEL;
     lmap = (int *)malloc(nlmap * sizeof(int));
     rseen = (struct Type **)malloc(MAXTSEEN * sizeof(struct Type *));
@@ -543,10 +555,30 @@ int gencode(char *irname, char *obj)
             e = rb() ? rnode() : 0;
             gen_return(e, ft, st);
             break;
+        case 'C':
+            /* a case: kept (value, label) until its switch's S record; a
+               switch inside a case's statements takes its own off the top */
+            if (cn + 2 > cmax) {
+                int *nc;
+                if (cmax >= 2 * 1024)
+                    fatal(93 /* too many cases */, 0);
+                cmax = cmax ? cmax * 2 : 64;
+                nc = (int *)malloc(cmax * sizeof(int));
+                if (!nc)
+                    fatal(2 /* out of memory */, 0);
+                if (cn)
+                    memcpy(nc, cstk, cn * sizeof(int));
+                free(cstk);
+                cstk = nc;
+            }
+            cstk[cn] = rw();
+            cstk[cn + 1] = rw();
+            cn = cn + 2;
+            break;
         case 'S':
             t = rw();
             n = rw();
-            if (n > 1024)
+            if (n > 1024 || 2 * n > cn)
                 fatal(93 /* too many cases */, 0);
             /* the case table, as large as this switch needs (not 1024
                cases for the whole pass) */
@@ -554,9 +586,10 @@ int gencode(char *irname, char *obj)
             if (!vals)
                 fatal(2 /* out of memory */, 0);
             labs = vals + n;
+            cn = cn - 2 * n;
             for (i = 0; i < n; i++) {
-                vals[i] = rw();
-                labs[i] = lab(rw());
+                vals[i] = cstk[cn + 2 * i];
+                labs[i] = lab(cstk[cn + 2 * i + 1]);
             }
             gen_switch(t, vals, labs, n, lab(rw()));
             free(vals);

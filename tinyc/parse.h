@@ -56,10 +56,17 @@ extern struct Type *curft;
 extern int exitlab;
 extern int sretoff;
 extern int vaoff;
-extern int *swvals;
-extern int *swlabs;
+/* The case values of the switch being parsed (to find a duplicate): in
+   chunks, newest first, SWCHUNK to a chunk, no table to grow and copy;
+   the labels go to the intermediate file as they come (ir_case) and the
+   code generator collects them.  swn: how many so far, -1 outside a switch. */
+#define SWCHUNK 24
+struct SwVals {
+    struct SwVals *next;
+    int v[SWCHUNK];
+};
+extern struct SwVals *swvals;
 extern int swn;
-extern int swmax;
 extern int swdef;
 extern char *intrnames[];
 extern int tentative;

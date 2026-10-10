@@ -70,9 +70,7 @@ int compile(char *src, char *ir, char *mod)
     tentative = 0;
     globinit = 0;
     swvals = 0;
-    swlabs = 0;
-    swn = 0;
-    swmax = 0;
+    swn = -1;
     segexplicit = 0;
     curfnseg = 0;
     nsegtab = 0;

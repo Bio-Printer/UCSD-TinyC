@@ -58,6 +58,12 @@
 #define VI_ROW_SUMS 1	// the screen as a checksum per row, not a copy
 #define PG_RESERVE 1024	// memory left out of the window: yanks, and so on
 #define PG_MAXCH 128	// chunks in VI.SWAP: files up to about 125 KB
+#include <limits.h>
+/* The P-System opens an include file with a 2K buffer on the stack, so the
+   includes come before the macros below: Tiny-C's preprocessor has the least
+   free memory there (every macro takes about 40 bytes). */
+#include "vipage.h"
+#define VI_PAGE_INCLUDED 1
 #define ENABLE_FEATURE_VI_COLON 1
 #define ENABLE_FEATURE_VI_YANKMARK 1
 #define ENABLE_FEATURE_VI_SEARCH 1
@@ -482,7 +488,9 @@ extern char *optarg;
 #endif
 
 #if ENABLE_FEATURE_VI_PAGING
+#ifndef VI_PAGE_INCLUDED
 #include "vipage.h"
+#endif
 #define ABSLINE(p) (pg_lb + count_lines(text, p))	// p's line in the file
 #define TOTLINES() (pg_lines())			// the file's lines
 #else

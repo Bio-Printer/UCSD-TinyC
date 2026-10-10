@@ -3,6 +3,49 @@
 
 static int do_cmd2(char *cp);
 
+// < and >: shift the lines of a range left or right (own function, so that
+// do_cmd2 is smaller: the compiler's memory goes with a function's size)
+static void shift_cmd(char c)
+{
+	char c1, *p, *q;
+	int cnt, i, j;
+
+	cnt = ABSLINE(dot);	// remember what line we are on
+	c1 = get_one_char();	// get the type of thing to delete
+	find_range(&p, &q, c1);
+#if ENABLE_FEATURE_VI_PAGING
+	if (pg_over) {
+		status_line_bold("Too many lines for memory");
+		end_cmd_q();
+		return;
+	}
+#endif
+	yank_delete(p, q, 1, YANKONLY);	// save copy before change
+	p = begin_line(p);
+	q = end_line(q);
+	i = count_lines(p, q);	// # of lines we are shifting
+	for ( ; i > 0; i--, p = next_line(p)) {
+		if (c == '<') {
+			// shift left- remove tab or 8 spaces
+			if (*p == '\t') {
+				// shrink buffer 1 char
+				text_hole_delete(p, p);
+			} else if (*p == ' ') {
+				// we should be calculating columns, not just SPACE
+				for (j = 0; *p == ' ' && j < tabstop; j++) {
+					text_hole_delete(p, p);
+				}
+			}
+		} else if (c == '>') {
+			// shift right -- add tab or 8 spaces
+			char_insert(p, '\t');
+		}
+	}
+	dot = find_line(cnt);	// what line were we on
+	dot_skip_over_ws();
+	end_cmd_q();	// stop adding to q
+}
+
 //----- Execute a Vi Command -----------------------------------
 // the second half of do_cmd()'s commands: returns 0 when done, 1 to
 // repeat (cmdcnt), 2 to do *cp again, 4 when do_cmd must return at once
@@ -97,40 +140,7 @@ static int do_cmd2(char *cp)
 		break;
 	case '<':			// <- Left  shift something
 	case '>':			// >- Right shift something
-		cnt = ABSLINE(dot);	// remember what line we are on
-		c1 = get_one_char();	// get the type of thing to delete
-		find_range(&p, &q, c1);
-#if ENABLE_FEATURE_VI_PAGING
-		if (pg_over) {
-			status_line_bold("Too many lines for memory");
-			end_cmd_q();
-			break;
-		}
-#endif
-		yank_delete(p, q, 1, YANKONLY);	// save copy before change
-		p = begin_line(p);
-		q = end_line(q);
-		i = count_lines(p, q);	// # of lines we are shifting
-		for ( ; i > 0; i--, p = next_line(p)) {
-			if (c == '<') {
-				// shift left- remove tab or 8 spaces
-				if (*p == '\t') {
-					// shrink buffer 1 char
-					text_hole_delete(p, p);
-				} else if (*p == ' ') {
-					// we should be calculating columns, not just SPACE
-					for (j = 0; *p == ' ' && j < tabstop; j++) {
-						text_hole_delete(p, p);
-					}
-				}
-			} else if (c == '>') {
-				// shift right -- add tab or 8 spaces
-				char_insert(p, '\t');
-			}
-		}
-		dot = find_line(cnt);	// what line were we on
-		dot_skip_over_ws();
-		end_cmd_q();	// stop adding to q
+		shift_cmd(c);
 		break;
 	case 'A':			// A- append at e-o-l
 		dot_end();		// go to e-o-l
