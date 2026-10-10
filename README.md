@@ -132,9 +132,9 @@ docs/DESIGN.md for how.
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
   mode without reclaim).  **A total rebuild started the way a user does it
   -- the shell (`$` at the Command: prompt), then `cc @all`: the compiler,
-  the library, vi and grep -- has 2,954 words free at the least** (was 589;
+  the library, vi and grep -- has 2,898 words free at the least** (was 589;
   `tools/shellalltest.py`): compiling vi's VICOLON.C, then linking CC2.CODE
-  2,974, compiling VITEXT.C 2,981, VIPAGE.C 3,046 and VICMD.C 3,097,
+  2,918, compiling VITEXT.C 2,925, VIPAGE.C 3,046 and VICMD.C 3,097,
   preprocessing the vi modules 3,322, the compiler's own LINK.C 3,494, EXPR.C
   and PP.C 3,545, the library's STDIO.C 3,836.  (From X(ecute, not the
   shell, 92 words more.  `PSYS_MODE=z80 tools/shellalltest.py`, 15 minutes,

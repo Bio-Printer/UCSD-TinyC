@@ -61,6 +61,7 @@ static void passbegin(int xsize)
 #ifdef __TINYC__
     __heapsave();
     memleast_start();
+    fflush(stdout);                     /* the name just printed is on the screen while the pass runs */
 #endif
     xsetsize(xsize);
 }
@@ -74,6 +75,7 @@ static void passend(void)
     say("  (");
     sayn(least >= 0 ? least : __cspi(40));
     say(" words free) ");
+    fflush(stdout);
     __heaprestore();
 #endif
     resetpools();
