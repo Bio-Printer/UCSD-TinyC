@@ -653,7 +653,7 @@ void external(void)
     xrelease(m);
 }
 
-#pragma segment REFSCAN
+#pragma segment CINIT
 
 /* Collect every identifier the program itself uses: everything in the
    main file, and whatever is inside braces (function bodies, structures,

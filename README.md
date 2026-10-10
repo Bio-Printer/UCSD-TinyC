@@ -46,6 +46,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with SYSTEM.SHELL (the Tiny-C shell); Tiny-C itself is only on TINY-C: (`X TINY-C:CC`; since BIGGY 1.15); only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
 | `greptest.py` | GREP from the shell: case, `-i`, regular expressions, wildcards on every disk or one volume, line numbers across pages |
 | `alltest.py` | TOOLSRC:ALL.TEXT: one batch file running BUILD, LIBS and TOOLS; the compiler, library and tools identical to the shipped ones, the objects on TCSRC: |
+| `shellalltest.py` | the way a user starts a total rebuild: `$` at the Command: prompt, then `cc @all` in the shell (TOOLSRC:ALL: BUILD, LIBS, TOOLS); the same checks as `alltest.py`, and the tracked least free memory with the lowest passes |
 | `findtest.py` | which disk CC takes `#include` files and a batch file's sources from (copies on several disks; the including file's disk, the prefix, an error) |
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; the shell's CD, DIR, TYPE, DELETE, WHEREIS, VOLUMES, COPY, MOVE and RENAME, its command history and line editing; `$` at the Command: prompt |
 | `voltest.py` | on the four volumes: `@LIBS`, `@BUILD` (on TCSRC:), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
@@ -129,14 +130,63 @@ docs/DESIGN.md for how.
 * Least free memory (SP - NP at every P-code instruction, tracked by the
   emulator: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
-  mode without reclaim): every @BUILD and @LIBS command from X(ecute
-  2,713 words (the library's STDIO.C, Compiling pass; EXPR.C and LINK.C
-  about 2,740, linking CC2.CODE 2,813); `cc @build @libs` from the shell
-  2,573 (STDIO.C).  (The Filer, setting the prefix, has less: 1,993.)  With reclaimed memory, 3,915 words more.  CC's "(N
+  mode without reclaim).  **A total rebuild started the way a user does it
+  -- the shell (`$` at the Command: prompt), then `cc @all`: the compiler,
+  the library, vi and grep -- has 2,887 words free at the least** (was 589;
+  `tools/shellalltest.py`): compiling vi's VITEXT.C, then VIPAGE.C 2,915 and
+  VICOLON.C 2,954, linking CC2.CODE 2,974, preprocessing the vi modules
+  3,322, the compiler's own LINK.C 3,494, EXPR.C and PP.C 3,545, the
+  library's STDIO.C 3,836.  (From X(ecute, not the shell, 92 words more.)
+  Before that work, every @BUILD and @LIBS command from X(ecute had 2,713
+  words (STDIO.C), `cc @build @libs` from the shell 2,573; the tools were
+  not counted, and they were the worst: VICMD.C 589.  The Filer, setting the
+  prefix, has 1,993 -- which is why shellalltest.py does not set it.)
+  With reclaimed memory, 3,915 words more.  CC's "(N
   words free)" after each pass is that pass's least (`memleast()` in
   psys.h, emulator 1.99; elsewhere the free memory at the pass's end), so
   the least of them is the status bar's figure; `voltest.py` prints both.
-  What took the memory, and what was done:
+  What took the memory, and what was done in the last round (a code segment
+  is in memory as long as one of its functions runs, so the segments of
+  main(), of the parser and of the pass count in full at every point, and a
+  segment loaded at the deepest point of an expression counts there):
+  - `fmtfix` (printf/scanf formats) was called for every call of a
+    variadic function, which loaded the 2.3 KB segment REALLIT just to
+    find that the name was not printf: at the deepest point of an
+    expression that was the least free memory of most vi modules.
+    `fmtfam` says first (in PARSE); fmtfix is in the small segment REFSCAN.
+  - the case labels of a switch were two tables in the parser's heap that
+    doubled at 64 cases (vi's do_cmd has 100+).  They go to the intermediate
+    file as they come (record C) and the code generator collects them for
+    the S record; the parser keeps only the values, in chunks, for the
+    duplicate check.
+  - `statement()` is smaller: for, do, switch, case labels, goto and labels
+    are functions of their own, a block that is the body of an `if`, loop
+    or switch is parsed by `compound()` directly (it was `statement()` ->
+    `compound()`), and `case X:` / `default:` / `label:` go round the
+    parser's loop instead of calling `statement()`, so a run of 12 case
+    labels is no longer 12 stack frames.
+  - `struct Node` is 16 bytes (was 24), so the expression pool (nodes and
+    strings until the end of the statement) is 1,600 bytes in the Compiling
+    pass (was 2,000; peak over the compiler, library, tools, demos and
+    tests 1,308) and 1,900 in the code generator (was 2,400; peak 1,522).
+    `castexpr` is part of `unary`, and the rest of `?:` is its own function:
+    two frames fewer for every level of parentheses.
+  - the linker allocated the code buffer (the largest procedure) and the
+    entry code before pass 2, which reads past the code it does not need,
+    and opened the object files with them in memory: 1,807 -> 2,934 words
+    for linking CC2.CODE.
+  - cold code left the always-resident segments: `linkall` and `linkcmd`
+    (the /L and /J commands) are in LINK, `message` (reads TCMSGS.TEXT) in
+    CINIT, the double and long-constant conversions in REALLIT: 1.7 KB.
+  - the preprocessor keeps a macro in one block (name and body after a
+    6-byte record) and collapses blanks in bodies (vi.h pads its 70
+    accessor macros); `findfile`/`fileunit` read a directory block by block
+    (2 KB less stack at an #include); the symbol hash tables are 32 entries
+    (were 128).
+  - vi.h includes `vipage.h` and `limits.h` before its 150 macros: opening
+    a file needs 1,000 words of the OS's stack, and the preprocessor's least
+    free memory was there.
+  Earlier rounds:
   - the Compiling pass's heap is mostly the declarations a file uses
     (symbols, types, fields), held in blocks of PCHUNK bytes (util.c):
     `tools/pchunk.py` measures the least against PCHUNK (448 now; rerun
