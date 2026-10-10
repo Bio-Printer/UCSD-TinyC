@@ -81,6 +81,7 @@ static struct PMark relmark;
 static FILE *lin;
 static unsigned char *lbuf;     /* the largest procedure (allocated after pass 1) */
 static int lbufsize;
+static int skipcode;            /* pass 2: the code of a procedure is read past, not kept */
 static int maxcode;             /* pass 1: the largest procedure, the most relocations */
 static int maxnrel;
 static char **objfiles;
@@ -254,8 +255,8 @@ static void record(int c, char *name, char *seg, int *flags, int *parmsz, int *r
     n = rdw();
     *codelen = n;
     *jtab = rdw();
-    if (!lbuf) {                        /* pass 1: only the sizes */
-        if (n > maxcode)
+    if (!lbuf || skipcode) {            /* pass 1: only the sizes; pass 2: not the code */
+        if (!lbuf && n > maxcode)
             maxcode = n;
         for (i = 0; i < n; i++)
             rd();
@@ -660,9 +661,6 @@ int link(char **objs, int nobjs, char *code, char *progname)
     lbuf = 0;
     maxcode = 0;
     maxnrel = 0;
-    entry = (unsigned char *)malloc(600);
-    if (!entry)
-        fatal(2 /* out of memory */, 0);
     lhash = (struct LProc **)calloc(LHASH, sizeof(struct LProc *));
     dhash = (struct LData **)calloc(LHASH, sizeof(struct LData *));
     modstatic = (int *)malloc(MAXMOD * sizeof(int));
@@ -683,19 +681,20 @@ int link(char **objs, int nobjs, char *code, char *progname)
     nsegs = 0;
     segindex("");
     pass1();
-    /* the code buffer: the largest procedure; pass 2 uses it for a
-       procedure's references (ints) */
-    lbufsize = maxcode;
-    if (lbufsize < maxnrel * (int)sizeof(int))
-        lbufsize = maxnrel * (int)sizeof(int);
-    lbufsize = lbufsize + 16;
+    /* the reference lists (pass 2) are needed only to find what to link:
+       given back before the code is written, and so is the buffer pass 2
+       keeps one procedure's references in (ints).  The code buffer, the
+       largest procedure, comes after: it, and the 600 bytes of the entry
+       code, took about 1,000 words of the memory in which the linker opens
+       the object files, its least free memory. */
+    pmark(&relmark);
+    lbufsize = maxnrel * (int)sizeof(int) + 16;
     lbuf = (unsigned char *)malloc(lbufsize);
     if (!lbuf)
         fatal(2 /* out of memory */, 0);
-    /* the reference lists (pass 2) are needed only to find what to link:
-       given back before the code is written */
-    pmark(&relmark);
+    skipcode = 1;
     pass2();
+    skipcode = 0;
     if (nerrors)
         return 0;
     mainp = findproc("main");
@@ -761,6 +760,9 @@ int link(char **objs, int nobjs, char *code, char *progname)
             fatal(112 /* more than 255 functions in segment */, segnames[s]);
         seglen[s] = seglen[s] + ((p->codelen + 1) & ~1);
     }
+    entry = (unsigned char *)malloc(600);
+    if (!entry)
+        fatal(2 /* out of memory */, 0);
     makeentry(mainp, exitp);
     seglen[mainp->seg] = seglen[mainp->seg] + entrylen;
     blk = 1;
@@ -773,6 +775,13 @@ int link(char **objs, int nobjs, char *code, char *progname)
     out = fopen(code, "wb");
     if (!out)
         fatal(24 /* cannot create */, code);
+    lbufsize = maxcode;
+    if (lbufsize < maxnrel * (int)sizeof(int))
+        lbufsize = maxnrel * (int)sizeof(int);
+    lbufsize = lbufsize + 16;
+    lbuf = (unsigned char *)malloc(lbufsize);
+    if (!lbuf)
+        fatal(2 /* out of memory */, 0);
     blk0 = (unsigned char *)malloc(512);
     memset(blk0, 0, 512);
     for (k = 0; k < norder; k++) {
