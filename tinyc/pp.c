@@ -12,12 +12,15 @@
 #include "tc.h"
 #pragma segment PP
 
+/* name and body follow the record in one block (a macro is about 40 bytes
+   and vi.h has 150: the preprocessor's least free memory) */
 struct Macro {
-    char *name;
-    int nparams;            /* -1: object-like */
-    char *body;             /* parameters coded as \001 then (index + 1) */
     struct Macro *next;
+    int nparams;            /* -1: object-like */
+    int nlen;               /* strlen(name) */
 };
+#define MNAME(m) ((char *)((m) + 1))
+#define MBODY(m) (MNAME(m) + (m)->nlen + 1)    /* parameters coded as \001 then (index + 1) */
 
 #define MHASH 128
 static struct Macro **mtab;
@@ -68,7 +71,7 @@ static struct Macro *mlookup(char *name, int n)
     for (i = 0; i < n; i++)
         h = (h * 3 + name[i]) & 1023;
     for (m = mtab[h & (MHASH - 1)]; m; m = m->next)
-        if ((int)strlen(m->name) == n && strncmp(m->name, name, n) == 0)
+        if (m->nlen == n && strncmp(MNAME(m), name, n) == 0)
             return m;
     return 0;
 }
@@ -84,7 +87,7 @@ static void mundef(char *name, int n)
         h = (h * 3 + name[i]) & 1023;
     pp = &mtab[h & (MHASH - 1)];
     for (m = *pp; m; m = m->next) {
-        if ((int)strlen(m->name) == n && strncmp(m->name, name, n) == 0) {
+        if (m->nlen == n && strncmp(MNAME(m), name, n) == 0) {
             *pp = m->next;
             return;
         }
@@ -98,12 +101,12 @@ static struct Macro *mdefine(char *name, int n, int nparams, char *body)
     int h;
     int i;
     mundef(name, n);
-    m = (struct Macro *)palloc(sizeof(struct Macro));
-    m->name = palloc(n + 1);
-    memcpy(m->name, name, n);
-    m->name[n] = 0;
+    m = (struct Macro *)palloc(sizeof(struct Macro) + n + 1 + strlen(body) + 1);
+    memcpy(MNAME(m), name, n);
+    MNAME(m)[n] = 0;
+    m->nlen = n;
     m->nparams = nparams;
-    m->body = pstrdup(body);
+    strcpy(MBODY(m), body);
     h = 0;
     for (i = 0; i < n; i++)
         h = (h * 3 + name[i]) & 1023;
@@ -473,7 +476,7 @@ static char *expandcall(struct Macro *m, char *p)
     start = q;
     for (;;) {
         if (*q == 0)
-            fatal(6 /* unterminated macro call */, m->name);
+            fatal(6 /* unterminated macro call */, MNAME(m));
         if (*q == '"' || *q == '\'') {
             q = skiplit(q);
             continue;
@@ -482,7 +485,7 @@ static char *expandcall(struct Macro *m, char *p)
             depth++;
         else if ((*q == ',' || *q == ')') && depth == 0) {
             if (nargs >= 32)
-                fatal(7 /* too many macro arguments */, m->name);
+                fatal(7 /* too many macro arguments */, MNAME(m));
             n = q - start;
             args[nargs] = trim(start, &n);
             alen[nargs] = n;
@@ -500,7 +503,7 @@ static char *expandcall(struct Macro *m, char *p)
     if (nargs == 1 && alen[0] == 0 && m->nparams == 0)
         nargs = 0;
     if (nargs != m->nparams)
-        error(8 /* wrong number of macro arguments */, m->name);
+        error(8 /* wrong number of macro arguments */, MNAME(m));
     /* substitute into a temporary buffer, then rescan it */
     xm = xmark();
     res = xalloc(MAXEXP);
@@ -508,7 +511,7 @@ static char *expandcall(struct Macro *m, char *p)
     saveend = outend;
     outp = res;
     outend = res + MAXEXP;
-    for (b = m->body; *b; ) {
+    for (b = MBODY(m); *b; ) {
         if (*b == '#' && b[1] == '#') {
             /* paste: drop trailing blanks already written and leading blanks */
             while (outp > res && (outp[-1] == ' ' || outp[-1] == '\t'))
@@ -623,9 +626,9 @@ static void expand(char *s)
             if (m && !isexpanding(m)) {
                 if (m->nparams < 0) {
                     if (nexpanding >= 30)
-                        fatal(9 /* macro nesting too deep */, m->name);
+                        fatal(9 /* macro nesting too deep */, MNAME(m));
                     expanding[nexpanding++] = m;
-                    expand(m->body);
+                    expand(MBODY(m));
                     nexpanding--;
                     s = p;
                     continue;
@@ -1094,6 +1097,15 @@ static void dodefine(char *s)
             s = p;
             continue;
         }
+        if (*s == ' ' || *s == '\t') {
+            /* a run of blanks is one: the body is kept for the whole
+               compile, and vi.h's has 150 macros, some padded to line up */
+            while (*s == ' ' || *s == '\t')
+                s++;
+            if (*s != ')')
+                *d++ = ' ';
+            continue;
+        }
         *d++ = *s++;
     }
     while (d > body && (d[-1] == ' ' || d[-1] == '\t'))
@@ -1394,27 +1406,70 @@ int preprocess(char *src, char *out)
 /* the disk units: 4, 5, 9..14 */
 #define FDUNIT(k) ((k) < 2 ? 4 + (k) : 7 + (k))
 
-/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
-static int fdread(int u, int *dir)
+/* A window on unit u's directory (blocks 2..5, 26-byte entries: the volume's
+   and up to 77 files'): one block at a time.  The whole 2048 bytes on the
+   stack made the preprocessor's least free memory (a #include deep in a
+   header with many macros), and no entry is more than two blocks. */
+struct FDWin {
+    int unit;
+    int blk;                    /* the directory block in buf, -1 none */
+    unsigned char buf[512];
+};
+
+static int fdblock(struct FDWin *w, int b)
 {
-    unsigned char *d;
-    d = (unsigned char *)dir;
-    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
-    if (__cspi(34) != 0)
-        return 0;
-    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
+    if (w->blk != b) {
+        w->blk = -1;
+        __cspv(5, w->unit, w->buf, 0, 512, 2 + b, 0);   /* UNITREAD */
+        if (__cspi(34) != 0)
+            return 0;
+        w->blk = b;
+    }
+    return 1;
 }
 
-/* entry i's name (0: the volume's) is s? */
-static int fdname(int *dir, int i, char *s)
+/* entry i (0: the volume's) into e[26]; 0 if the block cannot be read */
+static int fdent(struct FDWin *w, int i, unsigned char *e)
 {
-    unsigned char *e;
+    int off;
     int n;
-    e = (unsigned char *)dir + 26 * i + 6;
-    n = strlen(s);
-    if (n == 0 || e[0] != n)
+    off = 26 * i;
+    n = 512 - off % 512;
+    if (n > 26)
+        n = 26;
+    if (!fdblock(w, off / 512))
         return 0;
-    while (n > 0 && e[n] == s[n - 1])
+    memcpy(e, w->buf + off % 512, n);
+    if (n < 26) {
+        if (!fdblock(w, off / 512 + 1))
+            return 0;
+        memcpy(e + n, w->buf, 26 - n);
+    }
+    return 1;
+}
+
+/* unit u's volume entry into h[26] and the number of files there; -1 if no disk is there */
+static int fdopen(struct FDWin *w, int u, unsigned char *h)
+{
+    int n;
+    w->unit = u;
+    w->blk = -1;
+    if (!fdent(w, 0, h))
+        return -1;
+    n = h[16] | (h[17] << 8);
+    if (h[6] < 1 || h[6] > 7 || n < 0 || n > 77)
+        return -1;
+    return n;
+}
+
+/* entry e's name (entry 0: the volume's) is s? */
+static int fdname(unsigned char *e, char *s)
+{
+    int n;
+    n = strlen(s);
+    if (n == 0 || e[6] != n)
+        return 0;
+    while (n > 0 && e[6 + n] == s[n - 1])
         n--;
     return n == 0;
 }
@@ -1434,7 +1489,8 @@ static void fdprefix(char *s)
    0 if no disk on line is that volume */
 int fileunit(char *path)
 {
-    int dir[1024];
+    struct FDWin w;
+    unsigned char h[26];
     char vol[8];
     char *c;
     int k;
@@ -1457,7 +1513,7 @@ int fileunit(char *path)
         vol[n] = 0;
     }
     for (k = 0; k < 8; k++)
-        if (fdread(FDUNIT(k), dir) && fdname(dir, 0, vol))
+        if (fdopen(&w, FDUNIT(k), h) >= 0 && fdname(h, vol))
             return FDUNIT(k);
     return 0;
 }
@@ -1467,8 +1523,9 @@ int fileunit(char *path)
    none).  1 found, 0 on no disk, -1 on several and none chosen (said so) */
 int findfile(char *name, char *alt, int from, char *path, int *unit)
 {
-    int dir[1024];
-    unsigned char *d;
+    struct FDWin w;
+    unsigned char h[26];
+    unsigned char e[26];
     int fu[8];
     char fv[8][8];
     char *fn[8];
@@ -1477,23 +1534,24 @@ int findfile(char *name, char *alt, int from, char *path, int *unit)
     int k;
     int i;
     int j;
-    d = (unsigned char *)dir;
+    int files;
     n = 0;
     for (k = 0; k < 8; k++) {
-        if (!fdread(FDUNIT(k), dir))
+        files = fdopen(&w, FDUNIT(k), h);
+        if (files < 0)
             continue;
         fn[n] = 0;
-        for (i = 1; i <= dir[8] && !fn[n]; i++)
-            if (fdname(dir, i, name))
+        for (i = 1; i <= files && !fn[n]; i++)
+            if (fdent(&w, i, e) && fdname(e, name))
                 fn[n] = name;
-        for (i = 1; i <= dir[8] && !fn[n] && alt[0]; i++)
-            if (fdname(dir, i, alt))
+        for (i = 1; i <= files && !fn[n] && alt[0]; i++)
+            if (fdent(&w, i, e) && fdname(e, alt))
                 fn[n] = alt;
         if (!fn[n])
             continue;
         fu[n] = FDUNIT(k);
-        for (i = 0; i < d[6]; i++)
-            fv[n][i] = d[7 + i];
+        for (i = 0; i < h[6]; i++)
+            fv[n][i] = h[7 + i];
         fv[n][i] = 0;
         n++;
     }

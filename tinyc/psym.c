@@ -39,10 +39,8 @@ int sretoff;
 int vaoff;
 
 /* current switch */
-int *swvals;
-int *swlabs;
+struct SwVals *swvals;
 int swn;
-int swmax;
 int swdef;
 
 

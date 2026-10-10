@@ -1,8 +1,12 @@
 /* expr.c -- the parser: expressions. */
 #include "tc.h"
 #include "parse.h"
-#pragma segment PARSE
+#pragma segment REALLIT
 
+/* The doubles' code and what only some programs use (dmathcsp, numtext,
+   intrinsic) is in the segment of the real constants: a segment is in
+   memory as long as one of its functions is running, and PARSE is in
+   memory all the time. */
 /* ---- doubles (8 bytes: IEEE binary64) ---- */
 
 /* a double constant's image from its text ("123e-2") */
@@ -85,6 +89,8 @@ static struct Node *dmathcall(struct Node *c, int k)
     return c;
 }
 
+#pragma segment PARSE
+
 struct Node *mknode(int op, struct Type *t, struct Node *a, struct Node *b)
 {
     struct Node *n;
@@ -102,7 +108,7 @@ struct Node *mknum(int v, struct Type *t)
     n = mknode(N_NUM, t, 0, 0);
     n->val = W16(v);
     if (islongty(t))
-        n->val2 = (n->val < 0 && t->kind == TY_LONG) ? -1 : 0;
+        n->q.val2 = (n->val < 0 && t->kind == TY_LONG) ? -1 : 0;
     return n;
 }
 
@@ -230,7 +236,7 @@ struct Node *call1(char *name, struct Node *a, struct Node *b)
     struct Param *p;
     s = helper(name);
     f = mknode(N_FUNC, s->type, 0, 0);
-    f->sym = s;
+    f->p.sym = s;
     n = mknode(N_CALL, s->type->base, f, 0);
     p = s->type->u.params;
     n->b = a;
@@ -238,6 +244,8 @@ struct Node *call1(char *name, struct Node *a, struct Node *b)
         a->next = b;
     return n;
 }
+
+#pragma segment REALLIT
 
 /* an integer constant (int, unsigned, long, unsigned long) as decimal text
    in buf[12]: 32-bit division by 10 done a byte at a time */
@@ -253,7 +261,7 @@ static char *numtext(struct Node *n, char *buf)
     int nz;
     lo = n->val;
     if (islongty(n->type))
-        hi = n->val2;
+        hi = n->q.val2;
     else
         hi = !isunsignedty(n->type) && n->val < 0 ? -1 : 0;
     neg = !isunsignedty(n->type) && (int)hi < 0;
@@ -283,6 +291,7 @@ static char *numtext(struct Node *n, char *buf)
     return buf + i;
 }
 
+#pragma segment PARSE
 struct Node *cast(struct Node *n, struct Type *t);
 
 struct Node *helpercall(char *name, struct Node *a, struct Node *b)
@@ -328,13 +337,13 @@ struct Node *cast(struct Node *n, struct Type *t)
             struct Node *c;
             char num[12];
             c = mknode(N_FNUM, t, 0, 0);
-            c->fimg = (unsigned char *)xalloc(8);
-            if (n->op == N_FNUM && n->str)
-                dblimage(n->str, c->fimg);
+            c->q.fimg = (unsigned char *)xalloc(8);
+            if (n->op == N_FNUM && n->p.str)
+                dblimage(n->p.str, c->q.fimg);
             else if (n->op == N_FNUM)
-                real2dbl(n->fimg, c->fimg);
+                real2dbl(n->q.fimg, c->q.fimg);
             else
-                dblimage(numtext(n, num), c->fimg);
+                dblimage(numtext(n, num), c->q.fimg);
             return c;
         }
         return mknode(N_CAST, t, n, 0);
@@ -347,9 +356,9 @@ struct Node *cast(struct Node *n, struct Type *t)
             struct Node *c;
             c = mknum(n->val, t);
             if (isunsignedty(f) || f->kind == TY_PTR)
-                c->val2 = 0;
+                c->q.val2 = 0;
             else
-                c->val2 = n->val < 0 ? -1 : 0;
+                c->q.val2 = n->val < 0 ? -1 : 0;
             return c;
         }
         if (isunsignedty(f) || fk == TY_PTR)
@@ -555,7 +564,7 @@ struct Node *fzero(void)
 {
     struct Node *n;
     n = mknode(N_FNUM, ty_float, 0, 0);
-    n->fimg = (unsigned char *)xalloc(4);
+    n->q.fimg = (unsigned char *)xalloc(4);
     return n;
 }
 
@@ -626,7 +635,7 @@ struct Node *intrinsic(int code)
     if (code == I_VASTART) {
         if (!curft || !(curft->flags & TF_VARIADIC))
             error(46 /* __va_start outside a variadic function */, 0);
-        n->val2 = vaoff;
+        n->q.val2 = vaoff;
         n->type = ty_charp;
     } else if (code == I_CSPV || code == I_CXP0V || code == I_EXITP)
         n->type = ty_void;
@@ -653,7 +662,7 @@ struct Node *primary(void)
         if (toklong & 1) {
             n = mknode(N_NUM, (toklong & 2) ? ty_ulong : ty_long, 0, 0);
             n->val = tokval;
-            n->val2 = tokval2;
+            n->q.val2 = tokval2;
         } else
             n = mknum(tokval, (toklong & 2) ? ty_uint : ty_int);
         next();
@@ -664,14 +673,14 @@ struct Node *primary(void)
         /* an unsuffixed constant is a float, with L a double; its text is
            kept: a float constant that meets a double becomes one exactly */
         n = mknode(N_FNUM, toklong ? ty_double : ty_float, 0, 0);
-        n->str = xalloc(strlen(toknum) + 1);
-        strcpy(n->str, toknum);
+        n->p.str = xalloc(strlen(toknum) + 1);
+        strcpy(n->p.str, toknum);
         if (toklong) {
-            n->fimg = (unsigned char *)xalloc(8);
-            dblimage(n->str, n->fimg);
+            n->q.fimg = (unsigned char *)xalloc(8);
+            dblimage(n->p.str, n->q.fimg);
         } else {
-            n->fimg = (unsigned char *)xalloc(4);
-            memcpy(n->fimg, tokreal, 4);
+            n->q.fimg = (unsigned char *)xalloc(4);
+            memcpy(n->q.fimg, tokreal, 4);
         }
         next();
         return n;
@@ -687,9 +696,9 @@ struct Node *primary(void)
             st->u.len = toklen;
             n = mknode(N_STR, st, 0, 0);
         }
-        n->str = xalloc(toklen);
-        memcpy(n->str, tokstr, toklen);
-        n->slen = toklen;
+        n->p.str = xalloc(toklen);
+        memcpy(n->p.str, tokstr, toklen);
+        n->q.slen = toklen;
         next();
         return n;
     case '(':
@@ -714,7 +723,7 @@ struct Node *primary(void)
             return mknum(s->offset, ty_int);
         if (s->kind == S_FUNC) {
             n = mknode(N_FUNC, s->type, 0, 0);
-            n->sym = s;
+            n->p.sym = s;
             return n;
         }
         if (s->kind == S_TYPEDEF) {
@@ -722,7 +731,7 @@ struct Node *primary(void)
             return mknum(0, ty_int);
         }
         n = mknode(N_VAR, s->type, 0, 0);
-        n->sym = s;
+        n->p.sym = s;
         return n;
     }
     error(50 /* expression expected */, 0);
@@ -807,14 +816,17 @@ struct Node *postfix(void)
             } else
                 error(55 /* not a function */, 0);
             c = mknode(N_CALL, ft ? ft->base : ty_int, n, 0);
-            if (n->op == N_FUNC && symseg(n->sym) && symseg(n->sym) == curfnseg)
+            if (n->op == N_FUNC && symseg(n->p.sym) && symseg(n->p.sym) == curfnseg)
                 n->val = 1;             /* the callee is in this segment: CGP */
             c->b = arglist(ft, &na);
             c->val = na;
-            if (n->op == N_FUNC && ft && (ft->flags & TF_VARIADIC))
-                fmtfix(n->sym->name, c->b);
+            if (n->op == N_FUNC && ft && (ft->flags & TF_VARIADIC)) {
+                na = fmtfam(n->p.sym->name);      /* (fmtfix's segment is only loaded for these) */
+                if (na)
+                    fmtfix(na, c->b);
+            }
             if (n->op == N_FUNC && c->b && c->b->op == N_CAST && isdblty(c->b->a->type) &&
-                (na = dmathcsp(n->sym->name)) != 0)
+                (na = dmathcsp(n->p.sym->name)) != 0)
                 c = dmathcall(c, na);
             n = c;
         } else if (tok == '.') {
@@ -842,37 +854,69 @@ struct Node *postfix(void)
     }
 }
 
+/* unary-expression, and the cast-expression above it: a cast, or a
+   parenthesised expression after a keyword.  (One function, not two: every
+   level of parentheses is a chain of calls on the stack of the compiler.) */
 struct Node *unary(void)
 {
     struct Node *n;
     struct Node *u;
     struct Type *t;
     int op;
+    if (tok == '(' && (peek() >= K_FIRST || (peek() == T_ID && lookup(peekname()) && lookup(peekname())->kind == S_TYPEDEF))) {
+        next();
+        if (istypename()) {
+            t = typename();
+            expect(')', ")");
+            n = unary();
+            return cast(n, t);
+        }
+        n = expr();
+        expect(')', ")");
+        /* continue as a postfix expression */
+        for (;;) {
+            if (tok == '[') {
+                next();
+                u = expr();
+                expect(']', "]");
+                n = deref(binop(N_ADD, n, u));
+            } else if (tok == '.') {
+                next();
+                n = member(n, tokname);
+                next();
+            } else if (tok == T_ARROW) {
+                next();
+                n = member(deref(n), tokname);
+                next();
+            } else
+                return n;
+        }
+    }
     switch (tok) {
     case '-':
         next();
-        n = castexpr();
+        n = unary();
         n = decay(n);
         if (isconst(n))
             return mknum(-n->val, arith(n->type, ty_int));
         if (n->op == N_FNUM && isdblty(n->type)) {
-            n->fimg[7] = n->fimg[7] ^ 128;
+            n->q.fimg[7] = n->q.fimg[7] ^ 128;
             return n;
         }
         if (n->op == N_FNUM) {
-            n->fimg[1] = n->fimg[1] ^ 128;
-            if (n->fimg[0] == 0)
-                n->fimg[1] = 0;
-            if (n->str) {                   /* the text too (for a double) */
+            n->q.fimg[1] = n->q.fimg[1] ^ 128;
+            if (n->q.fimg[0] == 0)
+                n->q.fimg[1] = 0;
+            if (n->p.str) {                   /* the text too (for a double) */
                 char *s;
-                s = xalloc(strlen(n->str) + 2);
-                if (n->str[0] == '-')
-                    strcpy(s, n->str + 1);
+                s = xalloc(strlen(n->p.str) + 2);
+                if (n->p.str[0] == '-')
+                    strcpy(s, n->p.str + 1);
                 else {
                     s[0] = '-';
-                    strcpy(s + 1, n->str);
+                    strcpy(s + 1, n->p.str);
                 }
-                n->str = s;
+                n->p.str = s;
             }
             return n;
         }
@@ -884,11 +928,11 @@ struct Node *unary(void)
         return mknode(N_NEG, t, cast(n, t), 0);
     case '+':
         next();
-        n = castexpr();
+        n = unary();
         return cast(n, isfloatty(n->type) || islongty(n->type) ? n->type : arith(n->type, ty_int));
     case '~':
         next();
-        n = castexpr();
+        n = unary();
         if (!isintegral(n->type))
             error(58 /* invalid operand */, 0);
         if (islongty(n->type))
@@ -899,16 +943,16 @@ struct Node *unary(void)
         return mknode(N_BNOT, t, cast(n, t), 0);
     case '!':
         next();
-        n = cond(castexpr());
+        n = cond(unary());
         if (isconst(n))
             return mknum(!n->val, ty_int);
         return mknode(N_NOT, ty_int, n, 0);
     case '*':
         next();
-        return deref(castexpr());
+        return deref(unary());
     case '&':
         next();
-        n = castexpr();
+        n = unary();
         if (n->op == N_FUNC)
             return mknode(N_ADDR, ptrto(n->type), n, 0);
         if (!islvalue(n))
@@ -947,43 +991,6 @@ struct Node *unary(void)
     return postfix();
 }
 
-struct Node *castexpr(void)
-{
-    struct Type *t;
-    struct Node *n;
-    if (tok == '(' && (peek() >= K_FIRST || (peek() == T_ID && lookup(peekname()) && lookup(peekname())->kind == S_TYPEDEF))) {
-        next();
-        if (istypename()) {
-            t = typename();
-            expect(')', ")");
-            n = castexpr();
-            return cast(n, t);
-        }
-        n = expr();
-        expect(')', ")");
-        /* continue as a postfix expression */
-        for (;;) {
-            if (tok == '[') {
-                struct Node *c;
-                next();
-                c = expr();
-                expect(']', "]");
-                n = deref(binop(N_ADD, n, c));
-            } else if (tok == '.') {
-                next();
-                n = member(n, tokname);
-                next();
-            } else if (tok == T_ARROW) {
-                next();
-                n = member(deref(n), tokname);
-                next();
-            } else
-                return n;
-        }
-    }
-    return unary();
-}
-
 int binprec(int t, int *op)
 {
     switch (t) {
@@ -1015,7 +1022,7 @@ struct Node *binexpr(int minprec)
     struct Node *b;
     int p;
     int op;
-    a = castexpr();
+    a = unary();
     for (;;) {
         p = binprec(tok, &op);
         if (p == 0 || p < minprec)
@@ -1034,16 +1041,14 @@ struct Node *binexpr(int minprec)
     }
 }
 
-struct Node *condexpr(void)
+/* c ? a : b, c already parsed (its own function: only a conditional
+   expression has it on the stack) */
+struct Node *condtail(struct Node *c)
 {
-    struct Node *c;
     struct Node *a;
     struct Node *b;
     struct Node *n;
     struct Type *t;
-    c = binexpr(1);
-    if (tok != '?')
-        return c;
     next();
     c = cond(c);
     a = decay(expr());
@@ -1060,8 +1065,17 @@ struct Node *condexpr(void)
     if (isconst(c))
         return c->val ? a : b;
     n = mknode(N_COND, t, c, a);
-    n->c = b;
+    n->p.c = b;
     return n;
+}
+
+struct Node *condexpr(void)
+{
+    struct Node *c;
+    c = binexpr(1);
+    if (tok == '?')
+        c = condtail(c);
+    return c;
 }
 
 struct Node *assign(void)
@@ -1070,7 +1084,9 @@ struct Node *assign(void)
     struct Node *b;
     struct Node *u;
     int op;
-    a = condexpr();
+    a = binexpr(1);
+    if (tok == '?')
+        a = condtail(a);
     if (tok == '=') {
         next();
         b = assign();
@@ -1140,13 +1156,28 @@ int constexpr(void)
 
 /* ---- declarations ---- */
 
-#pragma segment REALLIT
+/* Is name a printf or scanf function?  0 no; else 1 + the position of the
+   format (1: the first argument, 2: the second) in the low bits, 16 for scanf */
+int fmtfam(char *name)
+{
+    if (strcmp(name, "printf") == 0)
+        return 1;
+    if (strcmp(name, "fprintf") == 0 || strcmp(name, "sprintf") == 0)
+        return 2;
+    if (strcmp(name, "scanf") == 0)
+        return 17;
+    if (strcmp(name, "fscanf") == 0 || strcmp(name, "sscanf") == 0)
+        return 18;
+    return 0;
+}
+
+#pragma segment REFSCAN
 
 /* printf/scanf families with a literal format: a double argument meeting
    %f %e %g (no l or L) gets the l inserted, as C prints a double with %g
    (here %g is a float: floats are not widened); printf's %lf with a float
    argument widens the argument */
-void fmtfix(char *name, struct Node *args)
+void fmtfix(int fam, struct Node *args)
 {
     struct Node *f;
     struct Node *a;
@@ -1158,18 +1189,8 @@ void fmtfix(char *name, struct Node *args)
     int scan;
     int lng;
     int c;
-    k = 0;
-    scan = 0;
-    if (strcmp(name, "printf") == 0)
-        k = 1;
-    else if (strcmp(name, "fprintf") == 0 || strcmp(name, "sprintf") == 0)
-        k = 2;
-    else if (strcmp(name, "scanf") == 0)
-        k = scan = 1;
-    else if (strcmp(name, "fscanf") == 0 || strcmp(name, "sscanf") == 0) {
-        k = 2;
-        scan = 1;
-    }
+    k = fam & 15;
+    scan = fam >> 4;
     pa = &args;
     while (k > 1 && *pa) {
         pa = &(*pa)->next;
@@ -1183,8 +1204,8 @@ void fmtfix(char *name, struct Node *args)
         f = f->a;
     if (f->op != N_STR)
         return;
-    s = f->str;
-    for (i = 0; i < f->slen && s[i]; i++) {
+    s = f->p.str;
+    for (i = 0; i < f->q.slen && s[i]; i++) {
         if (s[i] != '%')
             continue;
         i++;
@@ -1212,12 +1233,12 @@ void fmtfix(char *name, struct Node *args)
         if (c == 'f' || c == 'e' || c == 'g' || c == 'E' || c == 'G') {
             if (scan ? a->type->kind == TY_PTR && isdblty(a->type->base) : isdblty(a->type)) {
                 if (!lng) {             /* insert the l */
-                    t = xalloc(f->slen + 1);
+                    t = xalloc(f->q.slen + 1);
                     memcpy(t, s, i);
                     t[i] = 'l';
-                    memcpy(t + i + 1, s + i, f->slen - i);
-                    f->str = s = t;
-                    f->slen++;
+                    memcpy(t + i + 1, s + i, f->q.slen - i);
+                    f->p.str = s = t;
+                    f->q.slen++;
                     f->type->size++;
                     f->type->u.len++;
                     i++;

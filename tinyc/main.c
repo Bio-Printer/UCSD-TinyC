@@ -92,14 +92,14 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
         return 0;
     passend();
     say("  Compiling ");
-    passbegin(2000);
+    passbegin(1600);
     if (!compile(tmpi, tmpr, mod) || !compileend())
         return 0;
     passend();
     say("Generating code ");
     say(obj);
     say(" ");
-    passbegin(2400);
+    passbegin(1900);
     if (!gencode(tmpr, obj))
         return 0;
     passend();
@@ -107,6 +107,9 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
     return 1;
 }
 
+/* The linker's commands are in its segment: it is in memory while it
+   links, not while a source compiles (this is 600 bytes of every pass). */
+#pragma segment LINK
 static int linkall(char **objs, int n, char *out)
 {
     char prog[10];
@@ -121,6 +124,8 @@ static int linkall(char **objs, int n, char *out)
     say("\n");
     return r;
 }
+
+#pragma segment MAIN
 
 /* A file opened outside a pass is opened inside a heap mark of its own:
    fclose would put its buffer (about 300 words) on the free list below
@@ -152,6 +157,7 @@ static void upper(char *s)
 /* /L OUT=A,B,... or /J LIB=A,B,...: its own function, so that the objects'
    names (on the stack: gone with the command -- on the heap they outlived
    it and @ALL ran out of memory) take no room while a source compiles */
+#pragma segment LINK
 static int linkcmd(char *s, char *lib, int from)
 {
     char *objs[MAXFILES];
@@ -229,6 +235,8 @@ static int linkcmd(char *s, char *lib, int from)
         objs[nobjs++] = lib;
     return linkall(objs, nobjs, out);
 }
+
+#pragma segment MAIN
 
 /* from: the unit of the @batch file the command is in (0: typed) */
 static int command(char *s, char *lib, int from)

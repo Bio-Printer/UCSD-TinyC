@@ -70,9 +70,7 @@ int compile(char *src, char *ir, char *mod)
     tentative = 0;
     globinit = 0;
     swvals = 0;
-    swlabs = 0;
-    swn = 0;
-    swmax = 0;
+    swn = -1;
     segexplicit = 0;
     curfnseg = 0;
     nsegtab = 0;
@@ -106,14 +104,23 @@ int compileend(void)
     /* the module's exported variables: name, size, initialised or common */
     struct Sym *g;
     int h;
+    int k;
     ir_initflush();
-    for (h = 0; h < HSIZE; h++)
-        for (g = htab[h]; g; g = g->next)
-            if (g->kind == S_GLOBAL && !(g->sx & SX_STATIC) && g->defined) {
-                if (g->type->size < 0)
-                    error(73 /* incomplete type */, g->name);
-                ir_data(g->name, (g->type->size + 1) / 2, g->defined == 2);
-            }
+    /* The variables go to the object file in the order of the 128-entry hash
+       table this compiler had (HSIZE was 128: a smaller table is 2 bytes a
+       slot less memory), which the code of every program built so far
+       shows: bucket (hash & 127), a bucket newest first.  With HSIZE a
+       divisor of 128, that is: for each k, the chains in turn, the symbols
+       whose (hash & 127) / HSIZE is k. */
+    for (k = 0; k < 128 / HSIZE; k++)
+        for (h = 0; h < HSIZE; h++)
+            for (g = htab[h]; g; g = g->next)
+                if (g->kind == S_GLOBAL && !(g->sx & SX_STATIC) && g->defined &&
+                    (hashstr(g->name) & 127) / HSIZE == k) {
+                    if (g->type->size < 0)
+                        error(73 /* incomplete type */, g->name);
+                    ir_data(g->name, (g->type->size + 1) / 2, g->defined == 2);
+                }
     if (usesfloat && !nofltused)
         ir_use("__fltused");
     ir_close(globoff);

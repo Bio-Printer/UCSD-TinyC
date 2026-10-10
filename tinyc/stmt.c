@@ -65,7 +65,7 @@ void localdecl(void)
                 sized = t->size >= 0;
                 s->offset = sized ? allocglobal(t) : globoff;
                 lv = mknode(N_VAR, t, 0, 0);
-                lv->sym = s;
+                lv->p.sym = s;
                 ir_initbegin();
                 initializer(lv, t, 1);
                 ir_initend();
@@ -87,7 +87,7 @@ void localdecl(void)
                 s = addsym(name, S_LOCAL, t);
                 s->offset = alloclocal(t);
                 lv = mknode(N_VAR, t, 0, 0);
-                lv->sym = s;
+                lv->p.sym = s;
                 initializer(lv, t, 0);
             } else {
                 if (t->size < 0)
@@ -97,7 +97,7 @@ void localdecl(void)
                 if (tok == '=') {
                     next();
                     lv = mknode(N_VAR, t, 0, 0);
-                    lv->sym = s;
+                    lv->p.sym = s;
                     initializer(lv, t, 0);
                 }
             }
@@ -118,6 +118,8 @@ void compound(int brk, int cont)
     while (tok != '}' && tok != T_EOF) {
         if (istypename())
             localdecl();
+        else if (tok == '{')
+            compound(brk, cont);
         else
             statement(brk, cont);
     }
@@ -135,24 +137,202 @@ struct Node *condparen(void)
     return n;
 }
 
+/* The stack is what limits the parser: a statement() frame is the more
+   stack the more it declares, and every nested statement has one, so the
+   statements with many variables of their own (for, do, switch, case,
+   goto, label) are functions of their own, and a block is parsed by
+   compound() directly, not through a statement() that only calls it. */
+
+/* for (init; cond; inc) body */
+static void forstmt(void)
+{
+    struct Node *inc;
+    int l1;
+    int l2;
+    int l3;
+    next();
+    expect('(', "(");
+    pushscope();
+    if (istypename())
+        localdecl();
+    else {
+        if (tok != ';')
+            ir_discard(expr());
+        expect(';', ";");
+    }
+    l1 = ir_newlabel();
+    l2 = ir_newlabel();
+    l3 = ir_newlabel();
+    ir_setlabel(l1);
+    if (tok != ';')
+        ir_branch(cond(expr()), l3, 0);
+    expect(';', ";");
+    inc = 0;
+    if (tok != ')')
+        inc = expr();
+    expect(')', ")");
+    if (tok == '{')
+        compound(l3, l2);
+    else
+        statement(l3, l2);
+    ir_setlabel(l2);
+    if (inc)
+        ir_discard(inc);
+    ir_jump(l1);
+    ir_setlabel(l3);
+    popscope();
+}
+
+/* do body while (cond); */
+static void dostmt(void)
+{
+    struct Node *n;
+    int l1;
+    int l2;
+    int l3;
+    next();
+    l1 = ir_newlabel();
+    l2 = ir_newlabel();
+    l3 = ir_newlabel();
+    ir_setlabel(l1);
+    if (tok == '{')
+        compound(l3, l2);
+    else
+        statement(l3, l2);
+    ir_setlabel(l2);
+    if (tok != K_WHILE)
+        error(74 /* while expected */, 0);
+    next();
+    n = condparen();
+    ir_branch(n, l1, 1);
+    ir_setlabel(l3);
+    expect(';', ";");
+}
+
+/* switch (expr) body */
+static void switchstmt(int cont)
+{
+    struct Node *n;
+    struct SwVals *sv;
+    int sn;
+    int sdef;
+    int t;
+    int l1;
+    int l2;
+    int m;
+    m = xmark();
+    next();
+    expect('(', "(");
+    n = expr();
+    expect(')', ")");
+    n = decay(n);
+    if (!isintegral(n->type) || islongty(n->type)) {
+        if (islongty(n->type))
+            n = cast(n, ty_int);
+        else
+            error(75 /* integer required */, 0);
+    }
+    t = alloclocal(ty_int);
+    ir_valuestl(cast(n, ty_int), t);
+    sv = swvals;
+    sn = swn;
+    sdef = swdef;
+    swvals = 0;
+    swn = 0;
+    swdef = -1;
+    l1 = ir_newlabel();
+    l2 = ir_newlabel();
+    ir_jump(l1);
+    xrelease(m);
+    if (tok == '{')
+        compound(l2, cont);
+    else
+        statement(l2, cont);
+    ir_jump(l2);
+    ir_setlabel(l1);
+    ir_switch(t, swn, swdef >= 0 ? swdef : l2);
+    ir_setlabel(l2);
+    swvals = sv;
+    swn = sn;
+    swdef = sdef;
+}
+
+/* case constant: (the statement after it is parsed by statement()) */
+static void caselabel(void)
+{
+    struct SwVals *c;
+    int t;
+    int i;
+    int k;
+    int l;
+    next();
+    t = constexpr();
+    expect(':', ":");
+    if (swn < 0)
+        error(76 /* case outside switch */, 0);
+    else {
+        /* the newest chunk holds swn % SWCHUNK values (SWCHUNK when that is 0) */
+        i = swn;
+        for (c = swvals; c; c = c->next) {
+            k = i % SWCHUNK ? i % SWCHUNK : SWCHUNK;
+            i = i - k;
+            while (k-- > 0)
+                if (c->v[k] == t)
+                    error(77 /* duplicate case */, 0);
+        }
+        if (swn % SWCHUNK == 0) {
+            c = (struct SwVals *)falloc(sizeof(struct SwVals));
+            c->next = swvals;
+            swvals = c;
+        }
+        swvals->v[swn % SWCHUNK] = t;
+        swn++;
+        l = ir_newlabel();
+        ir_setlabel(l);
+        ir_case(t, l);
+    }
+}
+
+/* goto label; */
+static void gotostmt(void)
+{
+    struct Sym *s;
+    next();
+    if (tok != T_ID)
+        error(82 /* label expected */, 0);
+    else {
+        s = label(tokname);
+        ir_jump(s->offset);
+        next();
+    }
+    expect(';', ";");
+}
+
+/* label: (the identifier and the colon are the current tokens) */
+static void labeldef(void)
+{
+    struct Sym *s;
+    s = label(tokname);
+    if (s->defined)
+        error(83 /* label redefined */, tokname);
+    s->defined = 1;
+    ir_setlabel(s->offset);
+    next();
+    next();
+}
+
 void statement(int brk, int cont)
 {
     struct Node *n;
-    struct Node *inc;
-    struct Sym *s;
     int m;
     int save;
     int l1;
     int l2;
-    int l3;
-    int *sv;
-    int *sl;
-    int sn;
-    int smax;
-    int sdef;
-    int t;
     m = xmark();
     save = curlocal;
+    /* "case X:", "default:" and "label:" go round again for the statement
+       after them: a run of case labels would need a stack frame per label */
+    for (;;) {
     switch (tok) {
     case '{':
         compound(brk, cont);
@@ -171,7 +351,10 @@ void statement(int brk, int cont)
             ir_branch(n, l1, 0);
             xrelease(m);
             curlocal = save;
-            statement(brk, cont);
+            if (tok == '{')
+                compound(brk, cont);
+            else
+                statement(brk, cont);
             if (tok != K_ELSE) {
                 ir_setlabel(l1);
                 break;
@@ -182,7 +365,10 @@ void statement(int brk, int cont)
             ir_jump(l2);
             ir_setlabel(l1);
             if (tok != K_IF) {
-                statement(brk, cont);
+                if (tok == '{')
+                    compound(brk, cont);
+                else
+                    statement(brk, cont);
                 break;
             }
         }
@@ -198,135 +384,35 @@ void statement(int brk, int cont)
         ir_branch(n, l2, 0);
         xrelease(m);
         curlocal = save;
-        statement(l2, l1);
+        if (tok == '{')
+            compound(l2, l1);
+        else
+            statement(l2, l1);
         ir_jump(l1);
         ir_setlabel(l2);
         break;
     case K_DO:
-        next();
-        l1 = ir_newlabel();
-        l2 = ir_newlabel();
-        l3 = ir_newlabel();
-        ir_setlabel(l1);
-        statement(l3, l2);
-        ir_setlabel(l2);
-        if (tok != K_WHILE)
-            error(74 /* while expected */, 0);
-        next();
-        n = condparen();
-        ir_branch(n, l1, 1);
-        ir_setlabel(l3);
-        expect(';', ";");
+        dostmt();
         break;
     case K_FOR:
-        next();
-        expect('(', "(");
-        pushscope();
-        if (istypename())
-            localdecl();
-        else {
-            if (tok != ';')
-                ir_discard(expr());
-            expect(';', ";");
-        }
-        l1 = ir_newlabel();
-        l2 = ir_newlabel();
-        l3 = ir_newlabel();
-        ir_setlabel(l1);
-        if (tok != ';')
-            ir_branch(cond(expr()), l3, 0);
-        expect(';', ";");
-        inc = 0;
-        if (tok != ')')
-            inc = expr();
-        expect(')', ")");
-        statement(l3, l2);
-        ir_setlabel(l2);
-        if (inc)
-            ir_discard(inc);
-        ir_jump(l1);
-        ir_setlabel(l3);
-        popscope();
+        forstmt();
         break;
     case K_SWITCH:
-        next();
-        expect('(', "(");
-        n = expr();
-        expect(')', ")");
-        n = decay(n);
-        if (!isintegral(n->type) || islongty(n->type)) {
-            if (islongty(n->type))
-                n = cast(n, ty_int);
-            else
-                error(75 /* integer required */, 0);
-        }
-        t = alloclocal(ty_int);
-        ir_valuestl(cast(n, ty_int), t);
-        sv = swvals;
-        sl = swlabs;
-        sn = swn;
-        smax = swmax;
-        sdef = swdef;
-        swmax = 64;
-        swvals = (int *)falloc(swmax * sizeof(int));
-        swlabs = (int *)falloc(swmax * sizeof(int));
-        swn = 0;
-        swdef = -1;
-        l1 = ir_newlabel();
-        l2 = ir_newlabel();
-        ir_jump(l1);
-        xrelease(m);
-        statement(l2, cont);
-        ir_jump(l2);
-        ir_setlabel(l1);
-        ir_switch(t, swvals, swlabs, swn, swdef >= 0 ? swdef : l2);
-        ir_setlabel(l2);
-        swvals = sv;
-        swlabs = sl;
-        swn = sn;
-        swmax = smax;
-        swdef = sdef;
+        switchstmt(cont);
         break;
     case K_CASE:
-        next();
-        t = constexpr();
-        expect(':', ":");
-        if (!swvals)
-            error(76 /* case outside switch */, 0);
-        else {
-            int i;
-            for (i = 0; i < swn; i++)
-                if (swvals[i] == t)
-                    error(77 /* duplicate case */, 0);
-            if (swn >= swmax) {
-                int *nv;
-                int *nl;
-                nv = (int *)falloc(swmax * 2 * sizeof(int));
-                nl = (int *)falloc(swmax * 2 * sizeof(int));
-                memcpy(nv, swvals, swmax * sizeof(int));
-                memcpy(nl, swlabs, swmax * sizeof(int));
-                swvals = nv;
-                swlabs = nl;
-                swmax = swmax * 2;
-            }
-            swvals[swn] = t;
-            swlabs[swn] = ir_newlabel();
-            ir_setlabel(swlabs[swn]);
-            swn++;
-        }
-        statement(brk, cont);
-        break;
+        caselabel();
+        continue;
     case K_DEFAULT:
         next();
         expect(':', ":");
-        if (!swvals)
+        if (swn < 0)
             error(78 /* default outside switch */, 0);
         else {
             swdef = ir_newlabel();
             ir_setlabel(swdef);
         }
-        statement(brk, cont);
-        break;
+        continue;
     case K_BREAK:
         next();
         if (brk < 0)
@@ -358,32 +444,19 @@ void statement(int brk, int cont)
         expect(';', ";");
         break;
     case K_GOTO:
-        next();
-        if (tok != T_ID)
-            error(82 /* label expected */, 0);
-        else {
-            s = label(tokname);
-            ir_jump(s->offset);
-            next();
-        }
-        expect(';', ";");
+        gotostmt();
         break;
     default:
         if (tok == T_ID && peek() == ':') {
-            s = label(tokname);
-            if (s->defined)
-                error(83 /* label redefined */, tokname);
-            s->defined = 1;
-            ir_setlabel(s->offset);
-            next();
-            next();
-            statement(brk, cont);
-            break;
+            labeldef();
+            continue;
         }
         n = expr();
         ir_discard(n);
         expect(';', ";");
         break;
+    }
+    break;
     }
     xrelease(m);
     curlocal = save;
@@ -555,7 +628,7 @@ void external(void)
                 s->defined = 2;
                 s->type = t;
                 lv = mknode(N_VAR, t, 0, 0);
-                lv->sym = s;
+                lv->p.sym = s;
                 if ((s->sx & SX_STATIC) && s->offset < 0) {
                     /* static array of unknown size: allocate after the initializer */
                     s->offset = globoff;
@@ -580,7 +653,7 @@ void external(void)
     xrelease(m);
 }
 
-#pragma segment REFSCAN
+#pragma segment CINIT
 
 /* Collect every identifier the program itself uses: everything in the
    main file, and whatever is inside braces (function bodies, structures,

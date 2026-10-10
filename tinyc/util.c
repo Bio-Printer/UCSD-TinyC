@@ -85,6 +85,7 @@ void saynw(unsigned n, int w)
 /* Message texts live in a file (tcmsgs.txt; on the P-System TCMSGS.TEXT
    on the default volume, the boot volume or TINY-C:): line n is message n.  Keeping them
    out of the code saves memory in every pass. */
+#pragma segment CINIT
 static void message(int n)
 {
     FILE *fp;
@@ -127,6 +128,8 @@ static void message(int n)
     fclose(fp);
 }
 
+#pragma segment MAIN
+
 static void report(char *kind, int n, char *arg)
 {
     if (curfile) {
@@ -136,7 +139,10 @@ static void report(char *kind, int n, char *arg)
         say(": ");
     }
     say(kind);
-    message(n);
+    if (n == 2)                         /* out of memory: no segment to load */
+        say("out of memory");
+    else
+        message(n);
     if (arg) {
         say(" '");
         say(arg);

@@ -229,19 +229,29 @@ struct Sym {
 #define N_INTRIN  41        /* val = intrinsic number, args */
 #define N_SIZEOFX 42
 
+/* 16 bytes: the expression trees of a statement (the pool is xsize bytes)
+   are the compile pass's largest variable part.  What only some kinds of
+   node have shares a place: p is the third operand (N_COND), the symbol
+   (N_VAR, N_FUNC) or the text (N_STR, N_HEAPSTR, and a double constant's
+   text); q the high word of a long (N_NUM, __va_start's offset), a
+   string's length or a float constant's image (N_FNUM). */
 struct Node {
-    int op;
+    unsigned char op;
     struct Type *type;
     struct Node *a;
     struct Node *b;
-    struct Node *c;
     struct Node *next;      /* argument lists */
-    struct Sym *sym;
     int val;
-    int val2;
-    char *str;
-    int slen;
-    unsigned char *fimg;
+    union {
+        struct Node *c;
+        struct Sym *sym;
+        char *str;
+    } p;
+    union {
+        int val2;
+        int slen;
+        unsigned char *fimg;
+    } q;
 };
 
 /* ---- globals shared between the parts ---- */
@@ -363,7 +373,8 @@ void ir_branch(struct Node *n, int l, int jumpif);
 void ir_discard(struct Node *n);
 void ir_valuestl(struct Node *n, int t);
 void ir_return(struct Node *n, struct Type *ft, int sretoff);
-void ir_switch(int t, int *vals, int *labs, int n, int deflab);
+void ir_case(int value, int label);
+void ir_switch(int t, int n, int deflab);
 void ir_funcend(struct Sym *fs, struct Type *ft, int exitlab, int isstatic, char *seg);
 void ir_initbegin(void);
 void ir_initend(void);

@@ -1,0 +1,32 @@
+TCEXPCT:  28 files  (a UCSD directory holds 77)
+
+  FILE            BLOCKS  WHAT
+
+  README.TEXT          4  what is on this volume
+  BOXES.EXPECT         4  what boxes prints
+  CALC.EXPECT          4  what calc prints
+  CONTROL.EXPECT       4  what control prints
+  DEMO.EXPECT          4  what demo prints
+  DOUBLES.EXPECT       4  what doubles prints
+  ELSEIF.EXPECT        4  what elseif prints
+  FCOMPARE.EXPECT      4  what fcompare prints
+  FILEIO.EXPECT        4  what fileio prints
+  FLOATS.EXPECT        4  what floats prints
+  FUNCPTR.EXPECT       4  what funcptr prints
+  FUNCSEG.EXPECT       4  what funcseg prints
+  GUESS.EXPECT         4  what guess prints
+  HANOI.EXPECT         4  what hanoi prints
+  LONGS.EXPECT         4  what longs prints
+  MACROS.EXPECT        4  what macros prints
+  PI.EXPECT            6  what pi prints
+  PRINTF.EXPECT        4  what printf prints
+  QUEENS.EXPECT        4  what queens prints
+  SETJMP.EXPECT        4  what setjmp prints
+  SIEVE.EXPECT         4  what sieve prints
+  STATICS.EXPECT       4  what statics prints
+  STRCONST.EXPECT      4  what strconst prints
+  STRINGS.EXPECT       4  what strings prints
+  STRUCTS.EXPECT       4  what structs prints
+  SYSCOM.EXPECT        4  what syscom prints
+  TEXTPAGE.EXPECT      4  what textpage prints
+  FILES.TEXT           6  this list

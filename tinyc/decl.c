@@ -447,9 +447,9 @@ void init1(struct Node *lv, struct Type *t, int global)
             m = xmark();
             n = primary();
             if (t->u.len < 0) {
-                t->u.len = n->slen;
-                t->size = n->slen;
-            } else if (n->slen - 1 > t->u.len)
+                t->u.len = n->q.slen;
+                t->size = n->q.slen;
+            } else if (n->q.slen - 1 > t->u.len)
                 error(68 /* initializer string too long */, 0);
             ir_discard(mknode(N_ASSIGN, t, lv, n));
             xrelease(m);

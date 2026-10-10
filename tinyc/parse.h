@@ -5,7 +5,7 @@
 /* the prototypes are declared under their functions' segments (see tc.h) */
 #pragma segment PARSE
 
-#define HSIZE 128
+#define HSIZE 32
 #define I_DVI     1
 #define I_MDI     2
 #define I_VASTART 3
@@ -56,10 +56,17 @@ extern struct Type *curft;
 extern int exitlab;
 extern int sretoff;
 extern int vaoff;
-extern int *swvals;
-extern int *swlabs;
+/* The case values of the switch being parsed (to find a duplicate): in
+   chunks, newest first, SWCHUNK to a chunk, no table to grow and copy;
+   the labels go to the intermediate file as they come (ir_case) and the
+   code generator collects them.  swn: how many so far, -1 outside a switch. */
+#define SWCHUNK 24
+struct SwVals {
+    struct SwVals *next;
+    int v[SWCHUNK];
+};
+extern struct SwVals *swvals;
 extern int swn;
-extern int swmax;
 extern int swdef;
 extern char *intrnames[];
 extern int tentative;
@@ -89,8 +96,10 @@ int allocglobal(struct Type *t);
 int alloclocal(struct Type *t);
 void expect(int t, char *what);
 int istypename(void);
+#pragma segment REALLIT
 void dblimage(char *text, unsigned char *img);
 void real2dbl(unsigned char *f, unsigned char *img);
+#pragma segment PARSE
 struct Node *mknode(int op, struct Type *t, struct Node *a, struct Node *b);
 struct Node *mknum(int v, struct Type *t);
 int isconst(struct Node *n);
@@ -114,7 +123,7 @@ struct Node *member(struct Node *n, char *name);
 struct Node *deref(struct Node *n);
 struct Node *postfix(void);
 struct Node *unary(void);
-struct Node *castexpr(void);
+struct Node *condtail(struct Node *c);
 int binprec(int t, int *op);
 struct Node *binexpr(int minprec);
 struct Node *condexpr(void);
@@ -140,9 +149,10 @@ struct Node *condparen(void);
 void statement(int brk, int cont);
 void funcdef(struct Sym *fs, int isstatic);
 void external(void);
-#pragma segment REALLIT
-void fmtfix(char *name, struct Node *args);
+int fmtfam(char *name);
 #pragma segment REFSCAN
+void fmtfix(int fam, struct Node *args);
+#pragma segment CINIT
 void addref(char *name);
 void scanrefs(char *src);
 #pragma segment PARSE

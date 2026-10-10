@@ -106,15 +106,15 @@ static void irnode(struct Node *n)
         mask = mask | 1;
     if (n->b)
         mask = mask | 2;
-    if (n->c)
+    if (n->op == N_COND && n->p.c)
         mask = mask | 4;
     if (n->next)
         mask = mask | 8;
     if (n->val)
         mask = mask | 16;
-    if (n->val2)
+    if (n->op != N_STR && n->op != N_HEAPSTR && n->op != N_FNUM && n->q.val2)
         mask = mask | 32;
-    if (n->sym)
+    if ((n->op == N_VAR || n->op == N_FUNC) && n->p.sym)
         mask = mask | 64;
     irb(n->op);
     irtype(n->type);
@@ -122,29 +122,29 @@ static void irnode(struct Node *n)
     if (mask & 16)
         irw(n->val);
     if (mask & 32)
-        irw(n->val2);
+        irw(n->q.val2);
     if (mask & 64) {
-        irb(n->sym->kind);
-        irw(n->sym->offset);
-        if (n->sym->kind == S_FUNC)
-            irlname(n->sym);
+        irb(n->p.sym->kind);
+        irw(n->p.sym->offset);
+        if (n->p.sym->kind == S_FUNC)
+            irlname(n->p.sym);
         else
-            irs(n->sym->offset < 0 ? n->sym->name : "");   /* globals by name */
+            irs(n->p.sym->offset < 0 ? n->p.sym->name : "");   /* globals by name */
     }
     if (n->op == N_STR || n->op == N_HEAPSTR) {
-        irw(n->slen);
-        for (i = 0; i < n->slen; i++)
-            irb(n->str[i]);
+        irw(n->q.slen);
+        for (i = 0; i < n->q.slen; i++)
+            irb(n->p.str[i]);
     } else if (n->op == N_FNUM) {
         for (i = 0; i < n->type->size; i++)     /* 4, or 12 for a double */
-            irb(n->fimg[i]);
+            irb(n->q.fimg[i]);
     }
     if (mask & 1)
         irnode(n->a);
     if (mask & 2)
         irnode(n->b);
     if (mask & 4)
-        irnode(n->c);
+        irnode(n->p.c);
     if (mask & 8)
         irnode(n->next);
 }
@@ -234,16 +234,21 @@ void ir_return(struct Node *n, struct Type *ft, int sretoff)
         irnode(n);
 }
 
-void ir_switch(int t, int *vals, int *labs, int n, int deflab)
+/* a case of the switch being parsed: the code generator keeps these until
+   the switch's S record (the table was in the parser's memory, a switch of
+   100 cases or more doubled it) */
+void ir_case(int value, int label)
 {
-    int i;
+    irb('C');
+    irw(value);
+    irw(label);
+}
+
+void ir_switch(int t, int n, int deflab)
+{
     irb('S');
     irw(t);
     irw(n);
-    for (i = 0; i < n; i++) {
-        irw(vals[i]);
-        irw(labs[i]);
-    }
     irw(deflab);
 }
 
@@ -409,30 +414,30 @@ static struct Node *rnode(void)
     if (mask & 16)
         n->val = rw();
     if (mask & 32)
-        n->val2 = rw();
+        n->q.val2 = rw();
     if (mask & 64) {
         s = (struct Sym *)xalloc(sizeof(struct Sym));
         s->kind = rb();
         s->offset = rw();
         s->name = rstr();
-        n->sym = s;
+        n->p.sym = s;
     }
     if (n->op == N_STR || n->op == N_HEAPSTR) {
-        n->slen = rw();
-        n->str = xalloc(n->slen + 1);
-        for (i = 0; i < n->slen; i++)
-            n->str[i] = rb();
+        n->q.slen = rw();
+        n->p.str = xalloc(n->q.slen + 1);
+        for (i = 0; i < n->q.slen; i++)
+            n->p.str[i] = rb();
     } else if (n->op == N_FNUM) {
-        n->fimg = (unsigned char *)xalloc(n->type->size);
+        n->q.fimg = (unsigned char *)xalloc(n->type->size);
         for (i = 0; i < n->type->size; i++)
-            n->fimg[i] = rb();
+            n->q.fimg[i] = rb();
     }
     if (mask & 1)
         n->a = rnode();
     if (mask & 2)
         n->b = rnode();
     if (mask & 4)
-        n->c = rnode();
+        n->p.c = rnode();
     if (mask & 8)
         n->next = rnode();
     return n;
@@ -458,6 +463,10 @@ static void setcur(void)
             maxlocal = curlocal;
     }
 }
+
+static int *cstk;                  /* the cases waiting for their switch: value, label, ... */
+static int cn;
+static int cmax;
 
 int gencode(char *irname, char *obj)
 {
@@ -489,6 +498,9 @@ int gencode(char *irname, char *obj)
     objout = fopen(obj, "wb");
     if (!objout)
         fatal(24 /* cannot create */, obj);
+    cstk = 0;
+    cn = 0;
+    cmax = 0;
     nlmap = MAXLABEL;
     lmap = (int *)malloc(nlmap * sizeof(int));
     rseen = (struct Type **)malloc(MAXTSEEN * sizeof(struct Type *));
@@ -543,10 +555,30 @@ int gencode(char *irname, char *obj)
             e = rb() ? rnode() : 0;
             gen_return(e, ft, st);
             break;
+        case 'C':
+            /* a case: kept (value, label) until its switch's S record; a
+               switch inside a case's statements takes its own off the top */
+            if (cn + 2 > cmax) {
+                int *nc;
+                if (cmax >= 2 * 1024)
+                    fatal(93 /* too many cases */, 0);
+                cmax = cmax ? cmax * 2 : 64;
+                nc = (int *)malloc(cmax * sizeof(int));
+                if (!nc)
+                    fatal(2 /* out of memory */, 0);
+                if (cn)
+                    memcpy(nc, cstk, cn * sizeof(int));
+                free(cstk);
+                cstk = nc;
+            }
+            cstk[cn] = rw();
+            cstk[cn + 1] = rw();
+            cn = cn + 2;
+            break;
         case 'S':
             t = rw();
             n = rw();
-            if (n > 1024)
+            if (n > 1024 || 2 * n > cn)
                 fatal(93 /* too many cases */, 0);
             /* the case table, as large as this switch needs (not 1024
                cases for the whole pass) */
@@ -554,9 +586,10 @@ int gencode(char *irname, char *obj)
             if (!vals)
                 fatal(2 /* out of memory */, 0);
             labs = vals + n;
+            cn = cn - 2 * n;
             for (i = 0; i < n; i++) {
-                vals[i] = rw();
-                labs[i] = lab(rw());
+                vals[i] = cstk[cn + 2 * i];
+                labs[i] = lab(cstk[cn + 2 * i + 1]);
             }
             gen_switch(t, vals, labs, n, lab(rw()));
             free(vals);
