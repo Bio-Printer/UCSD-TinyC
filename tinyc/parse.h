@@ -5,7 +5,7 @@
 /* the prototypes are declared under their functions' segments (see tc.h) */
 #pragma segment PARSE
 
-#define HSIZE 128
+#define HSIZE 32
 #define I_DVI     1
 #define I_MDI     2
 #define I_VASTART 3

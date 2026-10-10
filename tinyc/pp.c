@@ -12,12 +12,15 @@
 #include "tc.h"
 #pragma segment PP
 
+/* name and body follow the record in one block (a macro is about 40 bytes
+   and vi.h has 150: the preprocessor's least free memory) */
 struct Macro {
-    char *name;
-    int nparams;            /* -1: object-like */
-    char *body;             /* parameters coded as \001 then (index + 1) */
     struct Macro *next;
+    int nparams;            /* -1: object-like */
+    int nlen;               /* strlen(name) */
 };
+#define MNAME(m) ((char *)((m) + 1))
+#define MBODY(m) (MNAME(m) + (m)->nlen + 1)    /* parameters coded as \001 then (index + 1) */
 
 #define MHASH 128
 static struct Macro **mtab;
@@ -68,7 +71,7 @@ static struct Macro *mlookup(char *name, int n)
     for (i = 0; i < n; i++)
         h = (h * 3 + name[i]) & 1023;
     for (m = mtab[h & (MHASH - 1)]; m; m = m->next)
-        if ((int)strlen(m->name) == n && strncmp(m->name, name, n) == 0)
+        if (m->nlen == n && strncmp(MNAME(m), name, n) == 0)
             return m;
     return 0;
 }
@@ -84,7 +87,7 @@ static void mundef(char *name, int n)
         h = (h * 3 + name[i]) & 1023;
     pp = &mtab[h & (MHASH - 1)];
     for (m = *pp; m; m = m->next) {
-        if ((int)strlen(m->name) == n && strncmp(m->name, name, n) == 0) {
+        if (m->nlen == n && strncmp(MNAME(m), name, n) == 0) {
             *pp = m->next;
             return;
         }
@@ -98,12 +101,12 @@ static struct Macro *mdefine(char *name, int n, int nparams, char *body)
     int h;
     int i;
     mundef(name, n);
-    m = (struct Macro *)palloc(sizeof(struct Macro));
-    m->name = palloc(n + 1);
-    memcpy(m->name, name, n);
-    m->name[n] = 0;
+    m = (struct Macro *)palloc(sizeof(struct Macro) + n + 1 + strlen(body) + 1);
+    memcpy(MNAME(m), name, n);
+    MNAME(m)[n] = 0;
+    m->nlen = n;
     m->nparams = nparams;
-    m->body = pstrdup(body);
+    strcpy(MBODY(m), body);
     h = 0;
     for (i = 0; i < n; i++)
         h = (h * 3 + name[i]) & 1023;
@@ -473,7 +476,7 @@ static char *expandcall(struct Macro *m, char *p)
     start = q;
     for (;;) {
         if (*q == 0)
-            fatal(6 /* unterminated macro call */, m->name);
+            fatal(6 /* unterminated macro call */, MNAME(m));
         if (*q == '"' || *q == '\'') {
             q = skiplit(q);
             continue;
@@ -482,7 +485,7 @@ static char *expandcall(struct Macro *m, char *p)
             depth++;
         else if ((*q == ',' || *q == ')') && depth == 0) {
             if (nargs >= 32)
-                fatal(7 /* too many macro arguments */, m->name);
+                fatal(7 /* too many macro arguments */, MNAME(m));
             n = q - start;
             args[nargs] = trim(start, &n);
             alen[nargs] = n;
@@ -500,7 +503,7 @@ static char *expandcall(struct Macro *m, char *p)
     if (nargs == 1 && alen[0] == 0 && m->nparams == 0)
         nargs = 0;
     if (nargs != m->nparams)
-        error(8 /* wrong number of macro arguments */, m->name);
+        error(8 /* wrong number of macro arguments */, MNAME(m));
     /* substitute into a temporary buffer, then rescan it */
     xm = xmark();
     res = xalloc(MAXEXP);
@@ -508,7 +511,7 @@ static char *expandcall(struct Macro *m, char *p)
     saveend = outend;
     outp = res;
     outend = res + MAXEXP;
-    for (b = m->body; *b; ) {
+    for (b = MBODY(m); *b; ) {
         if (*b == '#' && b[1] == '#') {
             /* paste: drop trailing blanks already written and leading blanks */
             while (outp > res && (outp[-1] == ' ' || outp[-1] == '\t'))
@@ -623,9 +626,9 @@ static void expand(char *s)
             if (m && !isexpanding(m)) {
                 if (m->nparams < 0) {
                     if (nexpanding >= 30)
-                        fatal(9 /* macro nesting too deep */, m->name);
+                        fatal(9 /* macro nesting too deep */, MNAME(m));
                     expanding[nexpanding++] = m;
-                    expand(m->body);
+                    expand(MBODY(m));
                     nexpanding--;
                     s = p;
                     continue;
@@ -1092,6 +1095,15 @@ static void dodefine(char *s)
                 while (s < p)
                     *d++ = *s++;
             s = p;
+            continue;
+        }
+        if (*s == ' ' || *s == '\t') {
+            /* a run of blanks is one: the body is kept for the whole
+               compile, and vi.h's has 150 macros, some padded to line up */
+            while (*s == ' ' || *s == '\t')
+                s++;
+            if (*s != ')')
+                *d++ = ' ';
             continue;
         }
         *d++ = *s++;
