@@ -121,7 +121,7 @@ struct Node *member(struct Node *n, char *name);
 struct Node *deref(struct Node *n);
 struct Node *postfix(void);
 struct Node *unary(void);
-struct Node *castexpr(void);
+struct Node *condtail(struct Node *c);
 int binprec(int t, int *op);
 struct Node *binexpr(int minprec);
 struct Node *condexpr(void);

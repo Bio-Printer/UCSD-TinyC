@@ -41,11 +41,11 @@ static void lvinfo(struct Node *n, struct LV *lv)
     struct Node *p;
     lv->name = 0;
     if (n->op == N_VAR) {
-        lv->kind = n->sym->kind == S_LOCAL ? LV_LOCAL : LV_GLOBAL;
-        lv->off = n->sym->offset;
+        lv->kind = n->p.sym->kind == S_LOCAL ? LV_LOCAL : LV_GLOBAL;
+        lv->off = n->p.sym->offset;
         lv->boff = 0;
         lv->ptr = 0;
-        lv->name = lv->kind == LV_GLOBAL && lv->off < 0 ? n->sym->name : 0;
+        lv->name = lv->kind == LV_GLOBAL && lv->off < 0 ? n->p.sym->name : 0;
         return;
     }
     if (n->op == N_MEMBER) {
@@ -339,7 +339,7 @@ static void gen_call(struct Node *n, int want)
     ft = n->a->type;
     if (ft->kind == TY_PTR)
         ft = ft->base;
-    fs = n->a->op == N_FUNC ? n->a->sym : 0;
+    fs = n->a->op == N_FUNC ? n->a->p.sym : 0;
     rw = retwords(ft);
     sret = 0;
     pw = 0;
@@ -461,7 +461,7 @@ static void gen_intrinsic(struct Node *n, int want)
     code = n->val;
     a = n->a;
     if (code == 3) {            /* __va_start */
-        ldl(n->val2);
+        ldl(n->q.val2);
         if (!want)
             drop(1);
         return;
@@ -608,12 +608,12 @@ static void gen_dcast(struct Node *n)
 static void gen_str(struct Node *n)
 {
     int i;
-    if (n->slen > 255)
+    if (n->q.slen > 255)
         error(99 /* string literal longer than 254 characters */, 0);
     ob(O_LPA);
-    ob(n->slen);
-    for (i = 0; i < n->slen; i++)
-        ob(n->str[i]);
+    ob(n->q.slen);
+    for (i = 0; i < n->q.slen; i++)
+        ob(n->p.str[i]);
 }
 
 static int relop(int op, int isfloat, int invert)
@@ -788,7 +788,7 @@ static int haslvref(struct Node *n)
     for (; n; n = n->next) {
         if (n->op == N_LVREF)
             return 1;
-        if ((n->a && haslvref(n->a)) || (n->b && haslvref(n->b)) || (n->c && haslvref(n->c)))
+        if ((n->a && haslvref(n->a)) || (n->b && haslvref(n->b)) || (n->op == N_COND && n->p.c && haslvref(n->p.c)))
             return 1;
     }
     return 0;
@@ -812,7 +812,7 @@ static void gen_assign(struct Node *n, int want)
             ldc(0);
             gen_addr(lhs);
             ldc(0);
-            ldc(rhs->slen < t->size ? rhs->slen : t->size);
+            ldc(rhs->q.slen < t->size ? rhs->q.slen : t->size);
             csp(CSP_MVL);
             return;
         }
@@ -880,16 +880,16 @@ void gen_value(struct Node *n)
     switch (n->op) {
     case N_NUM:
         if (islongty(t)) {
-            ldc(n->val2);
+            ldc(n->q.val2);
             ldc(n->val);
         } else
             ldc(n->val);
         return;
     case N_FNUM:
         if (isdblty(n->type))
-            gen_dconst(n->fimg);
+            gen_dconst(n->q.fimg);
         else
-            gen_fconst(n->fimg);
+            gen_fconst(n->q.fimg);
         return;
     case N_STR:
         gen_str(n);
@@ -899,14 +899,14 @@ void gen_value(struct Node *n)
             int t;
             t = newtemp(1);
             lla(t);
-            ldc((n->slen + 1) / 2);
+            ldc((n->q.slen + 1) / 2);
             csp(1);                     /* NEW */
             n->op = N_STR;
             gen_str(n);
             ldc(0);
             ldl(t);
             ldc(0);
-            ldc(n->slen);
+            ldc(n->q.slen);
             csp(CSP_MVL);
             ldl(t);
         }
@@ -924,7 +924,7 @@ void gen_value(struct Node *n)
         return;
     case N_FUNC:
         ob(O_LDCI);
-        reloc(R_FNPTR, n->sym->name);
+        reloc(R_FNPTR, n->p.sym->name);
         E->relpos[E->nrel - 1] = E->pc - 1;
         ob(0);
         ob(0);
@@ -978,7 +978,7 @@ void gen_value(struct Node *n)
         gen_value(n->b);
         jump(l2);
         setlabel(l1);
-        gen_value(n->c);
+        gen_value(n->p.c);
         setlabel(l2);
         return;
     case N_COMMA:
@@ -1075,7 +1075,7 @@ void gen_discard(struct Node *n)
             gen_discard(n->b);
             jump(l2);
             setlabel(l1);
-            gen_discard(n->c);
+            gen_discard(n->p.c);
             setlabel(l2);
         }
         return;

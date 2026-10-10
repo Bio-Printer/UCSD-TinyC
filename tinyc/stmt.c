@@ -65,7 +65,7 @@ void localdecl(void)
                 sized = t->size >= 0;
                 s->offset = sized ? allocglobal(t) : globoff;
                 lv = mknode(N_VAR, t, 0, 0);
-                lv->sym = s;
+                lv->p.sym = s;
                 ir_initbegin();
                 initializer(lv, t, 1);
                 ir_initend();
@@ -87,7 +87,7 @@ void localdecl(void)
                 s = addsym(name, S_LOCAL, t);
                 s->offset = alloclocal(t);
                 lv = mknode(N_VAR, t, 0, 0);
-                lv->sym = s;
+                lv->p.sym = s;
                 initializer(lv, t, 0);
             } else {
                 if (t->size < 0)
@@ -97,7 +97,7 @@ void localdecl(void)
                 if (tok == '=') {
                     next();
                     lv = mknode(N_VAR, t, 0, 0);
-                    lv->sym = s;
+                    lv->p.sym = s;
                     initializer(lv, t, 0);
                 }
             }
@@ -628,7 +628,7 @@ void external(void)
                 s->defined = 2;
                 s->type = t;
                 lv = mknode(N_VAR, t, 0, 0);
-                lv->sym = s;
+                lv->p.sym = s;
                 if ((s->sx & SX_STATIC) && s->offset < 0) {
                     /* static array of unknown size: allocate after the initializer */
                     s->offset = globoff;

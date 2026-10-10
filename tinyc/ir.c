@@ -106,15 +106,15 @@ static void irnode(struct Node *n)
         mask = mask | 1;
     if (n->b)
         mask = mask | 2;
-    if (n->c)
+    if (n->op == N_COND && n->p.c)
         mask = mask | 4;
     if (n->next)
         mask = mask | 8;
     if (n->val)
         mask = mask | 16;
-    if (n->val2)
+    if (n->op != N_STR && n->op != N_HEAPSTR && n->op != N_FNUM && n->q.val2)
         mask = mask | 32;
-    if (n->sym)
+    if ((n->op == N_VAR || n->op == N_FUNC) && n->p.sym)
         mask = mask | 64;
     irb(n->op);
     irtype(n->type);
@@ -122,29 +122,29 @@ static void irnode(struct Node *n)
     if (mask & 16)
         irw(n->val);
     if (mask & 32)
-        irw(n->val2);
+        irw(n->q.val2);
     if (mask & 64) {
-        irb(n->sym->kind);
-        irw(n->sym->offset);
-        if (n->sym->kind == S_FUNC)
-            irlname(n->sym);
+        irb(n->p.sym->kind);
+        irw(n->p.sym->offset);
+        if (n->p.sym->kind == S_FUNC)
+            irlname(n->p.sym);
         else
-            irs(n->sym->offset < 0 ? n->sym->name : "");   /* globals by name */
+            irs(n->p.sym->offset < 0 ? n->p.sym->name : "");   /* globals by name */
     }
     if (n->op == N_STR || n->op == N_HEAPSTR) {
-        irw(n->slen);
-        for (i = 0; i < n->slen; i++)
-            irb(n->str[i]);
+        irw(n->q.slen);
+        for (i = 0; i < n->q.slen; i++)
+            irb(n->p.str[i]);
     } else if (n->op == N_FNUM) {
         for (i = 0; i < n->type->size; i++)     /* 4, or 12 for a double */
-            irb(n->fimg[i]);
+            irb(n->q.fimg[i]);
     }
     if (mask & 1)
         irnode(n->a);
     if (mask & 2)
         irnode(n->b);
     if (mask & 4)
-        irnode(n->c);
+        irnode(n->p.c);
     if (mask & 8)
         irnode(n->next);
 }
@@ -414,30 +414,30 @@ static struct Node *rnode(void)
     if (mask & 16)
         n->val = rw();
     if (mask & 32)
-        n->val2 = rw();
+        n->q.val2 = rw();
     if (mask & 64) {
         s = (struct Sym *)xalloc(sizeof(struct Sym));
         s->kind = rb();
         s->offset = rw();
         s->name = rstr();
-        n->sym = s;
+        n->p.sym = s;
     }
     if (n->op == N_STR || n->op == N_HEAPSTR) {
-        n->slen = rw();
-        n->str = xalloc(n->slen + 1);
-        for (i = 0; i < n->slen; i++)
-            n->str[i] = rb();
+        n->q.slen = rw();
+        n->p.str = xalloc(n->q.slen + 1);
+        for (i = 0; i < n->q.slen; i++)
+            n->p.str[i] = rb();
     } else if (n->op == N_FNUM) {
-        n->fimg = (unsigned char *)xalloc(n->type->size);
+        n->q.fimg = (unsigned char *)xalloc(n->type->size);
         for (i = 0; i < n->type->size; i++)
-            n->fimg[i] = rb();
+            n->q.fimg[i] = rb();
     }
     if (mask & 1)
         n->a = rnode();
     if (mask & 2)
         n->b = rnode();
     if (mask & 4)
-        n->c = rnode();
+        n->p.c = rnode();
     if (mask & 8)
         n->next = rnode();
     return n;

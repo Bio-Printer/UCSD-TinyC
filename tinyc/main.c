@@ -92,14 +92,14 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
         return 0;
     passend();
     say("  Compiling ");
-    passbegin(2000);
+    passbegin(1600);
     if (!compile(tmpi, tmpr, mod) || !compileend())
         return 0;
     passend();
     say("Generating code ");
     say(obj);
     say(" ");
-    passbegin(2400);
+    passbegin(1900);
     if (!gencode(tmpr, obj))
         return 0;
     passend();
