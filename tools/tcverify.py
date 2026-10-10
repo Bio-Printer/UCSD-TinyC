@@ -34,26 +34,28 @@ def main(a):
     mode = a[0] if a else 'native'
     ensure_setup()
     d = tempfile.mkdtemp(prefix='tcverify_')
-    with zipfile.ZipFile(os.path.join(ROOT, 'verify', 'TCVERIFY.zip')) as z:
-        z.extract('TCVERIFY.BLK', d)
-    spare = os.path.join(d, 'SPARE.BLK')
-    ucsdvol.main(['new', spare, 'SPARE', '400'])
+    for v in ('TINY-C', 'TCSRC', 'TCTESTS', 'TCEXTRA', 'TCVERIF', 'TCEXPCT'):
+        shutil.copy(os.path.join(BUILD if v in ('TINY-C', 'TCSRC', 'TCTESTS', 'TCEXTRA') else os.path.join(ROOT, 'build'), v + '.BLK'), d)
     out = os.path.join(d, 'out')
     script = os.path.join(ROOT, 'verify', 'TCVERIFY.SCRIPT')
     if mode == 'z80':
         script = z80script(script, os.path.join(d, 'TCVERIFY.SCRIPT'))
-    env = dict(os.environ)
+    env = dict(os.environ, VERIFY_UNIT10=os.path.join(d, 'TCTESTS.BLK'), VERIFY_UNIT11=os.path.join(d, 'TCEXTRA.BLK'),
+               VERIFY_UNIT12=os.path.join(d, 'TCVERIF.BLK'), VERIFY_UNIT13=os.path.join(d, 'TCEXPCT.BLK'))
     if mode == 'native' and env.get('VERIFY_RECLAIM', '1') == '1':
         env['VERIFY_RECLAIM'] = '1'
     else:
         env.pop('VERIFY_RECLAIM', None)
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
-                        os.path.join(d, 'TCVERIFY.BLK'), spare, script,
+                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), script,
                         mode, out, '', os.environ.get('TCV_MAX', '7200')], capture_output=True, text=True, env=env)
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout
     tail = [l for l in r.stderr.split('\n') if l.strip()][-3:]
     print('\n'.join(tail))
     print(r.stdout.strip()[-800:])
+    if ok:                              # the results are on the volumes: CC2.CODE is the compiler's own work
+        v = ucsdvol.Volume(os.path.join(out, 'VERIFY_SOURCE.BLK')) if os.path.exists(os.path.join(out, 'VERIFY_SOURCE.BLK')) else ucsdvol.Volume(os.path.join(d, 'TINY-C.BLK'))
+        print('TINY-C: CC2.CODE %s (the volumes are in %s)' % ('there' if v.find('CC2.CODE') else 'not found', d))
     print('Tiny-C Verify (%s): %s   (work: %s)' % (mode, 'PASSED' if ok else 'FAILED', d))
     return 0 if ok else 1
 

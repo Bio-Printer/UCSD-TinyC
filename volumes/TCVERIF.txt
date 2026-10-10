@@ -1,0 +1,9 @@
+TCVERIF:  5 files  (a UCSD directory holds 77)
+
+  FILE            BLOCKS  WHAT
+
+  README.TEXT          4  what is on this volume
+  VERIFY.SCRIPT       48  the Tiny-C Verify script
+  RMFILES.C            4  removes the files named, one per line
+  RMFILES.CODE        13    (ready to run)
+  FILES.TEXT           4  this list

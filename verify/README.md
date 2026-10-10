@@ -5,7 +5,7 @@ TYPE) that checks Tiny-C on the P-System itself:
 
 1. every test program in `tests/` is compiled with CC and run; each
    line of its expected output (`tests/NAME.expect`) must appear, in order
-2. the compiler compiles its own 14 modules and links them to CC2.CODE;
+2. the compiler rebuilds itself (`@BUILD`) to CC2.CODE;
    CMPCODE (a Tiny-C program, `cmpcode.c`) must report it IDENTICAL to
    CC.CODE (block 0's program-name bytes aside)
 3. CC2 compiles and runs HANOI
@@ -13,16 +13,22 @@ TYPE) that checks Tiny-C on the P-System itself:
 If an expected text never appears, the run stops at the next prompt with
 "expected ... but the system is waiting for input", like the P-code Verify.
 
-| File | |
-|---|---|
-| `TCVERIFY.SCRIPT` | the script (generated) |
-| `TCVERIFY.zip` | `TCVERIFY.BLK`, volume TINYCV:, which goes on unit #5 |
-| `cmpcode.c` | the byte-compare program (on the volume as CMPCODE.CODE) |
-| `rmfiles.c` | removes each test's .OBJ and .CODE after it runs (a UCSD directory holds 77 files) |
+The content is on two volumes that go with the system's own (nothing is
+copied; `tools/mkverify.py` generates both and the script):
 
-Both files are generated from the current sources by `tools/mkverify.py`.
-On Linux, `tools/tcverify.py [native|z80]` runs the pack through
-`build/run_verify`, the same engine and runner the GUI uses.
+| Volume / file | |
+|---|---|
+| `TCVERIF:` `VERIFY.SCRIPT` | the script (also `verify/TCVERIFY.SCRIPT`) |
+| `TCVERIF:` `RMFILES.C/.CODE` | removes each test's NAME.OBJ (a UCSD directory holds 77 files) |
+| `TCEXPCT:` `NAME.EXPECT` | what every test prints |
+| `cmpcode.c` | the byte-compare program (CMPCODE on TCEXTRA:) |
+
+Units: #5 TINY-C:, #9 TCSRC:, #10 TCTESTS:, #11 TCEXTRA:, #12 TCVERIF:,
+#13 TCEXPCT:.  Each test compiles where its source is (TCTESTS: or TCEXTRA:);
+the compiler rebuilds itself with `@BUILD` on TCSRC: (CC2.CODE on TINY-C:).
+The results are on the volumes, which the host keeps.
+On Linux, `tools/tcverify.py [native|z80]` runs it through `build/run_verify`,
+the same engine and runner the GUI uses.
 
 ## Requirements
 

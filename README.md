@@ -20,7 +20,7 @@ Start here when picking the project up in a new session.
 | `volumes/*---8_byte_floats.BLK` | the user's own working copies of the volumes: **frozen** -- no tool writes them, and changes to the generated volumes are not copied into them any more (only on request) |
 | `ports/vi/` | **vi** (the BusyBox-derived tiny vi) ported to the P-System: modules `vi.h`, `vimain.c`, `viscreen.c`, `vitext.c`, `vicolon.c`, `vicmd.c`, `vipage.c` (still build on Linux) + `viucsd.c` (the P-System side); work in progress, see its README |
 | `ports/grep/` | **grep.c**: `GREP [-i] PATTERN FILES` from the shell -- a regular expression (`*` any characters as in file names, `. [] + ? ^ $`), case ignored unless `-i`, `VOL:NAME:LINE: text`; FILES with wildcards on every disk unless a volume is named (TOOLS:GREP.CODE) |
-| `verify/` | Tiny-C Verify pack: `TCVERIFY.SCRIPT` + `TCVERIFY.zip`, `cmpcode.c`, `rmfiles.c`, README |
+| `verify/` | Tiny-C Verify: `TCVERIFY.SCRIPT`, `cmpcode.c`, `rmfiles.c`, README; the content is on the volumes **TCVERIF.zip** (script, RMFILES) and **TCEXPCT.zip** (expected output of every test) in `volumes/` |
 | `repro/` | engine bug repros (REAL compare, DEEPCXP: both fixed in the engine) |
 | `tools/` | host tools (below) |
 | `UCSD-Pascal---P-Machine_work-v1.88.zip` | the emulator (engine, Linux runner `verify/run_verify.cpp`), with the double CSPs (NativeDouble.inc) |
