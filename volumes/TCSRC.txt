@@ -5,22 +5,22 @@ TCSRC:  36 files  (a UCSD directory holds 77)
   README.TEXT          6  how to rebuild Tiny-C
   BUILD.TEXT           4  X TINY-C:CC, @BUILD: rebuilds the compiler -> TINY-C:CC2.CODE
   LIBS.TEXT            4  X TINY-C:CC, @LIBS: rebuilds the library -> TINY-C:TCLIB2.OBJ
-  MAIN.C              30  compiler: the driver: commands, @FILE, the passes
+  MAIN.C              32  compiler: the driver: commands, @FILE, the passes
   UTIL.C              16  compiler: messages, output helpers, memory pools
   TYPES.C              6  compiler: type predicates
-  PP.C                62  compiler: pass 1: the preprocessor
+  PP.C                66  compiler: pass 1: the preprocessor
   LEX.C               36  compiler: pass 2: the tokenizer
   PSYM.C              20  compiler: parser: types and symbols
-  EXPR.C              62  compiler: parser: expressions
+  EXPR.C              64  compiler: parser: expressions
   DECL.C              22  compiler: parser: declarations and initializers
-  STMT.C              30  compiler: parser: statements, functions, declarations
+  STMT.C              34  compiler: parser: statements, functions, declarations
   COMPILE.C           10  compiler: parser: the pass, helpers' and #pragma declarations
-  IR.C                26  compiler: the intermediate file between parser and code generator
+  IR.C                28  compiler: the intermediate file between parser and code generator
   GEN.C               24  compiler: pass 3: P-code generation: emitter, object files
   GENX.C              48  compiler: pass 3: P-code for expressions, calls, switch
   LINK.C              46  compiler: the linker: object files -> code file
   TC.H                28  compiler: shared declarations (every module)
-  PARSE.H             12  compiler: the parser modules' shared declarations
+  PARSE.H             14  compiler: the parser modules' shared declarations
   GEN.H                8  compiler: gen.c and genx.c's shared declarations
   ASSERT.C             4  library: <assert.h>
   CONIO.C              4  library: <conio.h>

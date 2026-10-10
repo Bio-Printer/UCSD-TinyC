@@ -132,11 +132,13 @@ docs/DESIGN.md for how.
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code
   mode without reclaim).  **A total rebuild started the way a user does it
   -- the shell (`$` at the Command: prompt), then `cc @all`: the compiler,
-  the library, vi and grep -- has 2,887 words free at the least** (was 589;
-  `tools/shellalltest.py`): compiling vi's VITEXT.C, then VIPAGE.C 2,915 and
-  VICOLON.C 2,954, linking CC2.CODE 2,974, preprocessing the vi modules
-  3,322, the compiler's own LINK.C 3,494, EXPR.C and PP.C 3,545, the
-  library's STDIO.C 3,836.  (From X(ecute, not the shell, 92 words more.)
+  the library, vi and grep -- has 2,954 words free at the least** (was 589;
+  `tools/shellalltest.py`): compiling vi's VICOLON.C, then linking CC2.CODE
+  2,974, compiling VITEXT.C 2,981, VIPAGE.C 3,046 and VICMD.C 3,097,
+  preprocessing the vi modules 3,322, the compiler's own LINK.C 3,494, EXPR.C
+  and PP.C 3,545, the library's STDIO.C 3,836.  (From X(ecute, not the
+  shell, 92 words more.  `PSYS_MODE=z80 tools/shellalltest.py`, 15 minutes,
+  gives the same figures in Z80 mode itself.)
   Before that work, every @BUILD and @LIBS command from X(ecute had 2,713
   words (STDIO.C), `cc @build @libs` from the shell 2,573; the tools were
   not counted, and they were the worst: VICMD.C 589.  The Filer, setting the
@@ -183,6 +185,11 @@ docs/DESIGN.md for how.
     accessor macros); `findfile`/`fileunit` read a directory block by block
     (2 KB less stack at an #include); the symbol hash tables are 32 entries
     (were 128).
+  - nothing a program is built from changed: `compileend` writes a
+    module's variables in the order the old 128-entry symbol table gave
+    (any HSIZE dividing 128), so TCLIB.OBJ and every code file of TCEXTRA,
+    TCTESTS and BIGGY are byte for byte the ones shipped before; only
+    CC.CODE, VI.CODE and the sources (TCSRC, TOOLSRC) are new.
   - vi.h includes `vipage.h` and `limits.h` before its 150 macros: opening
     a file needs 1,000 words of the OS's stack, and the preprocessor's least
     free memory was there.
