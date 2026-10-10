@@ -1,8 +1,12 @@
 /* expr.c -- the parser: expressions. */
 #include "tc.h"
 #include "parse.h"
-#pragma segment PARSE
+#pragma segment REALLIT
 
+/* The doubles' code and what only some programs use (dmathcsp, numtext,
+   intrinsic) is in the segment of the real constants: a segment is in
+   memory as long as one of its functions is running, and PARSE is in
+   memory all the time. */
 /* ---- doubles (8 bytes: IEEE binary64) ---- */
 
 /* a double constant's image from its text ("123e-2") */
@@ -84,6 +88,8 @@ static struct Node *dmathcall(struct Node *c, int k)
     c->val = I_CSPD;
     return c;
 }
+
+#pragma segment PARSE
 
 struct Node *mknode(int op, struct Type *t, struct Node *a, struct Node *b)
 {
@@ -239,6 +245,8 @@ struct Node *call1(char *name, struct Node *a, struct Node *b)
     return n;
 }
 
+#pragma segment REALLIT
+
 /* an integer constant (int, unsigned, long, unsigned long) as decimal text
    in buf[12]: 32-bit division by 10 done a byte at a time */
 static char *numtext(struct Node *n, char *buf)
@@ -283,6 +291,7 @@ static char *numtext(struct Node *n, char *buf)
     return buf + i;
 }
 
+#pragma segment PARSE
 struct Node *cast(struct Node *n, struct Type *t);
 
 struct Node *helpercall(char *name, struct Node *a, struct Node *b)

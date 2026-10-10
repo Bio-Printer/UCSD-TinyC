@@ -96,8 +96,10 @@ int allocglobal(struct Type *t);
 int alloclocal(struct Type *t);
 void expect(int t, char *what);
 int istypename(void);
+#pragma segment REALLIT
 void dblimage(char *text, unsigned char *img);
 void real2dbl(unsigned char *f, unsigned char *img);
+#pragma segment PARSE
 struct Node *mknode(int op, struct Type *t, struct Node *a, struct Node *b);
 struct Node *mknum(int v, struct Type *t);
 int isconst(struct Node *n);
