@@ -223,6 +223,7 @@ VI_MODULES = ['ports/vi/%s.c' % m for m in
 TOOLS = [
     ('VI', VI_MODULES, ['ports/vi/vi.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
     ('GREP', ['ports/grep/grep.c'], [], 'grep: GREP [-i] PATTERN FILES from the shell'),
+    ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
 ]
 
 README_TOOLS = """TOOLS                                               volume TOOLS:
@@ -256,6 +257,13 @@ GREP    GREP [-i] PATTERN [VOL: or #5:]FILES ...  from the shell: the
         ^ $ the line's start and end, \c c itself (\*: a star), \s a
         blank (the shell splits words at blanks).
         GREP printf *.C, GREP -i ^int #9:*.H, GREP vi*pageup *.C
+
+BINDERC BINDERC [FILE]  (or X(ecute TOOLS:BINDERC): the Pascal System's
+        Binder, BINDER.CODE, rewritten in Tiny-C (its Pascal source is lost;
+        it makes the same SYSTEM.PASCAL).  Puts the GOTOXY(X,Y: INTEGER)
+        procedure of your own, the first procedure of the code file FILE
+        (name as typed, else with .CODE), into SYSTEM.PASCAL of the prefix
+        volume, which is replaced.  Run SETUP too.  Back up the boot disk.
 
 FILES.TEXT lists every file on this volume.
 """

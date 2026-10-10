@@ -1,8 +1,9 @@
-TOOLS:  4 files  (a UCSD directory holds 77)
+TOOLS:  5 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
-  README.TEXT          6  what is on this volume
+  README.TEXT          8  what is on this volume
   VI.CODE             72  vi, the screen editor: VI NAME.C from the shell
   GREP.CODE           17  grep: GREP [-i] PATTERN FILES from the shell
+  BINDERC.CODE        20  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
   FILES.TEXT           4  this list
