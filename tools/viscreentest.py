@@ -133,7 +133,7 @@ def session(exe, work, extra=None):
     drain(0.4)
     def snap():
         s = t.snap()
-        s[0][ROWS - 1] = re.sub(r' w\d+\+\d+ b\d+/\d+ a\d+/\d+( L)?', '', s[0][ROWS - 1])  # (paging: where the window is)
+        s[0][ROWS - 1] = re.sub(r' +w\d+\+\d+ b\d+/\d+ a\d+/\d+( L)?', '', s[0][ROWS - 1])  # (paging: where the window is)
         return s
     shots = [snap()]
     shots[0][0][ROWS - 1] = re.sub(r'\d+/\d+ \d+%', 'N/N P%', shots[0][0][ROWS - 1])     # (paging: the lines loaded so far)

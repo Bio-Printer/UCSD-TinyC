@@ -297,12 +297,14 @@ void cookmode(void)
 
 /* true if a key comes within tics/100 seconds: the system clock (1/60 s)
    when there is one, else a fixed number of polls */
+static int pushed = -1;	/* a key read ahead while adding up wheel notches */
+
 int awaitInput(int tics)
 {
 	unsigned start;
 	long polls;
 	fflush(stdout);
-	if (kbhit())
+	if (pushed >= 0 || kbhit())
 		return 1;
 	if (tics <= 0)
 		return 0;
@@ -331,18 +333,35 @@ char readit(void)
 		memmove(readbuffer, readbuffer + 1, chars_to_parse);
 		return c;
 	}
-	PG_IDLE();
-	fflush(stdout);
-	c = getch();
-	/* the mouse wheel (emulator 2.01): 3 lines a notch, as ^Y / ^E, in
-	   command mode only (typing, or a : or / line, ignores it) */
-	while ((c == KEY_WHEELUP || c == KEY_WHEELDN) && cmd_mode != CMODE_COMMAND)
+	if (pushed >= 0) {
+		c = pushed;
+		pushed = -1;
+	} else {
+		PG_IDLE();
+		fflush(stdout);
 		c = getch();
-	if (c == KEY_WHEELUP || c == KEY_WHEELDN) {
-		c = c == KEY_WHEELUP ? 25 : 5;
-		readbuffer[0] = readbuffer[1] = c;
-		chars_to_parse = 2;
-		return c;
+		/* the mouse wheel (emulator 2.01): 3 lines a notch, in command mode
+		   only (typing, or a : or / line, ignores it).  The notches that are
+		   there (or come within a tick) are added up and made one scroll,
+		   so the screen is painted once.  Up and down cancel. */
+		for (;;) {
+			if (c == KEY_WHEELUP || c == KEY_WHEELDN) {
+				if (cmd_mode == CMODE_COMMAND)
+					wheel_n += c == KEY_WHEELUP ? 3 : -3;
+				if (!wheel_n || awaitInput(1)) {
+					c = getch();
+					continue;
+				}
+			} else if (wheel_n)
+				pushed = c;	// (a key behind the notches)
+			break;
+		}
+		if (wheel_n) {
+			c = wheel_n > 0 ? 25 : 5;
+			if (wheel_n < 0)
+				wheel_n = -wheel_n;
+			return c;
+		}
 	}
 	ci = &SYSCOM->crtinfo;
 	if (c == ci->up)

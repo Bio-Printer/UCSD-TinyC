@@ -208,7 +208,7 @@ down has no such code, so it redraws the rows. (`tools/viscreentest.py` runs it 
 
 ## Status line: where the window is (paged build)
 
-After the usual status text vi shows `w<a>+<b> b<L>/<C> a<L>/<C> [L]`: `a` bytes of the
+At the far right of the status line vi shows `w<a>+<b> b<L>/<C> a<L>/<C> [L]`: `a` bytes of the
 in-memory window are above the cursor's line start and `b` below, `b..` the lines/chunks
 parked above the window in VI.SWAP, `a..` those below it (not yet loaded ones are not
 counted), `L` while the file is still loading.
@@ -221,3 +221,9 @@ console scrolls the rows that stay -- from whatever state the screen is in, also
 short by a key (before, a repaint interrupted by the next `j` lost the screen's state and
 the following ones repainted every row).  Keys typed ahead are executed first and the
 screen is painted once, by one scroll, when vi has caught up.
+
+## Mouse wheel
+
+Notches that are already waiting (or come within a tick) are added up (3 lines each, up and
+down cancel) and make one scroll of that many lines, so the screen is painted once.  A key
+read ahead meanwhile is kept and handled next.

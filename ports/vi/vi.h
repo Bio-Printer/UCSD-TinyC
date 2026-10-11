@@ -525,6 +525,7 @@ int awaitInput(int tics);
 extern int scroll_lf;
 extern int scroll_ok;	// the console scrolls on request (ESC [ n S, ESC [ n T)
 void scroll_rows(int nrows, int n);	// the first rows screen rows up (n > 0) or down (n < 0) n lines
+extern int wheel_n;	// lines the mouse wheel scrolled, as one ^E or ^Y (0: a typed key)
 extern int scr_gen;	// +1 whenever the text or the screen image changes (refresh skips an unchanged screen)
 char readit(void);
 char get_one_char(void);

@@ -611,7 +611,8 @@ again:
 		dot_scroll((rows - 2) / 2, 1);
 		break;
 	case 5:			// ctrl-E  scroll down one line
-		dot_scroll(1, 1);
+		dot_scroll(wheel_n ? wheel_n : 1, 1);
+		wheel_n = 0;
 		break;
 	case 6:			// ctrl-F  scroll down full screen
 	case VI_K_PAGEDOWN:	// Cursor Key Page Down
@@ -649,7 +650,8 @@ repeat:
 		dot_scroll((rows - 2) / 2, -1);
 		break;
 	case 25:			// ctrl-Y  scroll up one line
-		dot_scroll(1, -1);
+		dot_scroll(wheel_n ? wheel_n : 1, -1);
+		wheel_n = 0;
 		break;
 	case 27:			// esc
 		if (cmd_mode == CMODE_COMMAND)

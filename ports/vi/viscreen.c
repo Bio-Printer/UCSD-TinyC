@@ -26,6 +26,7 @@ static const char CMdown[] ALIGN1 = "\n";
 
 
 int scr_gen;		// +1 whenever the text or the screen image changes
+int wheel_n;		// lines the mouse wheel scrolled, as one ^E or ^Y (0: a typed key)
 int scroll_ok;		// the console scrolls on request (ESC [ n S, ESC [ n T)
 int scroll_lf = 1;	// else the screen scrolls up by line feeds at its last row
 static int scr_top0;	// the top line's number, during refresh
@@ -434,6 +435,10 @@ int format_edit_status(const char *fmt)
 #define tot format_edit_status__tot
 
 	int cur, percent, ret, trunc_at;
+#if ENABLE_FEATURE_VI_PAGING
+	char sfx[40];
+	int sl = 0;
+#endif
 
 	// file_modified is now a counter rather than a flag.  this
 	// helps reduce the amount of line counting we need to do.
@@ -469,6 +474,20 @@ int format_edit_status(const char *fmt)
 	trunc_at = columns < STATUS_BUFFER_LEN-1 ?
 		columns : STATUS_BUFFER_LEN-1;
 
+#if ENABLE_FEATURE_VI_PAGING
+	// at the far right: where the cursor is in the window, and the window in
+	// the file: w<bytes above dot>+<bytes below dot in window>  b<lines>/<chunks>
+	// before  a<lines>/<chunks> after  L: still loading
+	sfx[0] = 0;
+	if (pg_f && !(cmd_mode & CMODE_LINE_INPUT)) {
+		sl = snprintf(sfx, sizeof(sfx), "w%d+%d b%d/%d a%d/%d%s", (int)(dot - text),
+			(int)(end - dot), pg_lb, pg_nb, pg_la, pg_na, pg_rf ? " L" : "");
+		if (sl > 0 && sl + 3 < trunc_at)
+			trunc_at -= sl + 2;	// (the last column stays empty: the console would scroll)
+		else
+			sfx[0] = 0;
+	}
+#endif
 	ret = snprintf(status_buffer, trunc_at+1, fmt,
 		cmd_mode_indicator[cmd_mode & CMODES],
 		(current_filename != NULL ? current_filename : "No file"),
@@ -478,19 +497,17 @@ int format_edit_status(const char *fmt)
 		(file_modified ? " [Modified]" : ""),
 		cur, tot, percent, offset+ccol+1, cmdcnt);
 
+	if (ret < 0 || ret > trunc_at)
+		ret = trunc_at;  /* had to truncate */
 #if ENABLE_FEATURE_VI_PAGING
-	// where the cursor is in the window, and the window in the file:
-	// w<bytes above dot>+<bytes below dot in window>  b<lines>/<chunks> before
-	// a<lines>/<chunks> after  L: still loading
-	if (pg_f && ret >= 0 && ret < trunc_at && !(cmd_mode & CMODE_LINE_INPUT))
-		ret += snprintf(status_buffer + ret, trunc_at + 1 - ret,
-			" w%d+%d b%d/%d a%d/%d%s", (int)(dot - text), (int)(end - dot),
-			pg_lb, pg_nb, pg_la, pg_na, pg_rf ? " L" : "");
+	if (sfx[0]) {
+		sl = strlen(sfx);
+		memset(status_buffer + ret, ' ', trunc_at + 1 - ret);	// trunc_at + 1: the gap
+		strcpy(status_buffer + trunc_at + 1, sfx);
+		ret = trunc_at + 1 + sl;
+	}
 #endif
-	if (ret >= 0 && ret < trunc_at)
-		return ret;  /* it all fit */
-
-	return trunc_at;  /* had to truncate */
+	return ret;
 #undef tot
 }
 
