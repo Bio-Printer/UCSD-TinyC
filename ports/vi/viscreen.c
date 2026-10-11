@@ -28,6 +28,7 @@ static const char CMdown[] ALIGN1 = "\n";
 int scr_gen;		// +1 whenever the text or the screen image changes
 int scroll_ok;		// the console scrolls on request (ESC [ n S, ESC [ n T)
 int scroll_lf = 1;	// else the screen scrolls up by line feeds at its last row
+static int scr_topabs;	// its line number
 static char *scr_top;	// screenbegin when all rows were last compared (NULL: not known)
 static int scr_key[4];	// what the rows depend on, now
 static int scr_keyed_for[4];	// ... when they were last all compared
@@ -581,23 +582,13 @@ static char *skip_line(char *tp)
 	return tp;
 }
 
-/* the lines the top line moved since all rows were compared (+ down), 0 if
-   it is not a line start or farther than the screen is high */
+/* the lines the top line has moved since all rows were last compared (+ down;
+   by line numbers: the window may have moved in the file, or text been loaded);
+   0 if it is farther than the screen is high */
 static int top_moved(void)
 {
-	char *a = scr_top, *b = screenbegin, *t;
-	int n = 0, s = 1;
-	if (b < a) {
-		t = a;
-		a = b;
-		b = t;
-		s = -1;
-	}
-	while (a < b && n < rows - 1) {
-		a = next_line(a);
-		n++;
-	}
-	return a == b ? s * n : 0;
+	int n = ABSLINE(screenbegin) - scr_topabs;
+	return n > 1 - (int)rows && n < (int)rows - 1 ? n : 0;
 }
 
 //----- Refresh the changed screen lines -----------------------
@@ -640,11 +631,7 @@ void refresh(void)
 	if ((scroll_ok || scroll_lf) && !same && scr_top && offset == old_offset) {
 		int n, m, R = rows - 1;
 		unsigned *rs = (unsigned *)screen;
-		n = scr_key[1];
-		scr_key[1] = scr_keyed_for[1];
-		m = memcmp(scr_key, scr_keyed_for, sizeof(scr_key));
-		scr_key[1] = n;
-		n = m ? 0 : top_moved();
+		n = scr_key[0] == scr_keyed_for[0] ? top_moved() : 0;
 		if (n < 0 && !scroll_ok)
 			n = 0;			// (line feeds scroll up only)
 		if (n) {
@@ -750,6 +737,8 @@ void refresh(void)
 	if (li >= hi) {	// all rows compared (not cut short by a key)
 		memcpy(scr_keyed_for, scr_key, sizeof(scr_key));
 		scr_top = screenbegin;
+		if (scroll_ok || scroll_lf)
+			scr_topabs = ABSLINE(screenbegin);
 	} else
 		scr_top = NULL;
 	old_offset = offset;
