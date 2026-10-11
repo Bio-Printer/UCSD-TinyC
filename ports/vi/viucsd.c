@@ -180,7 +180,7 @@ int vi_printf(const char *fmt, ...)
 	return fputs(tmp, stdout);
 }
 
-/* getopt for the options vi knows: -R, -c CMD, -H */
+/* getopt for the options vi knows: -R, -c CMD */
 static int optind = 1;
 static char *optarg;
 int getopt(int argc, char **argv, const char *opts)
@@ -213,26 +213,6 @@ int getopt(int argc, char **argv, const char *opts)
 		sp = 1;
 	}
 	return c;
-}
-
-/* the Linux version is one string: too long for the P-machine (255 bytes) */
-void show_help(void)
-{
-	static const char *help[] = {
-		"These features are available:",
-		"\tPattern searches with / and ?",
-		"\tLast command repeat with \'.\'",
-		"\tLine marking with 'x",
-		"\tNamed buffers with \"x",
-		"\tReadonly if vi is called as \"view\"",
-		"\tReadonly with -R command line arg",
-		"\tSome colon mode commands with \':\'",
-		"\tSettable options with \":set\"",
-		0
-	};
-	int i;
-	for (i = 0; help[i]; i++)
-		puts(help[i]);
 }
 
 /* ---- the terminal and the files ---- */

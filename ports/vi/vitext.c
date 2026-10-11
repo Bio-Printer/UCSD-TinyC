@@ -719,44 +719,6 @@ char *yank_delete(char *start, char *stop, int dist, int yf)
 	return p;
 }
 
-#ifndef __UCSD__
-void show_help(void)
-{
-	puts("These features are available:"
-#if ENABLE_FEATURE_VI_SEARCH
-	"\n\tPattern searches with / and ?"
-#endif
-#if ENABLE_FEATURE_VI_DOT_CMD
-	"\n\tLast command repeat with \'.\'"
-#endif
-#if ENABLE_FEATURE_VI_YANKMARK
-	"\n\tLine marking with 'x"
-	"\n\tNamed buffers with \"x"
-#endif
-#if ENABLE_FEATURE_VI_READONLY
-#ifdef NO_SUCH_APPLET_YET
-	"\n\tReadonly if vi is called as \"view\""
-#endif
-	"\n\tReadonly with -R command line arg"
-#endif
-#if ENABLE_FEATURE_VI_SET
-	"\n\tSome colon mode commands with \':\'"
-#endif
-#if ENABLE_FEATURE_VI_SETOPTS
-	"\n\tSettable options with \":set\""
-#endif
-#if ENABLE_FEATURE_VI_USE_SIGNALS
-	"\n\tSignal catching- ^C"
-	"\n\tJob suspend and resume with ^Z"
-#endif
-	"\n\tLINES and COLUMNS env vars determine window size"
-#if ENABLE_FEATURE_VI_WIN_RESIZE
-	"\n\tAdapt to window re-sizes (if LINES and COLUMNS env vars unset!)"
-#endif
-	);
-}
-#endif
-
 #if ENABLE_FEATURE_VI_DOT_CMD
 void start_new_cmd_q(char c)
 {

@@ -338,7 +338,7 @@ int vi_main(int argc, char **argv)
 			initial_cmds[0] = xstrndup(p, MAX_INPUT_LEN);
 	}
 #endif
-	while ((c = getopt(argc, argv, "hCRH-" USE_FEATURE_VI_COLON("c:"))) != -1) {
+	while ((c = getopt(argc, argv, "hCR" USE_FEATURE_VI_COLON("c:"))) != -1) {
 		switch (c) {
 #if ENABLE_FEATURE_VI_READONLY
 		case 'R':		// Read-only flag
@@ -351,10 +351,6 @@ int vi_main(int argc, char **argv)
 				initial_cmds[initial_cmds[0] != 0] = xstrndup(optarg, MAX_INPUT_LEN);
 			break;
 #endif
-		case 'H':
-		case '-':
-			show_help();
-			/* fall through */
 		default:
 			bb_show_usage();
 			return 1;

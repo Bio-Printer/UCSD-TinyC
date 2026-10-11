@@ -469,14 +469,6 @@ void colon1(char *buf)
 			free(current_filename);
 			current_filename = xstrdup(args);
 		}
-	} else if (strncasecmp(cmd, "features", i) == 0) {	// what features are available
-		// print out values of all features
-		place_cursor(rows - 1, 0, FALSE);	// go to Status line, bottom of screen
-		clear_to_eol();	// clear the line
-		cookmode();
-		show_help();
-		rawmode();
-		Hit_Return();
 	} else if (strncasecmp(cmd, "list", i) == 0) {	// literal print line
 		if (b < 0) {	// no addr given- use defaults
 			q = begin_line(dot);	// assume .,. for the range

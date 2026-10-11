@@ -46,10 +46,9 @@ UCSD text files); from X(ecute) it asks for the file.
   `do_cmd2()`, and `colon()`'s `:s` and `:set` are `colon_s()` and `colon_set()`.
   Plain C, so Linux uses them too; the same 60 commands give the same file on Linux,
   in P-Code mode and in Z80 mode.
-* Ten routines have P-System versions in `viucsd.c` (the originals stay for Linux):
+* Nine routines have P-System versions in `viucsd.c` (the originals stay for Linux):
   `rawmode`, `cookmode`, `awaitInput`, `readit`, `file_size`, `file_insert`,
-  `file_write`, `place_cursor`, `clear_to_eol`, `clear_to_eos`, and `show_help`
-  (its one string is longer than the P-machine's 255-byte constants).
+  `file_write`, `place_cursor`, `clear_to_eol` and `clear_to_eos`.
 * Screen size from SYSCOM's CRTINFO; standout (bold status line) with the console's
   reverse/normal video codes 15 and 14 instead of ANSI escapes.
 * The text buffer keeps 1 KB of free room instead of 10 KB (`TEXT_SLACK`).

@@ -578,7 +578,6 @@ char *find_pair(char *p, const char c);
 char *text_hole_make(char *p, int size);
 char *text_hole_delete(char *p, char *q);
 char *yank_delete(char *start, char *stop, int dist, int yf);
-void show_help(void);
 void start_new_cmd_q(char c);
 void end_cmd_q(void);
 char *string_insert(char *p, char *s);
