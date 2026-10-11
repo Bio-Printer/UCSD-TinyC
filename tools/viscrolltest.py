@@ -63,10 +63,19 @@ def main():
     ok1, a, ta = run(new, work, vitest.BIG, True)
     ok2, b, tb = run(new, work, vitest.BIG, False)
     print('old emulator: %d screens, %s; new emulator: %d screens, %s' % (len(a), ta, len(b), tb))
-    bad = [i for i in range(min(len(a), len(b))) if a[i].split('\n', 1)[1] != b[i].split('\n', 1)[1]]
-    for i in bad[:2]:
-        print('screen %d differs (%s)' % (i, a[i].split('\n')[0]))
-    good = ok1 and ok2 and not bad and len(a) == len(b) and len(a) > len(KEYS) // 2 \
+    # (the screens are labelled by the number of keys typed: a screen the run did not see, a key
+    # that came while vi was busy, is left out of both)
+    ka = {x.split('\n')[0].split()[1]: x for x in a}
+    kb = {x.split('\n')[0].split()[1]: x for x in b}
+    common = sorted(set(ka) & set(kb), key=int)
+    bad = [k for k in common if ka[k].split('\n', 1)[1] != kb[k].split('\n', 1)[1]]
+    for k in bad[:2]:
+        print('screen after key %s differs' % k)
+        la, lb = ka[k].split('\n')[1:], kb[k].split('\n')[1:]
+        for y in range(min(len(la), len(lb))):
+            if la[y] != lb[y]:
+                print('  row %2d without: %r\n         with:    %r' % (y, la[y][:100], lb[y][:100]))
+    good = ok1 and ok2 and not bad and len(common) > len(KEYS) // 2 \
         and ta.endswith(': 0') and not tb.endswith(': 0') and tb != '?'
     print('vi scroll test (%s): %s' % (os.environ.get('PSYS_MODE', 'native'), 'PASSED' if good else 'FAILED'))
     return 0 if good else 1
