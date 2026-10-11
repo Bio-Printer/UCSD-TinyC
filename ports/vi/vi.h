@@ -51,6 +51,7 @@
 #include <ctype.h>
 #include <conio.h>
 #define fwrite fwrite_blk	// (the library's fwrite a block at a time: the screen, VI.SWAP)
+#define printf vi_printf	// (the library's printf family is 2.8 KB: viucsd.c has what vi needs)
 #include <psys.h>
 
 #define vi_main			main
@@ -587,6 +588,9 @@ void showmatching(char *p);
 void colon(char *buf);
 void colon1(char *buf);
 void do_cmd(char c);
+#ifndef __UCSD__
+#define vi_vsnprintf vsnprintf
+#endif
 #ifdef __UCSD__
 /* the P-System: viucsd.c */
 char *strchrnul(const char *s, int c);
@@ -594,6 +598,8 @@ void *memrchr(const void *s, int c, size_t n);
 int strncasecmp(const char *a, const char *b, size_t n);
 char *strerror(int e);
 int snprintf(char *buf, size_t n, const char *fmt, ...);
+int vi_printf(const char *fmt, ...);
+int vi_vsnprintf(char *buf, size_t n, const char *fmt, va_list ap);
 int getopt(int argc, char **argv, const char *opts);
 void ucsd_reserve(void);
 void ucsd_unreserve(void);

@@ -195,3 +195,8 @@ Not yet (stage 2): commands over more lines than fit in the window at once (`:%s
 `:1,$d`, `>G`, a big `yy` ...) work a window at a time; for now they are refused.
 `%` finds a matching bracket only within the window. `:r NAME` needs the whole file
 to fit.
+
+vi does not use the library's printf family (2.8 KB of resident code):
+`vi_vsnprintf` in viucsd.c does %s %d %i %u %c %% into a buffer of a given size
+(`printf` is `vi_printf`, `vsprintf` and `sprintf` are bounded), and the 300-byte
+buffer of the old `snprintf` is gone: 1.8 KB more window in Z80 mode (4.3 KB).

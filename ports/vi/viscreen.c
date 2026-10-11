@@ -365,7 +365,7 @@ void status_line_bold(const char *format, ...)
 
 	va_start(args, format);
 	strcpy(status_buffer, SOs);	// Terminal standout mode on
-	vsprintf(status_buffer + sizeof(SOs)-1, format, args);
+	vi_vsnprintf(status_buffer + sizeof(SOs)-1, STATUS_BUFFER_LEN - sizeof(SOs) - sizeof(SOn) + 1, format, args);
 	strcat(status_buffer, SOn);	// Terminal standout mode off
 	va_end(args);
 }
@@ -376,7 +376,7 @@ void status_line(const char *format, ...)
 	va_list args;
 
 	va_start(args, format);
-	vsprintf(status_buffer, format, args);
+	vi_vsnprintf(status_buffer, STATUS_BUFFER_LEN, format, args);
 	va_end(args);
 }
 

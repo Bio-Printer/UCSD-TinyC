@@ -197,7 +197,7 @@ static void colon_set(char *args)
 		if (!showmatch)
 			cursor = stpcopy(cursor,"no");
 		cursor = stpcopy(cursor,"showmatch ");
-		cursor += sprintf(cursor,"tabstop=%d ", tabstop);
+		cursor += snprintf(cursor, 16, "tabstop=%d ", tabstop);
 	}
 }
 #endif

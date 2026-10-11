@@ -104,24 +104,80 @@ char *strerror(int e)
 	return "I/O error";
 }
 
-/* snprintf: format into a buffer big enough for any status line, then cut */
+/* The library's printf family is 2.8 KB of resident code; vi needs %s %d %i %u %c %%
+   and nothing else (no width, no long): this is that, into a buffer of n bytes
+   (cut, always ended); the length it would have had. */
+int vi_vsnprintf(char *buf, size_t n, const char *fmt, va_list ap)
+{
+	size_t len;
+	char num[8];
+	const char *s;
+	unsigned u;
+	int c;
+	int k;
+
+	len = 0;
+	for (; *fmt; fmt++) {
+		s = fmt;
+		k = 1;
+		if (*fmt == '%') {
+			fmt++;
+			c = *fmt;
+			if (c == 's') {
+				s = va_arg(ap, const char *);
+				if (!s)
+					s = "(null)";
+				k = strlen(s);
+			} else if (c == 'd' || c == 'i' || c == 'u') {
+				u = va_arg(ap, unsigned);
+				if (c != 'u' && (int)u < 0) {
+					if (len + 1 < n)
+						buf[len] = '-';
+					len++;
+					u = -u;
+				}
+				s = num + 7;
+				k = 0;
+				do {
+					*--s = '0' + u % 10;
+					u = u / 10;
+					k++;
+				} while (u);
+			} else if (c == 'c') {
+				num[0] = va_arg(ap, int);
+				s = num;
+			}		/* (%%: the % itself, s = fmt) */
+		}
+		while (k-- > 0) {
+			if (len + 1 < n)
+				buf[len] = *s;
+			len++;
+			s++;
+		}
+	}
+	if (n)
+		buf[len + 1 < n ? len : n - 1] = 0;
+	return len;
+}
+
 int snprintf(char *buf, size_t n, const char *fmt, ...)
 {
-	static char tmp[300];
 	va_list ap;
 	int len;
 	va_start(ap, fmt);
-	len = vsprintf(tmp, fmt, ap);
+	len = vi_vsnprintf(buf, n, fmt, ap);
 	va_end(ap);
-	if (n) {
-		if ((size_t)len < n) {
-			memcpy(buf, tmp, len + 1);
-		} else {
-			memcpy(buf, tmp, n - 1);
-			buf[n - 1] = 0;
-		}
-	}
 	return len;
+}
+
+int vi_printf(const char *fmt, ...)
+{
+	char tmp[100];
+	va_list ap;
+	va_start(ap, fmt);
+	vi_vsnprintf(tmp, sizeof(tmp), fmt, ap);
+	va_end(ap);
+	return fputs(tmp, stdout);
 }
 
 /* getopt for the options vi knows: -R, -c CMD, -H */
@@ -327,7 +383,7 @@ int file_size(const char *fn)
 #else
 	if (n > 30000L) {	/* an int holds no more; never edit (and save) part of it */
 		gracefulExit();
-		printf("vi: %s is too big (%ld characters, at most 30000)\n", fn, n);
+		printf("vi: %s is too big (more than 30000 characters)\n", fn);
 		exit(1);
 	}
 	return (int)n;

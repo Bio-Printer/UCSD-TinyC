@@ -751,7 +751,7 @@ void start_new_cmd_q(char c)
 	// get buffer for new cmd
 	// if there is a current cmd count put it in the buffer first
 	if (cmdcnt > 0)
-		lmc_len = sprintf(last_modifying_cmd, "%d%c", cmdcnt, c);
+		lmc_len = snprintf(last_modifying_cmd, MAX_INPUT_LEN, "%d%c", cmdcnt, c);
 	else { // just save char c onto queue
 		last_modifying_cmd[0] = c;
 		lmc_len = 1;
