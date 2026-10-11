@@ -32,6 +32,7 @@ whole suite unless asked (it takes a long time).
 | where CC finds files (`findfile`, pp.c / main.c) | `tools/findtest.py`, `tools/selfcompile.py` |
 | CC's batch files (`@`, main.c), where objects go | `tools/alltest.py` (TOOLSRC:ALL: BUILD, LIBS, TOOLS in one run), `tools/findtest.py` |
 | grep (`ports/grep/`) | `tools/greptest.py` |
+| emulator keys / break (`tools/mkbiggy.py` MISCINFO, psys.h handshakes) | `tools/typeaheadtest.py`, `tools/breaktest.py` |
 
 Modes: `PSYS_MODE=native` or `PSYS_MODE=z80`. Say in the report what was run and
 what was not.

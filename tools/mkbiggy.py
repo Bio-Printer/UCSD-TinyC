@@ -47,6 +47,13 @@ def main():
     # the Tiny-C shell, which the Command: prompt's S runs (BIGGY 1.11)
     base, shell = compile_c(os.path.join(ROOT, 'examples', 'shell.c'), os.path.join(ROOT, 'build'), z80=True)
     put('SYSTEM.SHELL', open(shell, 'rb').read(), 2)
+    # the break key (emulator 2.05): ` in CRTINFO.BREAK of SYSTEM.MISCINFO (and NEW.MISCINFO, its
+    # copy for SETUP): file offset 84 (CRTINFO at 74: height, width, up .. right, eof, flush, brk)
+    for name in ('SYSTEM.MISCINFO', 'NEW.MISCINFO'):
+        data, kind = v.read(name)
+        data = bytearray(data)
+        data[84] = ord('`')
+        put(name, bytes(data), kind)
     if changed:
         v.save()
         print('updated on BIGGY:', ', '.join(changed))
