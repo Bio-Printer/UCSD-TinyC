@@ -28,7 +28,6 @@ static const char CMdown[] ALIGN1 = "\n";
 int scr_gen;		// +1 whenever the text or the screen image changes
 int wheel_n;		// lines the mouse wheel scrolled, as one ^E or ^Y (0: a typed key)
 int scroll_ok;		// the console scrolls on request (ESC [ n S, ESC [ n T)
-int scroll_lf = 1;	// else the screen scrolls up by line feeds at its last row
 static int scr_top0;	// the top line's number, during refresh
 static char *scr_soft_p;	// a character was inserted here since the last refresh (its row only is stale)
 static char *scr_soft_line;	// ... the start of that line
@@ -585,18 +584,6 @@ static char* format_line(char *src /*, int li*/)
    the scroll region, the scroll, the whole screen as the region again */
 void scroll_rows(int nrows, int n)
 {
-	if (!scroll_ok) {	// n > 0: from the last row, n line feeds move the whole screen up;
-		place_cursor(rows - 1, 0, FALSE);	// the status line goes up with it (and is drawn again)
-		for (; n > 0; n--) {
-#ifdef __UCSD__
-			putch(10);	// (not '\n': that is a CR here)
-#else
-			putc(10, stdout);
-#endif
-		}
-		*displayed_buffer = 0;
-		return;
-	}
 	printf("\033[1;%dr\033[%d%c\033[r", nrows, n < 0 ? -n : n, n < 0 ? 'T' : 'S');
 }
 
@@ -703,7 +690,7 @@ void refresh(void)
 		for (li = 0; li < R; li++)
 			if (ra[li] == scr_top0 + li)
 				best++;
-		if (scroll_ok || scroll_lf) {
+		if (scroll_ok) {
 			int n = 0;
 			for (k = 0; k < 2; k++) {	// the shift the first, the last known row suggests
 				for (li = 0; li < R && ra[k ? R - 1 - li : li] < 0; li++)
@@ -712,8 +699,8 @@ void refresh(void)
 					break;
 				q = k ? R - 1 - li : li;
 				c = q - (ra[q] - scr_top0);
-				if (c == 0 || c <= 1 - (int)rows || c >= (int)rows - 1 || (c < 0 && !scroll_ok))
-					continue;	// (line feeds scroll up only)
+				if (c == 0 || c <= 1 - (int)rows || c >= (int)rows - 1)
+					continue;
 				m = 0;
 				for (li = 0; li < R; li++)
 					if (li - c >= 0 && li - c < R && ra[li] == scr_top0 + li - c)

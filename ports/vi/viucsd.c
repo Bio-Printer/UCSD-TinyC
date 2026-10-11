@@ -273,26 +273,20 @@ char *ucsd_askname(void)
 	return name;
 }
 
-static int ahead_ok;	/* the emulator counts the keys waiting in SYSCOM->expansion[2] */
-
 /* The console is always "raw" for vi: getch() reads keys unechoed, one at
    a time, straight from UNITREAD. */
 int rawmode(void)
 {
 	ucsd_reserve();
-	// Page Up ... Delete: one code each, a block cursor and the scroll codes (psys.h);
-	// the emulator answers PX_SCROLL_OK at its next P-code instruction, an older one
-	// leaves the word (and does not take the keys: PX_KEYS_BLOCK for those)
-	SYSCOM->expansion[1] = PX_KEYS_AHEAD;	// (2.04: and the count of keys waiting)
-	ahead_ok = SYSCOM->expansion[1] == PX_AHEAD_OK;
-	if (ahead_ok)
-		scroll_ok = 1;
-	else {
-		SYSCOM->expansion[1] = PX_KEYS_SCROLL;
-		scroll_ok = SYSCOM->expansion[1] == PX_SCROLL_OK;
-		if (!scroll_ok)
-			SYSCOM->expansion[1] = PX_KEYS_BLOCK;
+	// Page Up ... Delete: one code each, a block cursor, the scroll codes and the count of
+	// keys waiting in SYSCOM->expansion[2] (psys.h PX_KEYS_AHEAD; emulator 2.04 answers
+	// PX_AHEAD_OK at its next P-code instruction)
+	SYSCOM->expansion[1] = PX_KEYS_AHEAD;
+	if (SYSCOM->expansion[1] != PX_AHEAD_OK) {
+		fputs("vi needs emulator 2.04 or later\n", stderr);
+		exit(1);
 	}
+	scroll_ok = 1;
 	erase_char = SYSCOM->crtinfo.chardel;
 	ticsPerChar = 1;
 	return 0;
@@ -300,7 +294,6 @@ int rawmode(void)
 
 void cookmode(void)
 {
-	ahead_ok = 0;
 	SYSCOM->expansion[1] = 0;	// the keys as the L2 editor wants them again, the cursor a line
 }
 
@@ -313,19 +306,19 @@ int awaitInput(int tics)
 	unsigned start;
 	long polls;
 	fflush(stdout);
-	if (pushed >= 0 || (ahead_ok ? SYSCOM->expansion[2] != 0 : kbhit()))
+	if (pushed >= 0 || SYSCOM->expansion[2] != 0)
 		return 1;
 	if (tics <= 0)
 		return 0;
 	if (SYSCOM->miscinfo & MI_HASCLOCK) {
 		start = SYSCOM->lowtime;
 		while ((unsigned)(SYSCOM->lowtime - start) < (unsigned)(tics * 6 / 10 + 1))
-			if (ahead_ok ? SYSCOM->expansion[2] != 0 : kbhit())
+			if SYSCOM->expansion[2] != 0
 				return 1;
 		return 0;
 	}
 	for (polls = tics * 20L; polls > 0; polls--)
-		if (ahead_ok ? SYSCOM->expansion[2] != 0 : kbhit())
+		if SYSCOM->expansion[2] != 0
 			return 1;
 	return 0;
 }

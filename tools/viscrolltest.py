@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""viscrolltest.py -- Tiny-C's vi (TOOLS:VI.CODE) on the P-System with scroll
-codes (emulator 2.03: SYSCOM^.EXPANSION[1] = 25607, ESC [ n S / T) and
-without (an emulator that leaves the word: vi falls back to rewriting every
-row), the screen after every key compared:
+"""viscrolltest.py -- Tiny-C's vi (TOOLS:VI.CODE) on the P-System with the console's scroll
+codes (emulator 2.03 and later: ESC [ n S / T) and with a vi that never scrolls (a build with
+scroll_ok = 0: it rewrites every row that changed), the screen after every key compared:
 
   build/run_verify_new   run_verify built from UCSD-Pascal_Windows_Emulator
-                         (2.03 or later; g++ as tools/setup.sh does it); run
-                         with VERIFY_NOSCROLL=1 it behaves as an emulator
-                         before 2.03: the word is not answered, vi notices
+                         (2.04 or later; g++ as tools/setup.sh does it)
 
 vi starts on a 1500-line file; keys: j past the bottom and k past the top of
 the screen (a scroll of one line), ^E ^Y, 3 lines a notch, ^D ^U ^F ^B, G, gg,
@@ -34,7 +31,16 @@ def esc(s):
 
 def run(binary, work, text, noscroll):
     ps = PSystem()
-    code = compile_modules([os.path.join(ROOT, m) for m in VI_MODULES], os.path.join(work, 'VI.CODE'), True)
+    mods = [os.path.join(ROOT, m) for m in VI_MODULES]
+    if noscroll:                                # a copy of vi that does not use the scroll codes
+        d = os.path.join(work, 'noscroll')
+        shutil.copytree(os.path.join(ROOT, 'ports', 'vi'), d)
+        u = os.path.join(d, 'viucsd.c')
+        t = open(u).read()
+        assert 'scroll_ok = 1;' in t
+        open(u, 'w').write(t.replace('scroll_ok = 1;', 'scroll_ok = 0;'))
+        mods = [os.path.join(d, os.path.basename(m)) for m in VI_MODULES]
+    code = compile_modules(mods, os.path.join(work, 'VI%d.CODE' % noscroll), True)
     ps.put('VI.CODE', open(code, 'rb').read())
     base, sc = compile_c(os.path.join(ROOT, 'examples', 'shell.c'), ps.dir)
     ps.put('SHELL.CODE', open(sc, 'rb').read())
@@ -50,8 +56,8 @@ def run(binary, work, text, noscroll):
     import time
     t0 = time.time()
     r = subprocess.run([binary, os.path.join(BUILD, 'data'), ps.src, ps.spare, sp, os.environ.get('PSYS_MODE', 'native'),
-                        ps.out, '', '1800'], capture_output=True, text=True, env=dict(ps.env(), VERIFY_SCREEN=scr, **({'VERIFY_NOSCROLL': '1'} if noscroll else {})))
-    print('  %s: %.1f s' % ('without scroll codes' if noscroll else 'with scroll codes', time.time() - t0))
+                        ps.out, '', '1800'], capture_output=True, text=True, env=dict(ps.env(), VERIFY_SCREEN=scr))
+    print('  %s: %.1f s' % ('vi without scrolling' if noscroll else 'vi with scroll codes', time.time() - t0))
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout
     taken = [l for l in r.stdout.split('\n') if l.startswith('scroll codes taken')]
     return ok, open(scr, encoding='latin1').read().split('== ')[1:], taken[0] if taken else '?'
@@ -62,7 +68,7 @@ def main():
     work = tempfile.mkdtemp(prefix='viscroll_')
     ok1, a, ta = run(new, work, vitest.BIG, True)
     ok2, b, tb = run(new, work, vitest.BIG, False)
-    print('old emulator: %d screens, %s; new emulator: %d screens, %s' % (len(a), ta, len(b), tb))
+    print('without scrolling: %d screens, %s; with: %d screens, %s' % (len(a), ta, len(b), tb))
     # (the screens are labelled by the number of keys typed: a screen the run did not see, a key
     # that came while vi was busy, is left out of both)
     ka = {x.split('\n')[0].split()[1]: x for x in a}

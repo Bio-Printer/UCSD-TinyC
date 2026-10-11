@@ -522,7 +522,6 @@ int rawmode(void);
 void cookmode(void);
 void catch_sig(int sig);
 int awaitInput(int tics);
-extern int scroll_lf;
 extern int scroll_ok;	// the console scrolls on request (ESC [ n S, ESC [ n T)
 void scroll_rows(int nrows, int n);	// the first rows screen rows up (n > 0) or down (n < 0) n lines
 void scr_soft_edit(char *p);	// a character was put in at p: only its row changes

@@ -169,16 +169,15 @@ def main():
     for paged in (False, True):         # the whole file in memory; a 2600 byte window
         out = {}
         new = os.path.join(ROOT, 'ports', 'vi')
-        # the reference; the new vi with the console's scroll codes; and with only line feeds
-        # at the last row (an emulator before 2.03: it scrolls up that way)
-        for name, src, extra in (('ref', ref, None), ('new', new, None), ('lf', new, {'VI_LFSCROLL': '1'})):
+        # the reference (the committed vi) and the new vi, both with the console's scroll codes
+        for name, src, extra in (('ref', ref, None), ('new', new, None)):
             d = os.path.join(work, 'run_%s%d' % (name, paged))
             os.makedirs(d)
             build(src, os.path.join(d, 'vi'), paged)
             out[name] = session(os.path.join(d, 'vi'), d, extra)
         a = out['ref']
         a.pop()
-        for name in ('new', 'lf'):
+        for name in ('new',):
             b = out[name]
             nscroll = b.pop()
             bad = [i for i in range(min(len(a), len(b))) if a[i] != b[i]]

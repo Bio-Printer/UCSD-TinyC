@@ -65,10 +65,11 @@ UCSD text files); from X(ecute) it asks for the file.
   available as vi commands (^L redraws, ^B/^F page).
 * Page Up, Page Down, Home, End, Insert, Delete: the emulator types the L2 editor's
   commands for them (`>P`, `JB`, ...). While vi runs it sets SYSCOM->expansion[1] to
-  `PX_KEYS` (psys.h; cleared when it ends), and the emulator (from version 2.00;
+  `PX_KEYS_AHEAD` (psys.h; cleared when it ends; emulator 2.04 or later is required: vi
+  stops with a message on an older one), and the emulator (from version 2.00;
   `emulator/KEYS.md`) then sends one code each, vi's own VI_K_HOME ...
   VI_K_PAGEDOWN (0x84..0x89): a screen down/up, start/end of the line, insert, x.
-* The cursor (emulator 2.02): vi sets `PX_KEYS_BLOCK` rather than `PX_KEYS`, and the
+* The cursor (emulator 2.02): PX_KEYS_AHEAD includes it: the
   emulator draws the cursor as a block while vi runs; a line again when it ends.
 * The mouse wheel (emulator 2.01): KEY_WHEELUP / KEY_WHEELDN (0x96, 0x97), one a
   notch, scroll 3 lines (as ^Y / ^E) in command mode; typing and : lines ignore them.
@@ -160,17 +161,14 @@ less. VI.SWAP's slot map is one bit for each of the 128 chunks (it was 2048).
   MYGOTOXY.TEXT, built into BIGGY 1.11 and later) into the output buffer with
   the text, not by a flush and a call to GOTOXY for every row; the keyboard
   is polled every 8th row, not every row. A page of text is about 30% faster.
-* With emulator 2.03 or later (SYSCOM->expansion[1] = 25607 is answered 25608:
-  emulator/KEYS.md, PX_KEYS_SCROLL in psys.h) a scroll of the screen is done by
-  the console: ESC [ 1 ; N r (the text rows as the scroll region), ESC [ n S or
-  ESC [ n T, ESC [ r. The rows' checksums move with the rows, and only the rows
-  that come in are formatted, compared and drawn: j or k past the screen's edge,
-  ^E, ^Y, the mouse wheel and a short ^D / ^U draw 1 to 3 rows instead of 43.
-  A page (^F, ^B, Page Down, Page Up) moves the top line by nearly the whole
-  screen, so it still draws nearly every row. Without 2.03 (the answer does not
-  come) vi stores PX_KEYS_BLOCK as before and redraws every row that changed.
-  `tools/viscrolltest.py` runs vi on the P-System with and without the codes and
-  compares the screen after every key.
+* The console does the scrolling (PX_KEYS_AHEAD, emulator 2.04; the codes came with 2.03):
+  ESC [ 1 ; N r (the text rows as the scroll region), ESC [ n S or ESC [ n T, ESC [ r.
+  The rows' checksums move with the rows, and only the rows that come in are formatted,
+  compared and drawn: j or k past the screen's edge, ^E, ^Y, the mouse wheel and a short
+  ^D / ^U draw 1 to 3 rows instead of 43.  A page (^F, ^B, Page Down, Page Up) moves the
+  top line by nearly the whole screen, so it still draws nearly every row.
+  `tools/viscrolltest.py` runs vi on the P-System with and without using the codes (a
+  build with scroll_ok = 0) and compares the screen after every key.
 * Every byte of code is a byte less for the window in Z80 mode (vi is one
   resident 35 KB segment): the scroll code and the shorter status buffers
   (148 bytes) took the window from 3072 to 2802 bytes there; the 1500-line
@@ -200,11 +198,6 @@ vi does not use the library's printf family (2.8 KB of resident code):
 `vi_vsnprintf` in viucsd.c does %s %d %i %u %c %% into a buffer of a given size
 (`printf` is `vi_printf`, `vsprintf` and `sprintf` are bounded), and the 300-byte
 buffer of the old `snprintf` is gone: 1.8 KB more window in Z80 mode (4.3 KB).
-
-Scrolling up without the emulator's scroll codes (before 2.03, or any console): from the
-last row, n line feeds move the whole screen up n lines (`scroll_rows`, `scroll_lf`); only the n
-rows that come in are drawn, and the status line, which went up with the rest, again. Scrolling
-down has no such code, so it redraws the rows. (`tools/viscreentest.py` runs it as `VI_LFSCROLL=1`.)
 
 ## Status line: where the window is (paged build)
 
@@ -238,10 +231,10 @@ second line before the next refresh falls back to all rows.
 
 ## Keys waiting (emulator 2.04)
 
-`kbhit()` cannot see typed-ahead keys (UNITBUSY is always false), so vi never knew it was behind
-the typist and repainted after every key.  With emulator 2.04 vi asks for PX_KEYS_AHEAD
+`kbhit()` cannot see typed-ahead keys (UNITBUSY is always false), so vi once did not know it was
+behind the typist and repainted after every key.  Now vi asks for PX_KEYS_AHEAD
 (psys.h) and the emulator keeps the number of keys not yet read in SYSCOM->expansion[2];
 `awaitInput` reads that.  Now refresh really is skipped while keys wait: typing 62 spaces
 takes 1.0 s instead of 3.0 s in the Z80 emulator and paints about once, 24 wheel notches
 down and up 2.4 s instead of 6.1 s.  In insert mode with keys waiting `pg_fix` (the margin
-upkeep) is skipped as well.  Older emulators: as before.  `tools/typeaheadtest.py` tests the count.
+upkeep) is skipped as well.  `tools/typeaheadtest.py` tests the count.
