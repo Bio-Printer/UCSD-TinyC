@@ -235,3 +235,13 @@ sum every row of the screen: only the row of that line is stale (`scr_soft_edit`
 keep their line number and are skipped.  Typing 20 spaces into a line took 0.23 s a key
 in the Z80 emulator before, 0.035 s now.  An edit that moves the window or touches a
 second line before the next refresh falls back to all rows.
+
+## Keys waiting (emulator 2.04)
+
+`kbhit()` cannot see typed-ahead keys (UNITBUSY is always false), so vi never knew it was behind
+the typist and repainted after every key.  With emulator 2.04 vi asks for PX_KEYS_AHEAD
+(psys.h) and the emulator keeps the number of keys not yet read in SYSCOM->expansion[2];
+`awaitInput` reads that.  Now refresh really is skipped while keys wait: typing 62 spaces
+takes 1.0 s instead of 3.0 s in the Z80 emulator and paints about once, 24 wheel notches
+down and up 2.4 s instead of 6.1 s.  In insert mode with keys waiting `pg_fix` (the margin
+upkeep) is skipped as well.  Older emulators: as before.  `tools/typeaheadtest.py` tests the count.

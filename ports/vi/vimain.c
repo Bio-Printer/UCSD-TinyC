@@ -528,7 +528,9 @@ static void edit_file(char *fn)
 	//------This is the main Vi cmd handling loop -----------------------
 	while (editing > 0) {
 #if ENABLE_FEATURE_VI_PAGING
-		pg_fix();
+		// (typing ahead in insert mode: the margins can wait until the keys are in)
+		if (!((cmd_mode & CMODES) == CMODE_INSERT && pg_room() > 64 && (chars_to_parse || awaitInput(0))))
+			pg_fix();
 #endif
 		refresh();
 		last_input_char = c = get_one_char();	// get a cmd from user

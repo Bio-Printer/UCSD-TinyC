@@ -109,6 +109,12 @@ int __pxsum(unsigned char *s);
    it and does not take the keys, so then store PX_KEYS_BLOCK. */
 #define PX_KEYS_SCROLL 25607
 #define PX_SCROLL_OK   25608
+/* PX_KEYS_AHEAD: the same, and the number of keys waiting (typed ahead, not
+   yet read), up to 255, in SYSCOM->expansion[2] (emulator 2.04; kbhit() cannot
+   see them: UNITBUSY is always false).  The emulator answers PX_AHEAD_OK; an
+   older one leaves it, then store PX_KEYS_SCROLL. */
+#define PX_KEYS_AHEAD  25609
+#define PX_AHEAD_OK    25610
 #define KEY_HOME   0x84
 #define KEY_END    0x85
 #define KEY_INSERT 0x86
