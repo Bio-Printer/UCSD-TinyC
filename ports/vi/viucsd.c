@@ -313,12 +313,12 @@ int awaitInput(int tics)
 	if (SYSCOM->miscinfo & MI_HASCLOCK) {
 		start = SYSCOM->lowtime;
 		while ((unsigned)(SYSCOM->lowtime - start) < (unsigned)(tics * 6 / 10 + 1))
-			if SYSCOM->expansion[2] != 0
+			if (SYSCOM->expansion[2] != 0)
 				return 1;
 		return 0;
 	}
 	for (polls = tics * 20L; polls > 0; polls--)
-		if SYSCOM->expansion[2] != 0
+		if (SYSCOM->expansion[2] != 0)
 			return 1;
 	return 0;
 }
