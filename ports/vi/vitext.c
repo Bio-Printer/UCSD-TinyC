@@ -397,12 +397,18 @@ static char *stupid_insert(char *p, char c) // stupidly insert the char c at 'p'
 {
 	char *q;
 
+	int g = scr_gen;
+
 	q = text_hole_make(p, 1);
 	if (!q)
 		return p;	// no room: the character is dropped
 	p = q;
 	*p = c;
 	//(file_modified++, scr_gen++); - done by text_hole_make()
+	if (c != '\n' && scr_gen == g + 1) {
+		scr_gen = g;		// only the row of this line changes
+		scr_soft_edit(p);
+	}
 	return p + 1;
 }
 
@@ -631,7 +637,7 @@ char *text_hole_make(char *p, int size)	// at "p", make a 'size' byte hole
 char *text_hole_delete(char *p, char *q) // delete "p" through "q", inclusive
 {
 	char *src, *dest;
-	int cnt, hole_size;
+	int cnt, hole_size, g, soft;
 
 	// move forwards, from beginning
 	// assume p <= q
@@ -643,6 +649,8 @@ char *text_hole_delete(char *p, char *q) // delete "p" through "q", inclusive
 	}
 	hole_size = q - p + 1;
 	cnt = end - src;
+	g = scr_gen;
+	soft = dest >= text && dest + hole_size <= end && !memchr(dest, '\n', hole_size);
 	if (src < text || src > end)
 		goto thd0;
 	if (dest < text || dest >= end)
@@ -662,6 +670,10 @@ char *text_hole_delete(char *p, char *q) // delete "p" through "q", inclusive
 	if (end <= text)
 		dest = end = text;	// keep pointers valid
 	(file_modified++, scr_gen++);
+	if (soft && dest < end && scr_gen == g + 1) {
+		scr_gen = g;		// only the row of this line changes
+		scr_soft_edit(dest);
+	}
  thd0:
 	return dest;
 }

@@ -30,6 +30,10 @@ int wheel_n;		// lines the mouse wheel scrolled, as one ^E or ^Y (0: a typed key
 int scroll_ok;		// the console scrolls on request (ESC [ n S, ESC [ n T)
 int scroll_lf = 1;	// else the screen scrolls up by line feeds at its last row
 static int scr_top0;	// the top line's number, during refresh
+static char *scr_soft_p;	// a character was inserted here since the last refresh (its row only is stale)
+static char *scr_soft_line;	// ... the start of that line
+static char *scr_soft_text;	// text and the window's place then
+static int scr_soft_sig;
 static int scr_mgen;	// scr_gen when the rows' line numbers (after the sums) were known
 static char *scr_top;	// screenbegin when all rows were last compared (NULL: not known)
 static int scr_key[4];	// what the rows depend on, now
@@ -609,6 +613,28 @@ static char *skip_line(char *tp)
 	return tp;
 }
 
+#if ENABLE_FEATURE_VI_PAGING
+#define SOFT_SIG() (pg_nb + pg_na * 7 + pg_lb * 31)
+#else
+#define SOFT_SIG() 0
+#endif
+void scr_soft_edit(char *p)
+{
+	char *b = begin_line(p);
+
+	if (scr_soft_p && (b != scr_soft_line || text != scr_soft_text || SOFT_SIG() != scr_soft_sig)) {
+		scr_gen++;		// another line, or the text moved: all rows
+		scr_soft_p = NULL;
+		return;
+	}
+	if (!scr_soft_p) {
+		scr_soft_line = b;
+		scr_soft_text = text;
+		scr_soft_sig = SOFT_SIG();
+	}
+	scr_soft_p = p;
+}
+
 //----- Refresh the changed screen lines -----------------------
 // Copy the source line from text[] into the buffer and note
 // if the current screenline is different from the new buffer.
@@ -640,7 +666,7 @@ void refresh(void)
 #if ENABLE_FEATURE_VI_PAGING
 	scr_key[3] = pg_nb + pg_na * 7 + pg_lb * 31;
 #endif
-	same = scr_top && offset == old_offset && !memcmp(scr_key, scr_keyed_for, sizeof(scr_key));
+	same = scr_top && !scr_soft_p && offset == old_offset && !memcmp(scr_key, scr_keyed_for, sizeof(scr_key));
 
 #ifdef VI_ROW_SUMS
 	// Besides its sum each row has the number of the line it shows (-1: not
@@ -659,6 +685,19 @@ void refresh(void)
 			for (li = 0; li < (int)rows; li++)
 				ra[li] = -1;
 			scr_mgen = scr_gen;
+		}
+		if (scr_soft_p) {	// the row of the line with the new character
+			if (text != scr_soft_text || SOFT_SIG() != scr_soft_sig || scr_soft_line < screenbegin) {
+				for (li = 0; li < R; li++)
+					ra[li] = -1;
+			} else {
+				char *q = screenbegin;
+				for (li = 0; li < R && q < scr_soft_line; li++)
+					q = skip_line(q);
+				if (li < R)
+					ra[li] = -1;
+			}
+			scr_soft_p = NULL;
 		}
 		best = 0;
 		for (li = 0; li < R; li++)

@@ -227,3 +227,11 @@ screen is painted once, by one scroll, when vi has caught up.
 Notches that are already waiting (or come within about 70 ms) are added up (3 lines each, up and
 down cancel) and make one scroll of that many lines, so the screen is painted once.  A key
 read ahead meanwhile is kept and handled next.
+
+## Typing on a long line
+
+A character put in or taken out of a line (no newline in it) no longer makes vi format and
+sum every row of the screen: only the row of that line is stale (`scr_soft_edit`), all others
+keep their line number and are skipped.  Typing 20 spaces into a line took 0.23 s a key
+in the Z80 emulator before, 0.035 s now.  An edit that moves the window or touches a
+second line before the next refresh falls back to all rows.
