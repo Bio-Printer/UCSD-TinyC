@@ -457,7 +457,8 @@ static void edit_file(char *fn)
 	}
 	createScreen();
 #if !defined(__UCSD__) && defined(VI_ROW_SUMS)
-	scroll_ok = getenv("VI_NOSCROLL") == NULL;	// (the Linux build, to test the scrolling)
+	scroll_ok = getenv("VI_NOSCROLL") == NULL && getenv("VI_LFSCROLL") == NULL;	// (the Linux build, to test the scrolling)
+	scroll_lf = getenv("VI_NOSCROLL") == NULL;
 #endif
 	init_text_buffer(fn);
 

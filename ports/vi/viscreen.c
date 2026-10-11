@@ -27,6 +27,7 @@ static const char CMdown[] ALIGN1 = "\n";
 
 int scr_gen;		// +1 whenever the text or the screen image changes
 int scroll_ok;		// the console scrolls on request (ESC [ n S, ESC [ n T)
+int scroll_lf = 1;	// else the screen scrolls up by line feeds at its last row
 static char *scr_top;	// screenbegin when all rows were last compared (NULL: not known)
 static int scr_key[4];	// what the rows depend on, now
 static int scr_keyed_for[4];	// ... when they were last all compared
@@ -552,6 +553,18 @@ static char* format_line(char *src /*, int li*/)
    the scroll region, the scroll, the whole screen as the region again */
 void scroll_rows(int nrows, int n)
 {
+	if (!scroll_ok) {	// n > 0: from the last row, n line feeds move the whole screen up;
+		place_cursor(rows - 1, 0, FALSE);	// the status line goes up with it (and is drawn again)
+		for (; n > 0; n--) {
+#ifdef __UCSD__
+			putch(10);	// (not '\n': that is a CR here)
+#else
+			putc(10, stdout);
+#endif
+		}
+		*displayed_buffer = 0;
+		return;
+	}
 	printf("\033[1;%dr\033[%d%c\033[r", nrows, n < 0 ? -n : n, n < 0 ? 'T' : 'S');
 }
 
@@ -624,7 +637,7 @@ void refresh(void)
 	// only the top line moved (the text, the offset and the window did not):
 	// the console scrolls the rows that stay, the rows' sums move with them,
 	// and only the rows that came in are formatted, compared and drawn
-	if (scroll_ok && !same && scr_top && offset == old_offset) {
+	if ((scroll_ok || scroll_lf) && !same && scr_top && offset == old_offset) {
 		int n, m, R = rows - 1;
 		unsigned *rs = (unsigned *)screen;
 		n = scr_key[1];
@@ -632,6 +645,8 @@ void refresh(void)
 		m = memcmp(scr_key, scr_keyed_for, sizeof(scr_key));
 		scr_key[1] = n;
 		n = m ? 0 : top_moved();
+		if (n < 0 && !scroll_ok)
+			n = 0;			// (line feeds scroll up only)
 		if (n) {
 			m = n < 0 ? -n : n;
 			scroll_rows(R, n);

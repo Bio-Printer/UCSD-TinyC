@@ -60,7 +60,11 @@ class Term:
             if ch == '\r':
                 self.c = 0
             elif ch == '\n':
-                self.r = min(ROWS - 1, self.r + 1)
+                if self.r == ROWS - 1:
+                    self.g = self.g[1:] + [[' '] * COLS]
+                    self.scrolls += 1
+                else:
+                    self.r += 1
             elif ch == '\b':
                 self.c = max(0, self.c - 1)
             elif ch >= ' ':
@@ -99,7 +103,7 @@ class Term:
         return ['' .join(r).rstrip() for r in self.g], (self.r, self.c)
 
 
-def session(exe, work):
+def session(exe, work, extra=None):
     x = os.path.join(work, 'X.C')
     open(x, 'w').write(TEXT)
     pid, fd = pty.fork()
@@ -108,6 +112,7 @@ def session(exe, work):
         os.environ['LINES'] = str(ROWS)
         os.environ['COLUMNS'] = str(COLS)
         os.environ['VI_PAGECAP'] = '4500'
+        os.environ.update(extra or {})
         os.execv(exe, [exe, 'X.C'])
     t = Term()
 
@@ -159,23 +164,28 @@ def main():
     ok = True
     for paged in (False, True):         # the whole file in memory; a 2600 byte window
         out = {}
-        for name, src in (('ref', ref), ('new', os.path.join(ROOT, 'ports', 'vi'))):
+        new = os.path.join(ROOT, 'ports', 'vi')
+        # the reference; the new vi with the console's scroll codes; and with only line feeds
+        # at the last row (an emulator before 2.03: it scrolls up that way)
+        for name, src, extra in (('ref', ref, None), ('new', new, None), ('lf', new, {'VI_LFSCROLL': '1'})):
             d = os.path.join(work, 'run_%s%d' % (name, paged))
             os.makedirs(d)
             build(src, os.path.join(d, 'vi'), paged)
-            out[name] = session(os.path.join(d, 'vi'), d)
-        a, b = out['ref'], out['new']
-        nscroll = b.pop()
+            out[name] = session(os.path.join(d, 'vi'), d, extra)
+        a = out['ref']
         a.pop()
-        bad = [i for i in range(min(len(a), len(b))) if a[i] != b[i]]
-        print('%s: %d screens compared; %d differ; reference %d screens, new %d; the new vi scrolled %d times' %
-              ('paged' if paged else 'unpaged', min(len(a), len(b)), len(bad), len(a), len(b), nscroll))
-        for i in bad[:3]:
-            print('after key %d (%r):' % (i, KEYS[i - 1] if i else 'start'))
-            for y in range(ROWS):
-                if a[i][0][y] != b[i][0][y]:
-                    print('  row %2d ref: %r\n         new: %r' % (y, a[i][0][y], b[i][0][y]))
-        ok = ok and not bad and len(a) == len(b) and len(a) > 50 and nscroll > 5
+        for name in ('new', 'lf'):
+            b = out[name]
+            nscroll = b.pop()
+            bad = [i for i in range(min(len(a), len(b))) if a[i] != b[i]]
+            print('%s, %s: %d screens compared; %d differ; reference %d screens, new %d; the new vi scrolled %d times' %
+                  ('paged' if paged else 'unpaged', name, min(len(a), len(b)), len(bad), len(a), len(b), nscroll))
+            for i in bad[:3]:
+                print('after key %d (%r):' % (i, KEYS[i - 1] if i else 'start'))
+                for y in range(ROWS):
+                    if a[i][0][y] != b[i][0][y]:
+                        print('  row %2d ref: %r\n         new: %r' % (y, a[i][0][y], b[i][0][y]))
+            ok = ok and not bad and len(a) == len(b) and len(a) > 50 and nscroll > 5
     print('viscreentest: %s' % ('PASSED' if ok else 'FAILED'))
     return 0 if ok else 1
 

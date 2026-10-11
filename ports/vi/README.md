@@ -200,3 +200,8 @@ vi does not use the library's printf family (2.8 KB of resident code):
 `vi_vsnprintf` in viucsd.c does %s %d %i %u %c %% into a buffer of a given size
 (`printf` is `vi_printf`, `vsprintf` and `sprintf` are bounded), and the 300-byte
 buffer of the old `snprintf` is gone: 1.8 KB more window in Z80 mode (4.3 KB).
+
+Scrolling up without the emulator's scroll codes (before 2.03, or any console): from the
+last row, n line feeds move the whole screen up n lines (`scroll_rows`, `scroll_lf`); only the n
+rows that come in are drawn, and the status line, which went up with the rest, again. Scrolling
+down has no such code, so it redraws the rows. (`tools/viscreentest.py` runs it as `VI_LFSCROLL=1`.)
