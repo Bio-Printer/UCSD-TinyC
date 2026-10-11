@@ -342,13 +342,13 @@ char readit(void)
 		c = getch();
 		/* the mouse wheel (emulator 2.01): 3 lines a notch, in command mode
 		   only (typing, or a : or / line, ignores it).  The notches that are
-		   there (or come within a tick) are added up and made one scroll,
+		   there (or come within about 70 ms) are added up and made one scroll,
 		   so the screen is painted once.  Up and down cancel. */
 		for (;;) {
 			if (c == KEY_WHEELUP || c == KEY_WHEELDN) {
 				if (cmd_mode == CMODE_COMMAND)
 					wheel_n += c == KEY_WHEELUP ? 3 : -3;
-				if (!wheel_n || awaitInput(1)) {
+				if (!wheel_n || awaitInput(6)) {
 					c = getch();
 					continue;
 				}

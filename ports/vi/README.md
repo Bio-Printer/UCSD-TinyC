@@ -224,6 +224,6 @@ screen is painted once, by one scroll, when vi has caught up.
 
 ## Mouse wheel
 
-Notches that are already waiting (or come within a tick) are added up (3 lines each, up and
+Notches that are already waiting (or come within about 70 ms) are added up (3 lines each, up and
 down cancel) and make one scroll of that many lines, so the screen is painted once.  A key
 read ahead meanwhile is kept and handled next.
