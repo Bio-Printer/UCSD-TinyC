@@ -268,6 +268,7 @@ char readit(void)
 		memmove(readbuffer, readbuffer + 1, chars_to_parse);
 		return c;
 	}
+	PG_IDLE();
 	fflush(stdout);
 	c = getch();
 	/* the mouse wheel (emulator 2.01): 3 lines a notch, as ^Y / ^E, in

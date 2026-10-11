@@ -655,7 +655,7 @@ char *text_hole_delete(char *p, char *q) // delete "p" through "q", inclusive
 #if ENABLE_FEATURE_VI_PAGING
 	// deleted to the window's end: the lines after it in (if they fit
 	// without moving what callers point at; else yank_delete does it)
-	pg_atend = dest >= end && pg_na && !pg_fill_bottom();
+	pg_atend = dest >= end && PG_MORE() && !pg_fill_bottom();
 #endif
 	if (dest >= end)
 		dest = end - 1;	// make sure dest in below end-1

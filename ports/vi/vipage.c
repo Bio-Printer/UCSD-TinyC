@@ -18,6 +18,9 @@ int pg_park_l, pg_park_c, pg_park_a;     /* its line, column; the range's start 
 int pg_top;      /* the screen's top line while it is out of the window (else 0) */
 int pg_keep;             /* the : command leaves the cursor where it was */
 int pg_atend;    /* a delete reached the window's end, the next lines not in */
+FILE *pg_rf;             /* the file being loaded: what is not yet in the stores; NULL: all in */
+int pg_carry;            /* bytes of its last, unfinished line held in pg_buf */
+int pg_bad;              /* the file could not be loaded to its end */
 
 
 static int pg_slot(void);
@@ -262,7 +265,7 @@ char *pg_next_in(char *p)
 {
 	if (!pg_f || p < end)
 		return p;
-	while (pg_na && !pg_fill_bottom()) {
+	while (PG_MORE() && !pg_fill_bottom()) {
 		if (!pg_spill_top(end))
 			break;
 		p = end;
@@ -300,6 +303,8 @@ static int pg_fill_top(void)
 int pg_fill_bottom(void)
 {
 	int len;
+	if (!pg_na && !pg_more())
+		return 0;
 	if (!pg_na)
 		return 0;
 	len = PGA(0).len;
@@ -339,7 +344,7 @@ void pg_fix(void)
 		kb = pg_down(d < end ? pg_nl(d) : end, pg_margin, &down);
 		if (up < pg_margin && pg_nb)
 			moved = pg_fill_top() || pg_spill_bottom(kb);
-		else if (down < pg_margin && pg_na)
+		else if (down < pg_margin && PG_MORE())
 			moved = pg_fill_bottom() || pg_spill_top(kt);
 		else if (pg_room() < PG_ROOM)
 			moved = pg_spill_bottom(kb) || pg_spill_top(kt);
@@ -356,7 +361,7 @@ void pg_edge(int dir)
 	if (!pg_f)
 		return;
 	if (dir == FORWARD) {
-		while (pg_nl(begin_line(dot)) >= end && pg_na) {
+		while (pg_nl(begin_line(dot)) >= end && PG_MORE()) {
 			if (pg_lock) {
 				pg_over = 1;
 				return;
@@ -388,7 +393,7 @@ void pg_scroll(int cnt, int dir)
 		s = begin_line(screenbegin);
 		if (dir > 0) {
 			pg_down(s, cnt + rows, &got);
-			if (got >= cnt + rows || !pg_na)
+			if (got >= cnt + rows || !PG_MORE())
 				return;
 			k = begin_line(dot < screenbegin ? dot : screenbegin);
 			if (!pg_fill_bottom() && !pg_spill_top(k))
@@ -416,6 +421,8 @@ char *pg_goto(int li)
 	int n;
 	if (li < 1)
 		li = 1;
+	if (li > pg_lines())
+		pg_complete();
 	n = pg_lines();
 	if (li > n)
 		li = n;
@@ -474,6 +481,8 @@ int pg_hold(int a, int b)
 		a = b;
 		b = t;
 	}
+	if (b > pg_lines())
+		pg_complete();
 	t = pg_lines();
 	if (a < 1)
 		a = 1;
@@ -595,6 +604,7 @@ char *pg_search(const char *pat, int dir, int far)
 	char *p;
 	if (!pg_f)
 		return NULL;
+	pg_complete();
 	line = 0;
 	if ((dir == FORWARD) != far) {          /* the chunks after the window */
 		first = pg_lb + pg_count(text, end) + 1;
@@ -657,6 +667,7 @@ int pg_find_line(const char *pat)
 	int col;
 	if (!pg_f)
 		return 0;
+	pg_complete();
 	first = pg_lb + pg_count(text, end) + 1;
 	for (i = 0; i < pg_na; i++) {
 		if (pg_scan(&PGA(i), 0, pat, FORWARD, &line, &col) >= 0)
@@ -670,6 +681,10 @@ int pg_find_line(const char *pat)
 
 void pg_close(void)
 {
+	if (pg_rf) {
+		fclose(pg_rf);
+		pg_rf = NULL;
+	}
 	if (pg_f) {
 		fclose(pg_f);
 		remove(PG_SWAP);
@@ -702,6 +717,11 @@ void pg_init(void)
 
 void pg_reset(void)
 {
+	if (pg_rf) {
+		fclose(pg_rf);
+		pg_rf = NULL;
+	}
+	pg_carry = pg_bad = 0;
 	pg_nb = pg_na = pg_lb = pg_la = pg_top = 0;
 	pg_bb = pg_ba = 0;
 	memset(pg_used, 0, PG_MAXSLOT / 8);
@@ -717,17 +737,101 @@ static void pg_abandon(const char *fn, const char *why)
 	exit(1);
 }
 
-/* the file into the stores (or, without VI.SWAP, into the window), then the
-   window filled from its start; its size (at most 32767) */
+/* Load: without VI.SWAP the file goes into the window; with it, only as far
+   as it is needed.  pg_load opens the file and pg_fix() reads the first
+   chunks; the rest is read a chunk at a time onto the bottom of the after
+   stack -- when the window needs the lines, when vi waits for a key
+   (pg_idle), or all of it at once for what needs the whole file (G, a
+   search, a : command, saving: pg_complete).  pg_lines() counts what is
+   loaded, pg_total() all of it. */
+
+/* the next chunk of the file onto the bottom of the after stack; 0 when
+   there is no more to read (or it cannot be: pg_bad) */
+int pg_more(void)
+{
+	int n;
+	int len;
+	int last;
+	int k;
+	if (!pg_rf)
+		return 0;
+	n = fread(pg_buf + pg_carry, 1, PG_SLOT - pg_carry, pg_rf);
+	len = pg_carry + n;
+	last = len;
+	k = n < PG_SLOT - pg_carry;             /* the end of the file */
+	if (k) {
+		fclose(pg_rf);
+		pg_rf = NULL;
+		last_file_modified = -1;        /* the status line's total */
+		if (len > 0 && pg_buf[len - 1] != '\n')
+			pg_buf[len++] = '\n';         /* the last line gets its end */
+		last = len;
+	} else
+		while (last > 0 && pg_buf[last - 1] != '\n')
+			last--;
+	/* no whole line in a full chunk (a line over 1023 characters), the chunk
+	   table or VI.SWAP full or not written: the file stays loaded as far as it is */
+	if (last == 0 && !k || last > 0 && (pg_nb + pg_na >= PG_MAXCH || (n = pg_slot()) < 0
+	 || pg_io(n, pg_buf, last, 1) && (pg_unslot(n), 1))) {
+		if (pg_nb + pg_na == 0 && end == text)
+			pg_abandon(current_filename, "cannot be loaded");     /* nothing shown yet: vi stops */
+		if (pg_rf) {
+			fclose(pg_rf);
+			pg_rf = NULL;
+		}
+		pg_bad = 1;
+		status_line_bold("%s: not loaded to its end", current_filename);
+		return 0;
+	}
+	if (last > 0) {
+		memmove(&pg_ch[PG_MAXCH - pg_na - 1], &pg_ch[PG_MAXCH - pg_na], pg_na * sizeof(struct pgchunk));
+		pg_na++;
+		pg_ch[PG_MAXCH - 1].slot = n;
+		pg_ch[PG_MAXCH - 1].len = last;
+		pg_ch[PG_MAXCH - 1].lines = pg_count(pg_buf, pg_buf + last);
+		pg_la += pg_ch[PG_MAXCH - 1].lines;
+		pg_ba += last;
+	}
+	if (pg_rf) {
+		memmove(pg_buf, pg_buf + last, len - last);
+		pg_carry = len - last;
+	}
+	return 1;
+}
+
+/* all of the file in */
+void pg_complete(void)
+{
+	while (pg_rf && pg_more())
+		;
+}
+
+/* the lines of the whole file */
+int pg_total(void)
+{
+	pg_complete();
+	return pg_lines();
+}
+
+/* while vi waits for a key: the file goes on loading, a chunk at a time, until
+   one comes (the status line shows the total at the next key) */
+void pg_idle(void)
+{
+	if (!pg_rf)
+		return;
+#ifndef __UCSD__
+	if (getenv("VI_NOIDLE"))		// (tests: the file stays unloaded until a command needs it)
+		return;
+#endif
+	while (pg_rf && !awaitInput(0))
+		pg_more();
+}
+
+/* the file; -1 if it cannot be opened, else a number >= 0 */
 int pg_load(const char *fn)
 {
 	FILE *f;
-	int c;
 	int len;
-	int last;
-	int n;
-	int k;
-	long total;
 	pg_reset();
 	end = dot = screenbegin = text;
 #ifdef __UCSD__
@@ -737,60 +841,22 @@ int pg_load(const char *fn)
 #ifdef __UCSD__
 	ucsd_reserve();
 #endif
-	if (!f) {
-		status_line_bold("\"%s\" cannot open", fn);
+	if (!f)
 		return -1;
-	}
-	len = 0;
-	last = 0;
-	n = 0;
-	total = 0;
-	for (;;) {
-		c = getc(f);
-		if (c != EOF) {
-			if (len >= pg_cap - 1)
-				pg_abandon(fn, "too big for memory (no " PG_SWAP ")");
-			text[len++] = c;
-			total++;
-			if (c == '\n')
-				last = len;
-		} else if (len > last) {
-			text[len++] = '\n';     /* the last line gets its end */
-			total++;
-			last = len;
-		}
-		if (pg_f && (len >= PG_SLOT || (c == EOF && last > 0))) {
-			if (last == 0)
-				pg_abandon(fn, "a line is longer than 1023 characters");
-			if (n >= PG_MAXCH)
-				pg_abandon(fn, "too big (more than 256 chunks)");
-			k = pg_slot();
-			if (k < 0 || pg_io(k, text, last, 1))
-				pg_abandon(fn, "cannot write " PG_SWAP);
-			pg_ch[n].slot = k;
-			pg_ch[n].len = last;
-			pg_ch[n].lines = pg_count(text, text + last);
-			pg_la += pg_ch[n].lines;
-			pg_ba += last;
-			n++;
-			memmove(text, text + last, len - last);
-			len -= last;
-			last = 0;
-		}
-		if (c == EOF)
-			break;
-	}
-	fclose(f);
-	if (pg_f) {
-		memmove(&pg_ch[PG_MAXCH - n], &pg_ch[0], n * sizeof(struct pgchunk));
-		pg_na = n;
-		memset(text, 0, pg_cap);
-		end = text;
-		pg_fix();
-	} else
+	if (!pg_f) {                            /* no VI.SWAP: the whole file in the window */
+		len = fread(text, 1, pg_cap - 1, f);
+		if (len >= pg_cap - 1 && fgetc(f) != EOF)
+			pg_abandon(fn, "too big for memory (no " PG_SWAP ")");
+		fclose(f);
+		if (len > 0 && text[len - 1] != '\n')
+			text[len++] = '\n';             /* the last line gets its end */
 		end = text + len;
-	dot = screenbegin = text;
-	return total > 32767L ? 32767 : (int)total;
+		return len;
+	}
+	pg_rf = f;
+	pg_carry = 0;
+	pg_fix();                               /* the window, and what it needs in */
+	return 1;
 }
 
 /* the whole file: before, window, after; 1 if written, -1 if it cannot be
@@ -800,6 +866,11 @@ int pg_save(const char *fn)
 	FILE *f;
 	int i;
 	int ok;
+	pg_complete();
+	if (pg_bad) {
+		status_line_bold("Not written: the file was not loaded to its end");
+		return 0;
+	}
 #ifdef __UCSD__
 	ucsd_unreserve();
 #endif

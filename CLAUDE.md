@@ -18,8 +18,8 @@ whole suite unless asked (it takes a long time).
 
 | Changed | Run |
 |---|---|
-| vi only (`ports/vi/`) | the Linux comparison (paged build with a tiny `VI_PAGECAP` against `gcc -DSTANDALONE vi*.c`), `tools/viscreentest.py` (screens vs the committed version), `tools/viscrolltest.py` (with and without the emulator's scroll codes; needs `build/run_verify_new` from UCSD-Pascal_Windows_Emulator), then `tools/vitest.py` in Z80 mode |
-| compiler code generation or library | `tools/runtests.py` and `tools/crosscheck.py` in both modes, `tools/selfcompile.py` |
+| vi only (`ports/vi/`) | the Linux comparison (paged build with a tiny `VI_PAGECAP` against `gcc -DSTANDALONE vi*.c`), `tools/viscreentest.py` (screens vs the committed version), `tools/vipagetest.py` (the paged build, lazy loading, vs the committed version), `tools/viscrolltest.py` (with and without the emulator's scroll codes; needs `build/run_verify_new` from UCSD-Pascal_Windows_Emulator), then `tools/vitest.py` in Z80 mode |
+| compiler code generation or library | `tools/runtests.py` and `tools/crosscheck.py` in both modes, `tools/selfcompile.py`; for stdio (`tinyc/lib/stdio.c`) also `tools/greptest.py`, `tools/pexectest.py` and `tools/vitest.py` |
 | linker, volume layout, memory | add `tools/voltest.py` and `tools/vitest.py --build` |
 | pexec / shell | `tools/pexectest.py` |
 | memory (segments, pools, parser or linker stack): the least free memory of `cc @all` from the shell | `tools/shellalltest.py` (add `PSYS_MODE=z80` before a commit: about 25 minutes), `tools/voltest.py` |

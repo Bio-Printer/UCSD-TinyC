@@ -45,6 +45,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `mkvolume.py` | build `volumes/` (TINY-C, TCSRC, TCEXTRA, TCTESTS, TOOLS, TOOLSRC) with FILES.TEXT listings; a new tool is one line in its `TOOLS` table |
 | `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with SYSTEM.SHELL (the Tiny-C shell); Tiny-C itself is only on TINY-C: (`X TINY-C:CC`; since BIGGY 1.15); only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
 | `viscreentest.py` | vi's screen after every key against an earlier version's (Linux, a pseudo-terminal and a small terminal emulator): refresh may skip only what is unchanged |
+| `vipagetest.py` | vi's paging on Linux: random sessions of the paged build with the file loaded lazily against the committed version |
 | `viscrolltest.py` | vi on the P-System with the emulator's scroll codes (2.03) and without: the same screen after every key |
 | `bindertest.py` | BINDERC against the real BINDER.CODE on the boot disk: the same SYSTEM.PASCAL |
 | `greptest.py` | GREP from the shell: case, `-i`, regular expressions, wildcards on every disk or one volume, line numbers across pages |

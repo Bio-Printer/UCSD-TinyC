@@ -43,6 +43,7 @@
  * and written through stdio. */
 #define BB_VER "version 2.63 (UCSD)"
 #define BB_BT "brent@mbari.org"
+#pragma segment MAIN	// (so that the compiler knows calls are within the segment: 2-byte CGP, no NOP)
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
@@ -492,10 +493,14 @@ extern char *optarg;
 #include "vipage.h"
 #endif
 #define ABSLINE(p) (pg_lb + count_lines(text, p))	// p's line in the file
-#define TOTLINES() (pg_lines())			// the file's lines
+#define TOTLINES() (pg_total())			// the file's lines (all of the file loaded)
+#define STATLINES() (pg_lines())		// ... or as many as are loaded (the status line)
+#define PG_IDLE() pg_idle()
 #else
 #define ABSLINE(p) count_lines(text, p)
 #define TOTLINES() count_lines(text, end - 1)
+#define STATLINES() TOTLINES()
+#define PG_IDLE() ((void)0)
 #endif
 
 /* ---- the functions the modules share ---- */

@@ -17,6 +17,7 @@
 
    Run it from the shell: GREP printf *.C, GREP -i ^int #9:*.H,
    GREP vi*pageup TOOLSRC:=.C, GREP fopen\s?\( TOOLSRC:VI*.C */
+#pragma segment MAIN	/* calls within the program: 2-byte CGPs, no NOP after them */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -30,6 +30,7 @@
  * own address backwards, reaches the procedure's JTAB (its last two bytes:
  * procedure number, lex level).
  */
+#pragma segment MAIN	/* calls within the program: 2-byte CGPs, no NOP after them */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

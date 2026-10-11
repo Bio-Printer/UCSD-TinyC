@@ -110,10 +110,43 @@ open, and saving over it is safe). `VI.SWAP` is deleted when vi ends.
   exits).
 * The window is allocated once, as big as memory allows, and never reallocated.
 
-Tested by giving the Linux build a tiny window (`gcc -DSTANDALONE
--DENABLE_FEATURE_VI_PAGING=1 vi*.c`, `VI_PAGECAP=2600`): random sessions of 60 commands on a
-1500-line file must save the same file as the build without paging; and on the
-P-System by `tools/vitest.py` (a 1500-line file through a 2.8 KB window in Z80 mode).
+Tested by giving the Linux build a small window (`gcc -DSTANDALONE
+-DENABLE_FEATURE_VI_PAGING=1 vi*.c`, `VI_PAGECAP=6000`): `tools/vipagetest.py`, random
+sessions of 60 commands on a 1500-line file, must save what the committed version
+saves, with the file loaded lazily and not; and on the P-System by `tools/vitest.py`
+(a 1500-line file through a 2.8 KB window in Z80 mode).
+
+### Loading a file: the first screen at once
+
+vi used to read the whole file before it drew anything, a character at a time
+(and once more, to count its bytes first): in Z80 mode a 94 KB file took 20 s
+to the first screen. Now `pg_load()` only opens the file, and the window is
+filled from it as far as the window needs (`pg_more()`: a chunk of whole lines,
+read a block at a time with the library's `fread`, written to VI.SWAP and put on
+the bottom of the after stack); the first screen takes 0.4 s whatever the
+file's size. The rest is read
+
+* when the window needs lines below it (`pg_fill_bottom()`),
+* while vi waits for a key (`pg_idle()` in `readit()`: a chunk, a look at the
+  keyboard, a chunk ...: the whole 94 KB in about 5 s more, in Z80 mode),
+* at once by what needs the whole file: `G`, a search, a `:` command, `:w`
+  and `ZZ` (`pg_complete()`; `TOTLINES()` completes, `STATLINES()` does not).
+
+Until it is all in, the status line's total is the lines loaded so far. A line
+longer than 1023 characters, a file of more than 128 chunks, or VI.SWAP full:
+at the start vi stops with a message as before; later (the screen is up, edits
+may be made) the file stays as far as it was loaded (`pg_bad`) and `:w` refuses
+to save it.
+
+### Memory
+
+vi is one resident code segment: every byte of code is a byte less for the
+window (Z80 mode: 2.8 KB; below about 2.7 KB the paging misplaces the cursor
+after some ^B). `#pragma segment MAIN` at the top of vi.h makes every call
+within the segment a 2-byte CGP: the compiler puts a NOP after a call whose
+callee's segment it does not know (3 bytes, for the linker to turn into a CXP if
+the callee turns out to be in another segment), 1,000 of them in vi: 690 bytes
+less. VI.SWAP's slot map is one bit for each of the 128 chunks (it was 2048).
 
 ## Speed of the screen
 

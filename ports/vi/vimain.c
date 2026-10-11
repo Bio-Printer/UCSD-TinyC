@@ -392,7 +392,9 @@ int vi_main(int argc, char **argv)
 int init_text_buffer(char *fn)
 {
 	int rc;
+#if !ENABLE_FEATURE_VI_PAGING
 	int size = file_size(fn);	// file size. -1 means does not exist.
+#endif
 
 #if ENABLE_FEATURE_VI_PAGING
 	/* the window: allocated once, as big as memory allows */
@@ -415,14 +417,17 @@ int init_text_buffer(char *fn)
 		free(current_filename);
 		current_filename = xstrdup(fn);
 	}
+#if ENABLE_FEATURE_VI_PAGING
+	rc = pg_load(fn);		// -1: the file does not exist (no counting its bytes first)
+	if (rc < 0) {
+#else
 	if (size < 0) {
+#endif
 		// file dont exist. Start empty buf with dummy line
 		char_insert(text, '\n');
 		rc = 0;
+#if !ENABLE_FEATURE_VI_PAGING
 	} else {
-#if ENABLE_FEATURE_VI_PAGING
-		rc = pg_load(fn);
-#else
 		rc = file_insert(fn, text, 1);
 #endif
 	}
@@ -722,6 +727,7 @@ char readit(void)	// read (maybe cursor) key from stdin
 	// get input from User- are there already input chars in Q?
 	if (n <= 0) {
 		// the Q is empty, wait for a typed char
+		PG_IDLE();
 		fflush(stdout);
 		n = safe_read(STDIN_FILENO, readbuffer, sizeof(readbuffer));
 		if (n < 0) {

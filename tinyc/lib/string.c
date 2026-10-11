@@ -152,12 +152,16 @@ int memcmp(void *a, void *b, size_t n)
 void *memchr(void *s, int c, size_t n)
 {
     unsigned char *p;
+    int d;
+    int k;
     p = s;
     while (n > 0) {
-        if (*p == (c & 255))
-            return p;
-        p++;
-        n--;
+        d = n > 32767 ? 32767 : n;
+        k = __cspi(11, d, 0, c & 255, p, 0, 0);     /* SCAN */
+        if (k < d)
+            return p + k;
+        p += d;
+        n -= d;
     }
     return NULL;
 }

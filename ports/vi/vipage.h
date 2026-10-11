@@ -25,7 +25,7 @@
 #ifndef PG_MAXCH
 #define PG_MAXCH   256          /* chunks in the stores (6 bytes each) */
 #endif
-#define PG_MAXSLOT 2048         /* slots in VI.SWAP: 2 MB */
+#define PG_MAXSLOT (PG_MAXCH + 8)  /* slots in VI.SWAP: one a chunk, and some to spare */
 #define PG_ROOM    512          /* free bytes kept in the window for typing */
 #define PG_SWAP    "VI.SWAP"
 
@@ -51,6 +51,10 @@ extern int pg_park_l, pg_park_c, pg_park_a;     /* its line, column; the range's
 extern int pg_top;      /* the screen's top line while it is out of the window (else 0) */
 extern int pg_keep;             /* the : command leaves the cursor where it was */
 extern int pg_atend;    /* a delete reached the window's end, the next lines not in */
+extern FILE *pg_rf;             /* the file being loaded (lazily): NULL when all of it is in */
+extern int pg_carry;            /* bytes of its last, unfinished line held in pg_buf */
+extern int pg_bad;              /* the file could not be loaded to its end: not to be saved */
+#define PG_MORE() (pg_na || pg_rf)      /* lines after the window, or still to load */
 
 
 #define PGB(i) pg_ch[i]                         /* 0 = the file's first chunk */
@@ -59,6 +63,10 @@ extern int pg_atend;    /* a delete reached the window's end, the next lines not
 /* ---- what vi.c calls ---- */
 int pg_room(void);
 int pg_lines(void);
+int pg_total(void);
+int pg_more(void);
+void pg_complete(void);
+void pg_idle(void);
 long pg_bytes(void);
 char *pg_line(int li);
 char *pg_next_in(char *p);

@@ -444,8 +444,12 @@ int format_edit_status(const char *fmt)
 
 	// reduce counting -- the total lines can't have
 	// changed if we haven't done any edits.
-	if (file_modified != last_file_modified) {
-		tot = TOTLINES();
+	if (file_modified != last_file_modified
+#if ENABLE_FEATURE_VI_PAGING
+	 || pg_rf			// the file is still loading: its lines so far
+#endif
+	) {
+		tot = STATLINES();
 		last_file_modified = file_modified;
 	}
 

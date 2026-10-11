@@ -1,0 +1,10 @@
+text: 5182 characters
+fread pieces: ok
+fgets: ok, 354 lines at 20
+mixed: ok
+binary: 3072 bytes (a whole number of blocks), ok
+console: one
+two
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrst
+fputs a line
+puts a line

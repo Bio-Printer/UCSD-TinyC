@@ -7,7 +7,7 @@ unchanged screen; in a pseudo-terminal, a small terminal emulator reads what
 vi writes).  Edits, motions, scrolling, ^L, :s, undo, a long line with
 horizontal scrolling: every screen after every key must be the same.
 """
-import os, sys, pty, time, select, subprocess, tempfile
+import os, sys, re, pty, time, select, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 MODS = ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'viucsd')
@@ -127,6 +127,7 @@ def session(exe, work):
         return True
     drain(0.4)
     shots = [t.snap()]
+    shots[0][0][ROWS - 1] = re.sub(r'\d+/\d+ \d+%', 'N/N P%', shots[0][0][ROWS - 1])     # (paging: the lines loaded so far)
     for k in KEYS:
         if not k:
             continue
