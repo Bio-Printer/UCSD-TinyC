@@ -11,6 +11,12 @@ too -- not only a patch or a copy somewhere else:
 * UCSD-Pascal_Windows_Emulator: `main` -- an engine or window change is a new
   version (Version.h, UCSDPascal.rc, README).
 
+## Emulator versions
+
+New code need not work with older emulators: use the current emulator's features
+(handshake words, scroll codes, key counts) directly, no fallbacks for older ones.
+Say in the report which emulator version a change needs.
+
 ## Testing
 
 Test what is likely to show a problem with the change at hand; do not run the
