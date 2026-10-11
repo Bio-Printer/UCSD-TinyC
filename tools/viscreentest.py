@@ -19,7 +19,7 @@ KEYS = ['j'] * 5 + ['l'] * 10 + ['\x06', '\x06', '\x02', 'G', 'gg', '30G', 'x', 
         '~', '~', 'r!', 'J', 'yy', '3p', 'dw', '.', 'G', 'k', 'k', '$', 'l', 'l', '5l', 'x', '120G', '$', 'j', 'j', '0',
         ':set ts=4\r', 'j', ':set ts=8\r', '2G', 'ma', '90G', "'a", 'D', 'u', 'O', 'new\x1b', 'u', 'U', ':1,3d\r', 'u',
         'cwXYZ\x1b', 'j', '.', 'j', '.', '100G', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k',
-        '\x05', '\x05', '\x19', '\x04', '\x15', 'H', 'L', 'M'] + ['j'] * 40 + ['k'] * 45 + ['\x05'] * 6 + ['\x19'] * 7 + ['G'] + ['k'] * 3 + ['\x06', '\x02', '3\x04', '3\x15', ':q!\r']
+        '\x05', '\x05', '\x19', '\x04', '\x15', 'H', 'L', 'M'] + ['j'] * 40 + ['k'] * 45 + ['\x05'] * 6 + ['\x19'] * 7 + ['G'] + ['k'] * 3 + ['\x06', '\x02', '3\x04', '3\x15', 'j' * 30, 'k' * 33, 'j' * 7 + 'k' * 3 + 'j' * 12, ':q!\r']
 
 
 def build(srcdir, exe, paged):
@@ -131,7 +131,11 @@ def session(exe, work, extra=None):
                 last = time.time()
         return True
     drain(0.4)
-    shots = [t.snap()]
+    def snap():
+        s = t.snap()
+        s[0][ROWS - 1] = re.sub(r' w\d+\+\d+ b\d+/\d+ a\d+/\d+( L)?', '', s[0][ROWS - 1])  # (paging: where the window is)
+        return s
+    shots = [snap()]
     shots[0][0][ROWS - 1] = re.sub(r'\d+/\d+ \d+%', 'N/N P%', shots[0][0][ROWS - 1])     # (paging: the lines loaded so far)
     for k in KEYS:
         if not k:
@@ -139,7 +143,7 @@ def session(exe, work, extra=None):
         os.write(fd, k.encode())
         if not drain(0.08):
             break
-        shots.append(t.snap())
+        shots.append(snap())
     try:
         os.waitpid(pid, 0)
     except ChildProcessError:

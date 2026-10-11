@@ -205,3 +205,19 @@ Scrolling up without the emulator's scroll codes (before 2.03, or any console): 
 last row, n line feeds move the whole screen up n lines (`scroll_rows`, `scroll_lf`); only the n
 rows that come in are drawn, and the status line, which went up with the rest, again. Scrolling
 down has no such code, so it redraws the rows. (`tools/viscreentest.py` runs it as `VI_LFSCROLL=1`.)
+
+## Status line: where the window is (paged build)
+
+After the usual status text vi shows `w<a>+<b> b<L>/<C> a<L>/<C> [L]`: `a` bytes of the
+in-memory window are above the cursor's line start and `b` below, `b..` the lines/chunks
+parked above the window in VI.SWAP, `a..` those below it (not yet loaded ones are not
+counted), `L` while the file is still loading.
+
+## Screen rows know their line
+
+Each screen row keeps, next to its checksum, the number of the line it shows.  A refresh
+skips rows that already show the line that belongs there, and when the top line moved the
+console scrolls the rows that stay -- from whatever state the screen is in, also one cut
+short by a key (before, a repaint interrupted by the next `j` lost the screen's state and
+the following ones repainted every row).  Keys typed ahead are executed first and the
+screen is painted once, by one scroll, when vi has caught up.

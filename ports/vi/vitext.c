@@ -230,7 +230,7 @@ char *new_screen(int ro, int co)
 {
 	free(screen);
 #ifdef VI_ROW_SUMS
-	screensize = ro * sizeof(unsigned);
+	screensize = ro * (sizeof(unsigned) + sizeof(int));
 #else
 	screensize = ro * co + 8;
 #endif

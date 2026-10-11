@@ -28,7 +28,8 @@ static const char CMdown[] ALIGN1 = "\n";
 int scr_gen;		// +1 whenever the text or the screen image changes
 int scroll_ok;		// the console scrolls on request (ESC [ n S, ESC [ n T)
 int scroll_lf = 1;	// else the screen scrolls up by line feeds at its last row
-static int scr_topabs;	// its line number
+static int scr_top0;	// the top line's number, during refresh
+static int scr_mgen;	// scr_gen when the rows' line numbers (after the sums) were known
 static char *scr_top;	// screenbegin when all rows were last compared (NULL: not known)
 static int scr_key[4];	// what the rows depend on, now
 static int scr_keyed_for[4];	// ... when they were last all compared
@@ -477,6 +478,15 @@ int format_edit_status(const char *fmt)
 		(file_modified ? " [Modified]" : ""),
 		cur, tot, percent, offset+ccol+1, cmdcnt);
 
+#if ENABLE_FEATURE_VI_PAGING
+	// where the cursor is in the window, and the window in the file:
+	// w<bytes above dot>+<bytes below dot in window>  b<lines>/<chunks> before
+	// a<lines>/<chunks> after  L: still loading
+	if (pg_f && ret >= 0 && ret < trunc_at && !(cmd_mode & CMODE_LINE_INPUT))
+		ret += snprintf(status_buffer + ret, trunc_at + 1 - ret,
+			" w%d+%d b%d/%d a%d/%d%s", (int)(dot - text), (int)(end - dot),
+			pg_lb, pg_nb, pg_la, pg_na, pg_rf ? " L" : "");
+#endif
 	if (ret >= 0 && ret < trunc_at)
 		return ret;  /* it all fit */
 
@@ -582,15 +592,6 @@ static char *skip_line(char *tp)
 	return tp;
 }
 
-/* the lines the top line has moved since all rows were last compared (+ down;
-   by line numbers: the window may have moved in the file, or text been loaded);
-   0 if it is farther than the screen is high */
-static int top_moved(void)
-{
-	int n = ABSLINE(screenbegin) - scr_topabs;
-	return n > 1 - (int)rows && n < (int)rows - 1 ? n : 0;
-}
-
 //----- Refresh the changed screen lines -----------------------
 // Copy the source line from text[] into the buffer and note
 // if the current screenline is different from the new buffer.
@@ -601,7 +602,7 @@ void refresh(void)
 #define old_offset refresh__old_offset
 
 	int li, changed, same;
-	int lo = 0, hi = rows - 1;	// the rows to compare: lo .. hi - 1
+	int hi = rows - 1;	// the rows to compare: 0 .. hi - 1
 	char *tp, *sp;		// pointer into text[] and screen[]
 
 	// poll to see if there is input already waiting. if we are
@@ -625,33 +626,72 @@ void refresh(void)
 	same = scr_top && offset == old_offset && !memcmp(scr_key, scr_keyed_for, sizeof(scr_key));
 
 #ifdef VI_ROW_SUMS
-	// only the top line moved (the text, the offset and the window did not):
-	// the console scrolls the rows that stay, the rows' sums move with them,
-	// and only the rows that came in are formatted, compared and drawn
-	if ((scroll_ok || scroll_lf) && !same && scr_top && offset == old_offset) {
-		int n, m, R = rows - 1;
+	// Besides its sum each row has the number of the line it shows (-1: not
+	// known, or no line).  Rows still showing the line that belongs to them
+	// are not formatted at all; when the top line has moved, the console
+	// scrolls the rows that stay (the sums and numbers move with them) so that
+	// most rows are right, and only the rows that came in are drawn.  A screen
+	// cut short by a key (or scrolled several times before it was drawn) is
+	// still a screen of known rows, so this works from any state.
+	if (!same) {
+		int c, k, m, q, best, R = rows - 1;
 		unsigned *rs = (unsigned *)screen;
-		n = scr_key[0] == scr_keyed_for[0] ? top_moved() : 0;
-		if (n < 0 && !scroll_ok)
-			n = 0;			// (line feeds scroll up only)
-		if (n) {
-			m = n < 0 ? -n : n;
-			scroll_rows(R, n);
-			memmove(rs + (n < 0 ? m : 0), rs + (n < 0 ? 0 : m), (R - m) * sizeof(unsigned));
-			lo = n < 0 ? 0 : R - m;
-			hi = n < 0 ? m : R;
-			for (m = lo; m < hi; m++)
-				rs[m] = 1;
-			for (m = 0; m < lo; m++)
-				tp = skip_line(tp);
+		int *ra = (int *)screen + rows;
+		scr_top0 = ABSLINE(screenbegin);
+		if (scr_mgen != scr_gen || offset != old_offset) {
+			for (li = 0; li < (int)rows; li++)
+				ra[li] = -1;
+			scr_mgen = scr_gen;
+		}
+		best = 0;
+		for (li = 0; li < R; li++)
+			if (ra[li] == scr_top0 + li)
+				best++;
+		if (scroll_ok || scroll_lf) {
+			int n = 0;
+			for (k = 0; k < 2; k++) {	// the shift the first, the last known row suggests
+				for (li = 0; li < R && ra[k ? R - 1 - li : li] < 0; li++)
+					;
+				if (li >= R)
+					break;
+				q = k ? R - 1 - li : li;
+				c = q - (ra[q] - scr_top0);
+				if (c == 0 || c <= 1 - (int)rows || c >= (int)rows - 1 || (c < 0 && !scroll_ok))
+					continue;	// (line feeds scroll up only)
+				m = 0;
+				for (li = 0; li < R; li++)
+					if (li - c >= 0 && li - c < R && ra[li] == scr_top0 + li - c)
+						m++;
+				if (m > best) {
+					best = m;
+					n = c;
+				}
+			}
+			if (n) {
+				m = n < 0 ? -n : n;
+				scroll_rows(R, n);
+				memmove(rs + (n < 0 ? m : 0), rs + (n < 0 ? 0 : m), (R - m) * sizeof(unsigned));
+				memmove(ra + (n < 0 ? m : 0), ra + (n < 0 ? 0 : m), (R - m) * sizeof(int));
+				for (li = n < 0 ? 0 : R - m, k = li + m; li < k; li++) {
+					rs[li] = 1;
+					ra[li] = -1;
+				}
+			}
 		}
 	}
 #endif
 
 	// compare text[] to screen[] and mark screen[] lines that need updating
-	for (li = same ? hi : lo; li < hi && ((li & 7) || !awaitInput(0)); li++) {
+	for (li = same ? hi : 0; li < hi && ((li & 7) || !awaitInput(0)); li++) {
 		int cs, ce;				// column start & end
 		char *out_buf;
+#ifdef VI_ROW_SUMS
+		if (((int *)screen)[rows + li] == scr_top0 + li) {
+			tp = skip_line(tp);	// this row is right
+			continue;
+		}
+		((int *)screen)[rows + li] = tp < end ? scr_top0 + li : -1;
+#endif
 		// format current text line
 		out_buf = format_line(tp /*, li*/);
 
@@ -737,8 +777,6 @@ void refresh(void)
 	if (li >= hi) {	// all rows compared (not cut short by a key)
 		memcpy(scr_keyed_for, scr_key, sizeof(scr_key));
 		scr_top = screenbegin;
-		if (scroll_ok || scroll_lf)
-			scr_topabs = ABSLINE(screenbegin);
 	} else
 		scr_top = NULL;
 	old_offset = offset;
