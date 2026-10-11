@@ -73,7 +73,7 @@ char *pg_next_in(char *p);
 int pg_fill_bottom(void);
 void pg_fix(void);
 void pg_edge(int dir);
-void pg_scroll(int cnt, int dir);
+int pg_scroll(int cnt, int dir);
 char *pg_goto(int li);
 int pg_hold(int a, int b);
 char *pg_makeroom(char *p, int size);

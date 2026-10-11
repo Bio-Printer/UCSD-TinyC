@@ -12,7 +12,7 @@ char *pg_buf;            /* PG_SLOT + 2: a chunk being searched */
 int pg_cap;              /* the window's size */
 int pg_lock;             /* pointers are held: the window must not move */
 int pg_over;             /* ... and a command needed text outside it */
-int pg_margin;           /* lines kept on both sides of the cursor */
+int pg_margin;           /* lines kept below the cursor (and half of it above the screen) */
 char *pg_park;           /* pg_hold moved the cursor off its line to here: */
 int pg_park_l, pg_park_c, pg_park_a;     /* its line, column; the range's start */
 int pg_top;      /* the screen's top line while it is out of the window (else 0) */
@@ -72,18 +72,16 @@ static int pg_io(int slot, char *buf, int len, int wr)
 /* the start of the line after p's (end if none) */
 static char *pg_nl(char *p)
 {
-	while (p < end && *p != '\n')
-		p++;
-	return p < end ? p + 1 : end;
+	p = memchr(p, '\n', end - p);
+	return p ? p + 1 : end;
 }
 
 /* the lines in [a, b) */
 static int pg_count(char *a, char *b)
 {
 	int n;
-	for (n = 0; a < b; a++)
-		if (*a == '\n')
-			n++;
+	for (n = 0; a < b && (a = memchr(a, '\n', b - a)) != NULL; a++)
+		n++;
 	return n;
 }
 
@@ -324,32 +322,45 @@ int pg_fill_bottom(void)
 	return 1;
 }
 
-/* Before every command: pg_margin lines in memory on both sides of the
-   cursor (as far as the file has them), and PG_ROOM bytes free.  Lines go
-   out only beyond the margins and come in only below them, so this ends. */
+/* Before every command, as far as the window allows (it may hold less than a
+   screen): the screen in memory, from its top down; pg_margin / 2 lines above
+   it (a jump puts the cursor in the middle of the screen); pg_margin lines
+   below the cursor; and PG_ROOM bytes free.  Lines go out only beyond what is
+   wanted and come in only below it, so this ends. */
 void pg_fix(void)
 {
 	char *d;
+	char *t;
 	char *kt;
 	char *kb;
 	int up;
 	int down;
+	int scr;
+	int upm;
 	int moved;
 	int guard;
 	if (!pg_f || pg_lock)
 		return;
 	for (guard = 0; guard < 200; guard++) {
 		d = begin_line(dot);
-		kt = pg_up(d, pg_margin, &up);
+		t = begin_line(screenbegin);	// the screen stays in the window
+		upm = pg_margin / 2;
+		if (t > d || pg_top) {		// (the screen is to be put round the cursor: a whole screen above it)
+			t = d;
+			upm = pg_margin;
+		}
+		pg_down(t, rows, &scr);
+		kt = pg_up(t, upm, &up);
 		kb = pg_down(d < end ? pg_nl(d) : end, pg_margin, &down);
-		if (up < pg_margin && pg_nb)
+		moved = 0;
+		if (scr < rows && PG_MORE())
+			moved = pg_fill_bottom() || pg_spill_top(t);
+		if (!moved && up < upm && pg_nb)
 			moved = pg_fill_top() || pg_spill_bottom(kb);
-		else if (down < pg_margin && PG_MORE())
+		if (!moved && down < pg_margin && PG_MORE())
 			moved = pg_fill_bottom() || pg_spill_top(kt);
-		else if (pg_room() < PG_ROOM)
+		if (!moved && pg_room() < PG_ROOM)
 			moved = pg_spill_bottom(kb) || pg_spill_top(kt);
-		else
-			moved = 0;
 		if (!moved)
 			break;
 	}
@@ -381,32 +392,54 @@ void pg_edge(int dir)
 	}
 }
 
-/* a scroll by cnt lines: the lines screenbegin moves over, and a screen */
-void pg_scroll(int cnt, int dir)
+/* a scroll by cnt lines: the lines screenbegin moves over, and a screen.  The
+   window may hold less than that (a screen is 45 lines): screenbegin moves as
+   far as the window allows with a whole screen below it (or above it, backwards),
+   lines go out behind it, more come in ahead.  The lines it moved over; dot_scroll
+   moves it over the rest, which are all in the window. */
+int pg_scroll(int cnt, int dir)
 {
 	char *s;
 	char *k;
 	int got;
+	int n;
+	int moved;
 	if (!pg_f || pg_lock)
-		return;
+		return 0;
+	moved = 0;
 	for (;;) {
 		s = begin_line(screenbegin);
 		if (dir > 0) {
-			pg_down(s, cnt + rows, &got);
-			if (got >= cnt + rows || !PG_MORE())
-				return;
+			pg_down(s, cnt - moved + rows, &got);
+			if (got >= cnt - moved + rows || !PG_MORE())
+				return moved;
+			n = got - rows;
+			if (n > 0) {
+				screenbegin = pg_down(s, n, &got);
+				moved += n;
+				if (dot < screenbegin)
+					dot = screenbegin;
+			}
 			k = begin_line(dot < screenbegin ? dot : screenbegin);
 			if (!pg_fill_bottom() && !pg_spill_top(k))
-				return;
+				return moved;
 		} else {
-			pg_up(s, cnt, &got);
-			if (got >= cnt || !pg_nb)
-				return;
+			pg_up(s, cnt - moved, &got);
+			if (got >= cnt - moved || !pg_nb)
+				return moved;
+			if (got > 0) {
+				screenbegin = pg_up(s, got, &n);
+				moved += got;
+				s = begin_line(screenbegin);
+				k = end_screen();
+				if (dot > k)
+					dot = begin_line(k);
+			}
 			k = pg_down(s, rows, &got);
 			if (pg_nl(begin_line(dot)) > k)
 				k = pg_nl(begin_line(dot));
 			if (!pg_fill_top() && !pg_spill_bottom(k))
-				return;
+				return moved;
 		}
 	}
 }
@@ -709,8 +742,8 @@ void pg_init(void)
 #endif
 	if (cap > 30000L)
 		cap = 30000L;
-	if (cap < 2 * PG_SLOT + PG_ROOM)
-		cap = 2 * PG_SLOT + PG_ROOM;
+	if (cap < PG_SLOT + 2 * PG_ROOM)
+		cap = PG_SLOT + 2 * PG_ROOM;
 	pg_cap = (int)cap;
 	pg_margin = rows;
 }

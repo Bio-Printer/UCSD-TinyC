@@ -74,10 +74,17 @@ char *strchrnul(const char *s, int c)
 
 void *memrchr(const void *s, int c, size_t n)
 {
-	const unsigned char *cp = (const unsigned char *)s + n;
-	while (n--)
-		if (*--cp == (unsigned char)c)
-			return (void *)cp;
+	unsigned char *p = (unsigned char *)s + n;
+	int d;
+	int k;
+	while (n > 0) {			// the P-System's SCAN, backwards
+		d = n > 32767 ? 32767 : n;
+		k = __cspi(11, -d, 0, c & 255, p - 1, 0, 0);
+		if (k > -d)
+			return p - 1 + k;
+		p -= d;
+		n -= d;
+	}
 	return NULL;
 }
 

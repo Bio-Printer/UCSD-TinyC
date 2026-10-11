@@ -166,7 +166,7 @@ void dot_scroll(int cnt, int dir)
 	char *q;
 
 #if ENABLE_FEATURE_VI_PAGING
-	pg_scroll(cnt, dir);
+	cnt -= pg_scroll(cnt, dir);	// (moved over as many lines as the window allows)
 #endif
 	for (; cnt > 0; cnt--) {
 		if (dir < 0) {

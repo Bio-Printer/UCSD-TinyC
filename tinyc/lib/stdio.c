@@ -627,6 +627,24 @@ size_t fwrite(void *p, size_t size, size_t n, FILE *f)
                 __conputc(b[i++]);          /* the LF: a CR, and a flush */
             }
         }
+    } else if ((f->flags & (__F_WRITE | __F_TEXT)) == __F_WRITE) {
+        while (i < total) {
+            if (f->blk < 0 || f->pos >= 512) {
+                if (__loadblock(f, f->blk < 0 ? 0 : f->blk + (f->pos >= 512)))
+                    break;
+                if (f->pos >= 512)
+                    f->pos = 0;
+            }
+            m = 512 - f->pos;
+            if (m > total - i)
+                m = total - i;
+            memcpy(f->buf + f->pos, b + i, m);
+            f->pos = f->pos + m;
+            if (f->pos > f->len)
+                f->len = f->pos;
+            f->flags = f->flags | __F_DIRTY;
+            i = i + m;
+        }
     } else {
         for (; i < total; i++)
             if (fputc(b[i], f) == EOF)

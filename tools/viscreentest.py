@@ -107,7 +107,7 @@ def session(exe, work):
         os.chdir(work)
         os.environ['LINES'] = str(ROWS)
         os.environ['COLUMNS'] = str(COLS)
-        os.environ['VI_PAGECAP'] = '2600'
+        os.environ['VI_PAGECAP'] = '4500'
         os.execv(exe, [exe, 'X.C'])
     t = Term()
 
