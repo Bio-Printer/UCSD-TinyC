@@ -10,7 +10,7 @@ horizontal scrolling: every screen after every key must be the same.
 import os, sys, re, pty, time, select, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-MODS = ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'viucsd')
+MODS = ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'vipage2', 'viucsd')
 ROWS, COLS = 24, 80
 
 TEXT = ''.join('line %d:\t%s\n' % (i, 'abcabc xyz ' * (1 + i % 9)) for i in range(1, 120)) + 'x' * 300 + '\n' + 'a   a\n' * 5
@@ -24,7 +24,7 @@ KEYS = ['j'] * 5 + ['l'] * 10 + ['\x06', '\x06', '\x02', 'G', 'gg', '30G', 'x', 
 
 def build(srcdir, exe, paged):
     subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-DVI_ROW_SUMS'] + (['-DENABLE_FEATURE_VI_PAGING=1'] if paged else []) + ['-o', exe] +
-                          [os.path.join(srcdir, m + '.c') for m in MODS])
+                          [os.path.join(srcdir, m + '.c') for m in MODS if os.path.exists(os.path.join(srcdir, m + '.c'))])
 
 
 class Term:
@@ -151,8 +151,11 @@ def main():
         os.makedirs(ref)
         for f in os.listdir(os.path.join(ROOT, 'ports', 'vi')):
             if f.endswith(('.c', '.h')):
-                open(os.path.join(ref, f), 'wb').write(subprocess.check_output(
-                    ['git', '-C', ROOT, 'show', 'HEAD:ports/vi/' + f]))
+                try:
+                    open(os.path.join(ref, f), 'wb').write(subprocess.check_output(
+                        ['git', '-C', ROOT, 'show', 'HEAD:ports/vi/' + f], stderr=subprocess.DEVNULL))
+                except subprocess.CalledProcessError:
+                    pass                        # (a file the committed version does not have)
     ok = True
     for paged in (False, True):         # the whole file in memory; a 2600 byte window
         out = {}

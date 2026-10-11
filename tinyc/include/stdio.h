@@ -103,6 +103,9 @@ void rewind(FILE *f);
 size_t fread(void *p, size_t size, size_t n, FILE *f);
 
 size_t fwrite(void *p, size_t size, size_t n, FILE *f);
+/* fwrite a block at a time (the console: the bytes up to a LF at once); its own
+   library module, so a program that does not use it does not carry it */
+size_t fwrite_blk(void *p, size_t size, size_t n, FILE *f);
 
 int getc(FILE *f);
 

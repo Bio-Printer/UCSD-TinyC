@@ -219,7 +219,7 @@ FILES.TEXT lists every file on this volume.
 # the tools (TOOLS:, TOOLSRC:): name, its modules (compiled one by one, then
 # linked), its headers, what it is
 VI_MODULES = ['ports/vi/%s.c' % m for m in
-              ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'viucsd')]
+              ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'vipage2', 'viucsd')]
 TOOLS = [
     ('VI', VI_MODULES, ['ports/vi/vi.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
     ('GREP', ['ports/grep/grep.c'], [], 'grep: GREP [-i] PATTERN FILES from the shell'),

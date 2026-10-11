@@ -60,6 +60,20 @@ extern int pg_bad;              /* the file could not be loaded to its end: not 
 #define PGB(i) pg_ch[i]                         /* 0 = the file's first chunk */
 #define PGA(i) pg_ch[PG_MAXCH - pg_na + (i)]    /* 0 = the chunk after the window */
 
+/* ---- shared by vipage.c and vipage2.c ---- */
+int pg_slot(void);
+void pg_unslot(int i);
+int pg_io(int slot, char *buf, int len, int wr);
+char *pg_nl(char *p);
+int pg_count(char *a, char *b);
+int pg_abs(char *p);
+void pg_retop(void);
+char *pg_up(char *p, int n, int *got);
+char *pg_down(char *p, int n, int *got);
+int pg_spill_top(char *lim);
+int pg_spill_bottom(char *lim);
+int pg_fill_top(void);
+
 /* ---- what vi.c calls ---- */
 int pg_room(void);
 int pg_lines(void);

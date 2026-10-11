@@ -34,7 +34,7 @@ def session(rng):
 
 def build(exe, src):
     subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-DENABLE_FEATURE_VI_PAGING=1', '-o', exe] +
-                          [os.path.join(src, os.path.basename(m)) for m in VI_MODULES])
+                          [os.path.join(src, os.path.basename(m)) for m in VI_MODULES if os.path.exists(os.path.join(src, os.path.basename(m)))])
 
 
 def run(exe, keys, env):
@@ -79,8 +79,11 @@ def main():
         os.makedirs(ref)
         for f in os.listdir(os.path.join(ROOT, 'ports', 'vi')):
             if f.endswith(('.c', '.h')):
-                open(os.path.join(ref, f), 'wb').write(subprocess.check_output(
-                    ['git', '-C', ROOT, 'show', 'HEAD:ports/vi/' + f]))
+                try:
+                    open(os.path.join(ref, f), 'wb').write(subprocess.check_output(
+                        ['git', '-C', ROOT, 'show', 'HEAD:ports/vi/' + f], stderr=subprocess.DEVNULL))
+                except subprocess.CalledProcessError:
+                    pass                        # (a file the committed version does not have)
     old, new = os.path.join(w, 'vi_old'), os.path.join(w, 'vi_new')
     build(old, ref)
     build(new, os.path.join(ROOT, 'ports', 'vi'))

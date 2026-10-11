@@ -50,6 +50,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <conio.h>
+#define fwrite fwrite_blk	// (the library's fwrite a block at a time: the screen, VI.SWAP)
 #include <psys.h>
 
 #define vi_main			main
