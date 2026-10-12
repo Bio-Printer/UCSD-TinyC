@@ -37,7 +37,7 @@ whole suite unless asked (it takes a long time).
 | objcopy (`ports/objcopy/`) | `tools/objcopytest.py` (needs hexdump) |
 | less, more (`ports/less/`, `ports/more/`) | `tools/pagertest.py` |
 | shell redirection / pipes (`examples/shell.c`, `tinyc/lib/redirect.c`) | `tools/redirtest.py`, `tools/pexectest.py`, `tools/greptest.py` |
-| emulator keys / break (`tools/mkbiggy.py` MISCINFO, psys.h handshakes) | `tools/typeaheadtest.py`, `tools/breaktest.py` |
+| emulator keys / break / ^S ^Q (`tools/mkbiggy.py` MISCINFO, psys.h handshakes) | `tools/typeaheadtest.py`, `tools/breaktest.py`, `tools/flowtest.py` |
 
 Modes: `PSYS_MODE=native` or `PSYS_MODE=z80`. Say in the report what was run and
 what was not.
