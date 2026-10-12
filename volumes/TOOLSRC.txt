@@ -1,4 +1,4 @@
-TOOLSRC:  16 files  (a UCSD directory holds 77)
+TOOLSRC:  17 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -16,5 +16,6 @@ TOOLSRC:  16 files  (a UCSD directory holds 77)
   VI.H                46  vi: vi's modules share this: configuration, globals
   VIPAGE.H            12  vi: vi's window into big files (VI.SWAP)
   GREP.C              24  grep: GREP [-i] PATTERN [VOL: | #n:]FILES ...: the lines of ...
+  CAT.C               12  cat: CAT [-AbeEnstTuv] [FILE ...]: the files, one after the ...
   BINDERC.C           16  binderc: BINDERC [FILE]: the Pascal System Binder, in Tiny-C
   FILES.TEXT           6  this list

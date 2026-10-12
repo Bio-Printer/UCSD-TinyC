@@ -223,6 +223,7 @@ VI_MODULES = ['ports/vi/%s.c' % m for m in
 TOOLS = [
     ('VI', VI_MODULES, ['ports/vi/vi.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
     ('GREP', ['ports/grep/grep.c'], [], 'grep: GREP [-i] PATTERN FILES from the shell'),
+    ('CAT', ['ports/cat/cat.c'], [], 'cat: CAT [-AbeEnstTuv] [FILE ...] from the shell'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
 ]
 
@@ -258,7 +259,16 @@ GREP    GREP [-i] PATTERN [VOL: or #5:]FILES ...  from the shell: the
         blank (the shell splits words at blanks).
         GREP printf *.C, GREP -i ^int #9:*.H, GREP vi*pageup *.C
 
-BINDERC BINDERC [FILE]  (or X(ecute TOOLS:BINDERC): the Pascal System's
+BINDERC CAT     CAT [-AbeEnstTuv] [FILE ...]  from the shell: the files one after the
+        other on the standard output (no FILE or -: the standard input; the
+        shell's >FILE, <FILE and | work).  The options of cat(1), not the long
+        ones: -A -vET, -b number non-empty lines, -e -vE, -E $ at each line's
+        end, -n number all lines, -s one empty line for several, -t -vT, -T
+        tabs as ^I, -u ignored, -v control characters as ^X and bytes of 128
+        and up as M-x.  -bn, -vET: joined; -- ends the options.  .TEXT, .C and
+        .H files are text, any other file is read as the bytes it holds.
+
+BINDERC [FILE]  (or X(ecute TOOLS:BINDERC): the Pascal System's
         Binder, BINDER.CODE, rewritten in Tiny-C (its Pascal source is lost;
         it makes the same SYSTEM.PASCAL).  Puts the GOTOXY(X,Y: INTEGER)
         procedure of your own, the first procedure of the code file FILE
@@ -291,6 +301,8 @@ VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
         links them (/L VI=...), in P-Code or Z80 mode.
 
 GREP.C  grep (a regular expression, wildcards, every disk).
+
+CAT.C   cat (the options of cat(1)).
 
 FILES.TEXT lists every file on this volume.
 """
