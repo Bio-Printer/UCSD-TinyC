@@ -224,6 +224,7 @@ TOOLS = [
     ('VI', VI_MODULES, ['ports/vi/vi.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
     ('GREP', ['ports/grep/grep.c'], [], 'grep: GREP [-i] PATTERN FILES from the shell'),
     ('CAT', ['ports/cat/cat.c'], [], 'cat: CAT [-AbeEnstTuv] [FILE ...] from the shell'),
+    ('HEXDUMP', ['ports/hexdump/hexdump.c'], [], 'hexdump: HEXDUMP [-i] [FILE ...] from the shell'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
 ]
 
@@ -268,6 +269,16 @@ BINDERC CAT     CAT [-AbeEnstTuv] [FILE ...]  from the shell: the files one afte
         and up as M-x.  -bn, -vET: joined; -- ends the options.  .TEXT, .C and
         .H files are text, any other file is read as the bytes it holds.
 
+HEXDUMP HEXDUMP [-i] [FILE ...]  from the shell: a hex dump of the files (one
+        stream; no FILE or -: the standard input):  the offset in hex, 16
+        bytes in hex with a blank between them (two more blanks after the
+        8th), then the bytes as characters (. for the unprintable ones):
+        00000000  48 65 6C 6C 6F 20 77 6F   72 6C 64 0A 00 01 02 03  Hello world.....
+        -i: Intel Hex instead, a record of 16 bytes a line (:LLAAAATTDD..CC,
+        extended linear address records every 64 KB, the end record
+        :00000001FF).  HEXDUMP -i A.CODE >A.HEX.  .TEXT, .C and .H files are
+        text (a line is a 0A), any other file the bytes it holds.
+
 BINDERC [FILE]  (or X(ecute TOOLS:BINDERC): the Pascal System's
         Binder, BINDER.CODE, rewritten in Tiny-C (its Pascal source is lost;
         it makes the same SYSTEM.PASCAL).  Puts the GOTOXY(X,Y: INTEGER)
@@ -303,6 +314,8 @@ VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
 GREP.C  grep (a regular expression, wildcards, every disk).
 
 CAT.C   cat (the options of cat(1)).
+
+HEXDUMP.C  hexdump (a hex dump, Intel Hex with -i).
 
 FILES.TEXT lists every file on this volume.
 """

@@ -20,6 +20,7 @@ Start here when picking the project up in a new session.
 | `ports/vi/` | **vi** (the BusyBox-derived tiny vi) ported to the P-System: modules `vi.h`, `vimain.c`, `viscreen.c`, `vitext.c`, `vicolon.c`, `vicmd.c`, `vipage.c` (still build on Linux) + `viucsd.c` (the P-System side); work in progress, see its README |
 | `ports/binder/` | **binderc.c**: `BINDERC [FILE]`, the Pascal System's Binder (BINDER.CODE; its Pascal source is lost) in Tiny-C: puts your GOTOXY procedure into SYSTEM.PASCAL, byte for byte what BINDER makes (TOOLS:BINDERC.CODE) |
 | `ports/cat/` | **cat.c**: `CAT [-AbeEnstTuv] [FILE ...]` from the shell -- every option of cat(1) except the long ones (-A -b -e -E -n -s -t -T -u -v, joined as `-bn`); no FILE or `-`: the standard input; `.TEXT`/`.C`/`.H` files as text, others as their bytes (TOOLS:CAT.CODE, source TOOLSRC:CAT.C) |
+| `ports/hexdump/` | **hexdump.c**: `HEXDUMP [-i] [FILE ...]` from the shell -- offset, 16 bytes in hex (two extra blanks after the 8th), the characters; `-i`: Intel Hex (16-byte records, extended linear address every 64 KB, end record) (TOOLS:HEXDUMP.CODE, source TOOLSRC:HEXDUMP.C) |
 | `ports/grep/` | **grep.c**: `GREP [-i] PATTERN [FILES]` from the shell (no FILES: the standard input, `DIR | GREP .C`) -- a regular expression (`*` any characters as in file names, `. [] + ? ^ $`), case ignored unless `-i`, `VOL:NAME:LINE: text`; FILES with wildcards on every disk unless a volume is named (TOOLS:GREP.CODE) |
 | `verify/` | Tiny-C Verify: `TCVERIFY.SCRIPT`, `cmpcode.c`, `rmfiles.c`, README; the content is on the volumes **TCVERIF.zip** (script, RMFILES) and **TCEXPCT.zip** (expected output of every test) in `volumes/` |
 | `repro/` | engine bug repros (REAL compare, DEEPCXP: both fixed in the engine) |
@@ -50,6 +51,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `viscrolltest.py` | vi on the P-System with the emulator's scroll codes (2.03) and without: the same screen after every key |
 | `bindertest.py` | BINDERC against the real BINDER.CODE on the boot disk: the same SYSTEM.PASCAL |
 | `redirtest.py` | the shell's `>`, `>>`, `<`, `|` (`freopen`, the library's `redirect.c`): output to a file, input from one, pipes of two and three programs, the pipe files gone afterwards, `\>` |
+| `hexdumptest.py` | HEXDUMP, its output redirected into files read back from the disk image: the dump layout, Intel Hex (read back by the host's objcopy), binary and text files, one over 64 KB, several files, stdin, a pipe, errors |
 | `cattest.py` | CAT from the shell: every option against the host's cat on the same bytes (text files with tabs and control characters, a binary file, several files, standard input, a pipe, errors) |
 | `greptest.py` | GREP from the shell: case, `-i`, regular expressions, wildcards on every disk or one volume, line numbers across pages |
 | `alltest.py` | TOOLSRC:ALL.TEXT: one batch file running BUILD, LIBS and TOOLS; the compiler, library and tools identical to the shipped ones, the objects on TCSRC: |
