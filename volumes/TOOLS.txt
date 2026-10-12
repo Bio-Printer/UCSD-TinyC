@@ -1,11 +1,14 @@
-TOOLS:  7 files  (a UCSD directory holds 77)
+TOOLS:  10 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
-  README.TEXT         10  what is on this volume
+  README.TEXT         14  what is on this volume
   VI.CODE             72  vi, the screen editor: VI NAME.C from the shell
   GREP.CODE           23  grep: GREP [-i] PATTERN FILES from the shell
   CAT.CODE            19  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
   HEXDUMP.CODE        18  hexdump: HEXDUMP [-i] [FILE ...] from the shell
+  OBJCOPY.CODE        20  objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file
+  MORE.CODE           22  more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time
+  LESS.CODE           30  less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards
   BINDERC.CODE        22  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
   FILES.TEXT           4  this list

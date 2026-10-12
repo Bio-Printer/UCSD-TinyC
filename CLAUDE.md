@@ -34,6 +34,8 @@ whole suite unless asked (it takes a long time).
 | grep (`ports/grep/`) | `tools/greptest.py` |
 | cat (`ports/cat/`) | `tools/cattest.py` |
 | hexdump (`ports/hexdump/`) | `tools/hexdumptest.py` |
+| objcopy (`ports/objcopy/`) | `tools/objcopytest.py` (needs hexdump) |
+| less, more (`ports/less/`, `ports/more/`) | `tools/pagertest.py` |
 | shell redirection / pipes (`examples/shell.c`, `tinyc/lib/redirect.c`) | `tools/redirtest.py`, `tools/pexectest.py`, `tools/greptest.py` |
 | emulator keys / break (`tools/mkbiggy.py` MISCINFO, psys.h handshakes) | `tools/typeaheadtest.py`, `tools/breaktest.py` |
 

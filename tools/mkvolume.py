@@ -225,6 +225,9 @@ TOOLS = [
     ('GREP', ['ports/grep/grep.c'], [], 'grep: GREP [-i] PATTERN FILES from the shell'),
     ('CAT', ['ports/cat/cat.c'], [], 'cat: CAT [-AbeEnstTuv] [FILE ...] from the shell'),
     ('HEXDUMP', ['ports/hexdump/hexdump.c'], [], 'hexdump: HEXDUMP [-i] [FILE ...] from the shell'),
+    ('OBJCOPY', ['ports/objcopy/objcopy.c'], [], 'objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file'),
+    ('MORE', ['ports/more/more.c'], [], 'more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time'),
+    ('LESS', ['ports/less/less.c'], [], 'less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
 ]
 
@@ -279,6 +282,34 @@ HEXDUMP HEXDUMP [-i] [FILE ...]  from the shell: a hex dump of the files (one
         :00000001FF).  HEXDUMP -i A.CODE >A.HEX.  .TEXT, .C and .H files are
         text (a line is a 0A), any other file the bytes it holds.
 
+OBJCOPY OBJCOPY [-I ihex|hexdump] [-O binary] [INFILE [OUTFILE]]  from the
+        shell: a listing made by HEXDUMP (either form, or the same style by
+        another program) back into the bytes: the offsets place them (a gap is
+        filled with 0 bytes), Intel Hex checked by its checksums; without -I
+        the first character decides (':' is Intel Hex).  No INFILE or -: the
+        standard input; no OUTFILE: the standard output.  HEXDUMP A.CODE
+        >A.HEX, OBJCOPY A.HEX B.CODE; HEXDUMP -I A.CODE | OBJCOPY - B.CODE.
+        A file that is not .TEXT/.C/.H is whole blocks (the last one is
+        filled up with 0 bytes: UCSD files do not keep a length).
+
+MORE    MORE [-N] [-s] [-i] [+N] [FILE ...]  from the shell: a screen at a
+        time (the standard input when there is no FILE: DIR | MORE).  At the
+        --More--(NN%) prompt: SPACE the next screen, RETURN a line, d half a
+        screen, /text search (n again), = the line number, h help, q quit;
+        -N lines to a screen, -s squeeze empty lines, -i ignore case in
+        searches, +N start at line N.  Long lines wrap.
+
+LESS    LESS [-NSiF] [+N] [FILE ...]  from the shell: a screen at a time,
+        forwards and backwards (the standard input when it was redirected:
+        DIR | LESS).  SPACE/f PgDn and b PgUp a screen, RETURN/j and k a line
+        (the mouse wheel 3), d u half a screen, g G the first and last line
+        (Ng: line N; N%), /text ?text search forward and back (n N again),
+        :n :p :x the next, previous and first file, = where you are, h help,
+        q quit.  -N line numbers, -S chop long lines (else they wrap), -i
+        ignore case, -F quit if the file fits on the screen, +N start at line
+        N.  Any size of file: it reads as far as the keys need and keeps a
+        sparse index of line starts (needs emulator 2.04).
+
 BINDERC [FILE]  (or X(ecute TOOLS:BINDERC): the Pascal System's
         Binder, BINDER.CODE, rewritten in Tiny-C (its Pascal source is lost;
         it makes the same SYSTEM.PASCAL).  Puts the GOTOXY(X,Y: INTEGER)
@@ -316,6 +347,10 @@ GREP.C  grep (a regular expression, wildcards, every disk).
 CAT.C   cat (the options of cat(1)).
 
 HEXDUMP.C  hexdump (a hex dump, Intel Hex with -i).
+
+OBJCOPY.C  objcopy (a hex dump or Intel Hex back into a file).
+
+MORE.C, LESS.C  the pagers.
 
 FILES.TEXT lists every file on this volume.
 """
