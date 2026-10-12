@@ -32,11 +32,11 @@ int nsearched;                          /* files searched */
 
 /* ---- the regular expression ---- */
 
+char fold[256];                         /* each character as it compares: itself, or its capital */
+
 int same(int a, int b)
 {
-    if (exact)
-        return a == b;
-    return toupper(a) == toupper(b);
+    return fold[a & 255] == fold[b & 255];
 }
 
 /* the element at re (one character, ., [class], \c): its length in *len;
@@ -105,7 +105,7 @@ int matchrep(char *e, int n, int lo, char *rest, char *s)
 /* does re match at the start of s */
 int matchhere(char *re, char *s)
 {
-    int n;
+    int n, ok;
     for (;;) {
         if (*re == 0)
             return 1;
@@ -113,16 +113,52 @@ int matchhere(char *re, char *s)
             return *s == 0;
         if (*re == '*')                 /* any characters, as in file names */
             return matchrep(".", 1, 0, re + 1, s);
-        matchone(re, 'a', &n);          /* the element's length */
+        ok = matchone(re, *s, &n);      /* its length, and whether it matches */
         if (re[n] == '+')
             return matchrep(re, n, 1, re + n + 1, s);
         if (re[n] == '?')
-            return (*s && matchone(re, *s, &n) && matchhere(re + n + 1, s + 1))
+            return (*s && ok && matchhere(re + n + 1, s + 1))
                    || matchhere(re + n + 1, s);
-        if (*s == 0 || !matchone(re, *s, &n))
+        if (*s == 0 || !ok)
             return 0;
         re = re + n;
         s++;
+    }
+}
+
+/* the pattern starts with this character (and its other case): the only places a match can begin;
+   0 when it starts with something else (a class, ., *, \\, ^, $, a blank, or an optional element) */
+char first1;
+char first2;
+char ftab[256];                         /* the characters a match can begin with */
+int usetab;
+
+void setfirst(char *re)
+{
+    char c;
+    int i, n;
+    c = *re;
+    first1 = 0;
+    first2 = 0;
+    usetab = 0;
+    if (c == 0 || c == '^' || c == '$' || c == '*')
+        return;
+    matchone(re, 'a', &n);
+    if (re[n] == '?')                   /* the first element is optional */
+        return;
+    for (i = 1; i < 256; i++)
+        ftab[i] = matchone(re, i, &n);
+    ftab[0] = 0;
+    usetab = 1;
+    if (c == ' ' || c == '.' || c == '[' || c == '\\')
+        return;
+    first1 = c;
+    first2 = c;
+    if (!exact) {
+        if (islower(c))
+            first2 = toupper(c);
+        else if (isupper(c))
+            first2 = tolower(c);
     }
 }
 
@@ -132,8 +168,9 @@ int match(char *re, char *s)
     if (*re == '^')
         return matchhere(re + 1, s);
     do {
-        if (matchhere(re, s))
-            return 1;
+        if (!usetab || ftab[*s & 255])
+            if (matchhere(re, s))
+                return 1;
     } while (*s++);
     return 0;
 }
@@ -197,7 +234,8 @@ void search(char *re, int u, char *vol, char *name)
 {
     char path[24];
     char title[32];
-    int b, i, n, c, found;
+    int b, i, n, c, e, k, end, found;
+    char *z, *cr, *d;
     long lineno;
     sprintf(path, "#%d:%s", u, name);
     __ptitle(path, title);
@@ -214,17 +252,42 @@ void search(char *re, int u, char *vol, char *name)
     for (b = 2;; b = b + 2) {
         if (__cxp0i(28, fib, page, 0, 2, b, 1, 0, 0) != 2 || __cspi(34) != 0)    /* FBLOCKIO */
             break;
-        for (i = 0; i < 1024; i++) {
-            c = page[i] & 255;
-            if (c == 0)
-                break;                  /* the rest of the page */
-            if (c == 16 && i + 1 < 1024) {      /* DLE: blanks */
-                c = (page[++i] & 255) - 32;
-                while (c-- > 0 && n < 1024)
-                    line[n++] = ' ';
+        z = memchr(page, 0, 1024);      /* the NULs fill the rest of the page */
+        end = z ? z - page : 1024;
+        i = 0;
+        while (i < end) {               /* a line (or the rest of the page) at a time */
+            cr = memchr(page + i, '\r', end - i);
+            e = cr ? cr - page : end;
+            /* the pattern starts with a letter or character: a line without it cannot match
+               (a DLE only stands for blanks, so it is not looked for) */
+            if (first1 && n == 0 && cr && !memchr(page + i, first1, e - i)
+                && (first2 == first1 || !memchr(page + i, first2, e - i))) {
+                lineno++;
+                i = e + 1;
                 continue;
             }
-            if (c == '\r') {
+            while (i < e) {             /* the line's text, DLE n = n - 32 blanks */
+                d = memchr(page + i, 16, e - i);
+                k = d ? d - page - i : e - i;
+                if (n + k > 1024)
+                    k = 1024 - n;
+                memcpy(line + n, page + i, k);
+                n = n + k;
+                i = d ? d - page : e;
+                if (d) {
+                    if (i + 1 < e) {
+                        c = (page[i + 1] & 255) - 32;
+                        while (c-- > 0 && n < 1024)
+                            line[n++] = ' ';
+                        i = i + 2;
+                    } else {
+                        if (n < 1024)
+                            line[n++] = 16;
+                        i++;
+                    }
+                }
+            }
+            if (cr) {
                 line[n] = 0;
                 if (match(re, line)) {
                     printf("%s:%s:%ld: %s\n", vol, name, lineno, line);
@@ -233,10 +296,8 @@ void search(char *re, int u, char *vol, char *name)
                 }
                 lineno++;
                 n = 0;
-                continue;
+                i = e + 1;
             }
-            if (n < 1024)
-                line[n++] = c;
         }
     }
     if (n > 0) {                        /* a last line without its CR */
@@ -314,6 +375,9 @@ int main(int argc, char **argv)
         printf("  [] [^] a class, x+ x?, ^ $ start/end, \\c c itself, \\s a blank\n");
         return 2;
     }
+    for (k = 0; k < 256; k++)
+        fold[k] = exact ? k : toupper(k);
+    setfirst(argv[a]);
     for (k = a + 1; k < argc; k++)      /* argv[a]: the pattern */
         files(argv[a], argv[k]);
     printf("%ld line%s in %d of %d file%s\n", nlines, nlines == 1 ? "" : "s", nfiles, nsearched,
