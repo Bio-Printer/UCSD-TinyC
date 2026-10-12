@@ -230,6 +230,9 @@ TOOLS = [
     ('LESS', ['ports/less/less.c'], [], 'less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards'),
     ('SED', ['ports/sed/sed.c', 'ports/sed/sedre.c'], ['ports/sed/sed.h'], 'sed: SED [-nEsur] [-i[SUF]] [-e S] [-f F] [S] [FILE ...] a stream editor'),
     ('DIFF', ['ports/diff/diff.c'], [], 'diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2'),
+    ('WC', ['ports/wc/wc.c'], [], 'wc: WC [-clmwL] [FILE ...] lines, words and bytes'),
+    ('LC', ['ports/lc/lc.c'], [], 'lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns'),
+    ('PATCH', ['ports/patch/patch.c'], [], 'patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]'),
     ('MAN', ['ports/man/man.c'], [], 'man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
 ]
@@ -324,6 +327,19 @@ DIFF    DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2  from the shell: what
         differs between two text files: normal, unified or context form;
         exit status 0 same, 1 different, 2 trouble.  Any size of file.
 
+WC      WC [-clmwL] [FILE ...]  from the shell: the lines, words and bytes of
+        the files (-L the longest line) and a total; DIR | WC -l.
+
+LC      LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]  from the shell: the file names
+        of a disk in columns as wide as the console (down the columns, -x
+        across), -F marks CODE files, -s shows the sizes; one name to a line
+        when the output goes to a file or a pipe.
+
+PATCH   PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]  from the
+        shell: applies a normal, unified or context diff (DIFF's, or the
+        host's) to a file, finds hunks that moved and with 2 lines of fuzz,
+        writes the hunks that do not fit to NAME.REJ.TEXT; -R undoes a patch.
+
 MAN     MAN [-l] [-k WORD] [NAME ...]  from the shell: the manual page of a
         program on this volume (what it is for, every option and key); MAN
         alone lists them, -k WORD finds the pages with WORD in them.  The text
@@ -369,6 +385,12 @@ CAT.C   cat (the options of cat(1)).
 SED.C, SEDRE.C, SED.H  sed (the stream editor, its regular expressions).
 
 DIFF.C  diff (two files compared, three output forms).
+
+WC.C    wc (lines, words, bytes).
+
+LC.C    lc (the file names of a disk in columns).
+
+PATCH.C patch (a diff applied to a file).
 
 MAN.C   man (the manual pages program; MAN.TEXT on TOOLS: is its data).
 

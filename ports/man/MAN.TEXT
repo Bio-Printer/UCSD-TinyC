@@ -417,4 +417,89 @@ EXAMPLES
     DIFF -iw A.TEXT B.TEXT        DIFF -q A.TEXT B.TEXT
     CAT A.C | DIFF - B.C          a pipe as FILE1
 SEE ALSO
-    SED, CAT, GREP
+    PATCH, SED, CAT, GREP
+%% WC
+NAME
+    WC - count the lines, words and bytes of files
+SYNOPSIS
+    WC [-clmwL] [FILE ...]
+DESCRIPTION
+    Writes the number of lines, words and bytes of each FILE and, for more than
+    one, a line "total".  No FILE or a FILE of - is the standard input.  The
+    counts are right-aligned in the width of the largest one, in the order
+    lines, words, characters, bytes, longest line; the file name follows.  A
+    line is what ends in a newline, a word is a run of characters that are not
+    blanks (space, tab, CR, VT, FF).  .TEXT, .C and .H files are text files
+    (counted as the lines are read); other files are read as the bytes they
+    hold, whole 512-byte blocks.  Exit status 1 when a file cannot be opened.
+OPTIONS
+    -l   the lines          -w   the words
+    -c   the bytes          -m   the characters (the same: one byte each)
+    -L   the length of the longest line (a tab goes to the next multiple of 8)
+    With none of them: -lwc.  Several in one word (-lw) are all right.
+EXAMPLES
+    WC A.C                  WC -l A.C B.C
+    DIR | WC -l             LC -1 *.CODE | WC -l
+    WC -L README.TEXT
+SEE ALSO
+    LC, CAT, GREP
+%% LC
+NAME
+    LC - list the file names of a disk in columns
+SYNOPSIS
+    LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]
+DESCRIPTION
+    Lists the files of a disk by name, sorted (case does not matter), down
+    columns as wide as the console.  A PATTERN may have * or = (any characters)
+    and ? (any one character); with VOL: or #n: before it the disk is that one,
+    otherwise the prefix volume (CD sets it).  No PATTERN is every file.  With
+    more than one PATTERN each is listed under a line with the name of its disk.
+    When the output goes to a file or a pipe the names come one on a line (for
+    WC, GREP, SED), unless -C is there.  Exit status 1: a PATTERN matched
+    nothing, 2: a disk is not on line or a bad option.
+OPTIONS
+    -1   one name on a line        -x   fill the rows first, not the columns
+    -F   a * after the names of CODE files
+    -s   the size in blocks before each name
+    -r   the order reversed        -S   the biggest files first
+    -C   columns also when the output is not the console
+EXAMPLES
+    LC                      LC -F *.CODE
+    LC #5: #4:*.TEXT        LC -s -S
+    LC -1 *.C | SED s/.C//
+SEE ALSO
+    WC, SHELL
+%% PATCH
+NAME
+    PATCH - apply a diff to a file
+SYNOPSIS
+    PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
+DESCRIPTION
+    Reads a diff (DIFF's, or the host's diff -u, -c or normal output) from
+    PATCHFILE or the standard input and applies it to FILE.  Without FILE the
+    names come from the diff's "--- old" / "+++ new" (or "*** old" / "--- new")
+    headers, as many files as it holds (a normal diff has none: give FILE).  A
+    hunk is looked for where it says, then up to 60 lines either side, then
+    again with up to 2 lines of context left out at each end (fuzz); what it
+    finds is reported ("Hunk #1 succeeded at 12 (offset 3 lines)", "... with
+    fuzz 1").  A hunk that fits nowhere is written to NAME.REJ.TEXT (the
+    suffix goes before the extension) and said ("Hunk #2 FAILED at 40."); the
+    other hunks are applied anyway.  The result is written when the whole file
+    is done.  A hunk may have up to 190 lines.  Exit status 0: all applied,
+    1: some hunk failed, 2: trouble (no such file, bad option, no hunks).
+OPTIONS
+    -R   undo the patch (the patch is of the changes in the other direction)
+    -b   keep the original as NAME.ORIG.TEXT
+    -C   check only: say what would happen, change nothing
+    -o OUT   write the result to OUT, the file stays as it was
+    -i PATCHFILE   the diff is in this file (otherwise the standard input)
+    -F N   the most fuzz to allow (default 2)
+    -pN  strip N leading parts (up to a /) from the names in the headers
+    -s   silent: only the errors     -l  blanks match any amount of blanks
+    -N   accepted, ignored
+EXAMPLES
+    DIFF -u OLD.C NEW.C >FIX.TEXT   then   PATCH -i FIX.TEXT OLD.C
+    PATCH OLD.C < FIX.TEXT          PATCH -R -i FIX.TEXT NEW.C
+    PATCH -p1 -i CHANGES.TEXT       (names like a/x.c from a host's diff -r)
+SEE ALSO
+    DIFF, SED
