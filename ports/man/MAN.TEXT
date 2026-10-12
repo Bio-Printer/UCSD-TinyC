@@ -319,3 +319,102 @@ EXAMPLES
     DIR #5:= >LIST.TEXT        GREP int *.C | MORE        CAT A.C B.C >ALL.TEXT
 SEE ALSO
     MAN GREP, CAT, LESS
+
+%% SED
+NAME
+    SED - a stream editor: change the lines of files with a script
+SYNOPSIS
+    SED [-nEsur] [-i[SUFFIX]] [-e SCRIPT] [-f SCRIPTFILE] [SCRIPT] [FILE ...]
+DESCRIPTION
+    Every line of the files (the standard input when there is no FILE or it is -)
+    goes into the pattern space; the commands whose address selects it are run
+    in order; the pattern space is written (unless -n) and the next line is read.
+    Without -e and -f the first word that is not an option is the script.
+    A line is cut at 499 characters.  Regular expressions: see below.  The
+    shell takes < > | as redirections and pipes: write \< \> \| (they reach SED
+    as the character) or put the script in a file (-f).  A word with a blank in
+    it cannot be typed at the shell either: use -f.
+OPTIONS
+    -n           do not print the pattern space at the end of a cycle (p does)
+    -e SCRIPT    add the commands (several -e: one script, a line each)
+    -f FILE      commands from FILE (a text file, one command a line)
+    -E  -r       extended regular expressions (ERE: ( ) { } | + ? need no backslash)
+    -s           the files are separate: line numbers and $ are per file
+    -i[SUFFIX]   edit the files in place (implies -s); with a SUFFIX the original
+                 is kept with it before the extension: B.TEXT, -i.BAK: B.BAK.TEXT
+    -u  -z       ignored
+ADDRESSES (before a command; two with a comma select a range; ! after: the others)
+    N            line N                 $         the last line
+    /re/  \cREc  lines that match (add I after the closing / to ignore case)
+    first~step   first, first+step, ...  addr1,+N  addr1 and the N lines after it
+    addr1,~N     to the next multiple of N   0,/re/  like 1,/re/ but /re/ may match line 1
+    // (empty)   the last regular expression used
+COMMANDS
+    {  }         a block of commands for the selected lines
+    =            print the line number          l       print the pattern space unambiguously
+    a TEXT       append the TEXT after the cycle (also: a\ then the lines, \ at the end
+                 of a line continues the text)  i TEXT  print TEXT now   c TEXT  replace
+                 the line(s) (a range: once at its end)
+    d  D         delete the pattern space; D: up to the first newline and restart
+    g  G         pattern space := / += hold space          h  H   hold space := / += pattern space
+    x            swap the two               z       empty the pattern space
+    n  N         next line (printing, unless -n) / append the next line after a newline
+    p  P         print the pattern space / up to the first newline
+    q [N]  Q [N] quit (q prints first); exit status N
+    r FILE       append the lines of FILE after the cycle     w FILE   write the pattern space there
+    s/re/new/F   substitute (below)             y/abc/xyz/   replace each character
+    b [L]  t [L]  T [L]  branch to label L (the end of the script when none): always, if
+                 an s made a change since the last line was read or t, if not
+    :L           a label                        #       a comment (#n on line 1 is -n)
+SUBSTITUTE s/re/new/F
+    Any character instead of / ; \ before it makes it an ordinary character.  In NEW:
+    & the match, \1 .. \9 a group, \n newline, \t tab, \& an ampersand, \U \L upper / lower
+    case until \E, \u \l the next character.  Flags F: g every match, N the Nth (with g: the
+    Nth and after), p print, w FILE write, i I ignore case.
+REGULAR EXPRESSIONS (basic form; the extended one in brackets)
+    c  .  [abc]  [^abc]  [a-z]  [[:alpha:]]  a character, any, one of, not, range, a class
+    ^  $         the line's start, end          \(  \)  ( )  a group (\1 .. \9 match it again)
+    x*  x\+  x\?  x\{m,n\}   (ERE x+ x? x{m,n})  repeat x       a\|b  (ERE a|b)  either
+    \w \W \s \S  word / blank characters   \b \B \< \>  word edges   \n \t  newline, tab
+    The first alternative that works is taken (POSIX takes the longest).
+EXAMPLES
+    SED s/foo/bar/g A.TEXT       every foo to bar          SED -n /TODO/p A.C  lines with TODO
+    SED 1d A.TEXT                without the first line    SED $!N;s/\n/+/ A.TEXT   join pairs
+    SED -i.BAK s/a/b/ A.TEXT     in place, the original in A.BAK.TEXT
+    DIR | SED -n s/\([A-Z]*\).*/\1/p   the first word of each line
+    SED -f FIX.TEXT A.C >B.C     a script file
+SEE ALSO
+    GREP, CAT, DIFF
+
+%% DIFF
+NAME
+    DIFF - what differs between two text files
+SYNOPSIS
+    DIFF [-iwbBqs] [-u | -U N | -c | -C N] FILE1 FILE2
+DESCRIPTION
+    Compares FILE1 and FILE2 line by line and prints what must change in FILE1
+    to get FILE2.  One of the two may be - (the standard input).  Exit status
+    0: the same, 1: different, 2: trouble (a file that cannot be opened, a bad
+    option).  Files that are not text (.TEXT, .C and .H are text) are compared
+    byte for byte: "Binary files A and B differ".  The files are read once, a
+    window at a time (any size): the next lines two files have in common are
+    looked for 40 lines ahead, a larger change comes out as that much deleted and
+    added, one piece after another; the diff is always correct (PATCH-style) but
+    not always the shortest.
+OUTPUT FORMS
+    (none)     normal: 3c3, 5a6,7 or 8,9d7, then the lines: < FILE1's, > FILE2's
+    -u  -U N   unified: --- FILE1  +++ FILE2  and @@ -a,b +c,d @@ hunks, lines with a
+               blank, - or +; N lines of context (3 without N)
+    -c  -C N   context: *** FILE1  --- FILE2, hunks of FILE1's lines then FILE2's, the
+               changed ones marked ! - +; N lines of context (3)
+OPTIONS
+    -i   ignore case        -w   ignore all blanks     -b   ignore changes in the amount
+    -B   ignore lines that are empty (added or removed)
+    -q   only say whether the files differ ("Files A and B differ")
+    -s   say when they are the same ("Files A and B are identical")
+EXAMPLES
+    DIFF OLD.C NEW.C              DIFF -u OLD.C NEW.C >FIX.TEXT
+    DIFF -iw A.TEXT B.TEXT        DIFF -q A.TEXT B.TEXT
+    CAT A.C | DIFF - B.C          a pipe as FILE1
+SEE ALSO
+    SED, CAT, GREP

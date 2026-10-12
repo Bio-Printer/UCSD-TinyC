@@ -228,6 +228,8 @@ TOOLS = [
     ('OBJCOPY', ['ports/objcopy/objcopy.c'], [], 'objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file'),
     ('MORE', ['ports/more/more.c'], [], 'more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time'),
     ('LESS', ['ports/less/less.c'], [], 'less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards'),
+    ('SED', ['ports/sed/sed.c', 'ports/sed/sedre.c'], ['ports/sed/sed.h'], 'sed: SED [-nEsur] [-i[SUF]] [-e S] [-f F] [S] [FILE ...] a stream editor'),
+    ('DIFF', ['ports/diff/diff.c'], [], 'diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2'),
     ('MAN', ['ports/man/man.c'], [], 'man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
 ]
@@ -311,6 +313,17 @@ LESS    LESS [-NSiF] [+N] [FILE ...]  from the shell: a screen at a time,
         N.  Any size of file: it reads as far as the keys need and keeps a
         sparse index of line starts (needs emulator 2.04).
 
+SED     SED [-nEsur] [-i[SUFFIX]] [-e SCRIPT] [-f FILE] [SCRIPT] [FILE ...]
+        from the shell: a stream editor: the commands of a script (s y a i c
+        d p q n N h H g G x b t = l r w ...) run on each line of the files,
+        with addresses (N $ /re/ ranges first~step), basic or extended (-E)
+        regular expressions.  SED -n /x/p A.C; SED s/a/b/g A.TEXT; -i edits in
+        place.  (Write \\< \\> \\| for the shell's special characters, or use -f.)
+
+DIFF    DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2  from the shell: what
+        differs between two text files: normal, unified or context form;
+        exit status 0 same, 1 different, 2 trouble.  Any size of file.
+
 MAN     MAN [-l] [-k WORD] [NAME ...]  from the shell: the manual page of a
         program on this volume (what it is for, every option and key); MAN
         alone lists them, -k WORD finds the pages with WORD in them.  The text
@@ -352,6 +365,10 @@ VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
 GREP.C  grep (a regular expression, wildcards, every disk).
 
 CAT.C   cat (the options of cat(1)).
+
+SED.C, SEDRE.C, SED.H  sed (the stream editor, its regular expressions).
+
+DIFF.C  diff (two files compared, three output forms).
 
 MAN.C   man (the manual pages program; MAN.TEXT on TOOLS: is its data).
 
