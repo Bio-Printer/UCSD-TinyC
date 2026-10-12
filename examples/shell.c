@@ -29,6 +29,14 @@
      RENAME [VOL: | #n:]NAME NEW   one file's name, on its disk
      MEM                     the shell's free memory
      BYE                     back to the Command: prompt
+   Redirection and pipes: COMMAND >FILE puts what the command writes into FILE
+   (>>FILE appends), COMMAND <FILE is its standard input, and A | B runs A,
+   then B with A's output as its input (A | B | C ...; up to 8).  Works for
+   the shell's own commands (DIR *.C >LIST.TEXT) and for programs whose main
+   has argc and argv (GREP PAT FILES >OUT.TEXT, DIR *.C | GREP TEST).  A name
+   ending in .TEXT is a text file (use it for anything you will TYPE or edit).
+   \> \< \| are ordinary characters (GREP p-\>q FILE).  A pipe's
+   in-between files are #4:PIPE1.TEXT and PIPE2.TEXT; they go when it ends.
    The command line: Up and Down bring back the last 10 commands (kept in
    #4:SYSTEM.CMDS, so they outlast the shell); Left, Right, Home and End
    move in the line; Insert switches between inserting and typing over;
@@ -986,18 +994,342 @@ void run(char *name, char *args)
     }
 }
 
+/* the shell's own commands */
+int isbuiltin(char *name)
+{
+    return same(name, "cd") || same(name, "dir") || same(name, "type") || same(name, "delete") || same(name, "del")
+        || same(name, "whereis") || same(name, "volumes") || same(name, "vols") || same(name, "copy")
+        || same(name, "move") || same(name, "rename") || same(name, "ren") || same(name, "mem");
+}
+
+int isbye(char *name)
+{
+    int n;
+    n = 0;
+    while (name[n] && name[n] != ' ')
+        n++;
+    return n == 3 && same(name, "bye");
+}
+
+void builtin(char *name, char *args)
+{
+    char here;
+    char *heaptop;
+    if (same(name, "cd")) {
+        cd(args);
+        return;
+    }
+    if (same(name, "dir")) {
+        dir(args);
+        return;
+    }
+    if (same(name, "type")) {
+        type(args);
+        return;
+    }
+    if (same(name, "delete") || same(name, "del")) {
+        delete(args);
+        return;
+    }
+    if (same(name, "whereis")) {
+        whereis(args);
+        return;
+    }
+    if (same(name, "volumes") || same(name, "vols")) {
+        volumes();
+        return;
+    }
+    if (same(name, "copy")) {
+        copy(args, 0);
+        return;
+    }
+    if (same(name, "move")) {
+        copy(args, 1);
+        return;
+    }
+    if (same(name, "rename") || same(name, "ren")) {
+        rename(args);
+        return;
+    }
+    if (same(name, "mem")) {
+        __cspv(32, &heaptop);       /* MARK: the top of the heap */
+        printf("shell: %u words free\n", (unsigned)(&here - heaptop) / 2);
+        return;
+    }
+}
+
+/* ---- redirection and pipes ----
+   COMMAND >FILE (>>FILE appends) puts what the program writes (printf, puts, putchar) into
+   FILE; COMMAND <FILE is its standard input.  A program takes them from its command line
+   when its main has argc and argv; the shell does it for its own commands.  A name ending
+   in .TEXT is a text file, any other is raw bytes.  A | B | C runs the programs one after
+   the other: the output of each is a text file (#4:PIPE1.TEXT, #4:PIPE2.TEXT) that the
+   next one reads, and those go when the last one ends.  \> \< \| are ordinary characters. */
+
+#define PIPEFILE "#4:SYSTEM.PIPE"
+#define PIPE1 "#4:PIPE1.TEXT"
+#define PIPE2 "#4:PIPE2.TEXT"
+#define MAXSTAGE 8
+
+char pend[MAXSTAGE][LINEMAX + 1];       /* the stages still to run */
+int npend;
+
+/* the stages left, from #4:SYSTEM.PIPE: -1 if there is no such file */
+int pipe_load(void)
+{
+    FILE *f;
+    int c, n;
+    npend = 0;
+    f = fopen(PIPEFILE, "rb");
+    if (!f)
+        return -1;
+    n = 0;
+    while ((c = fgetc(f)) != EOF && c != 0 && npend < MAXSTAGE) {
+        if (c == '\n') {
+            pend[npend][n] = 0;
+            if (n > 0)
+                npend++;
+            n = 0;
+        } else if (n < LINEMAX)
+            pend[npend][n++] = c;
+    }
+    fclose(f);
+    return npend;
+}
+
+void pipe_save(void)
+{
+    FILE *f;
+    int i;
+    f = fopen(PIPEFILE, "wb");
+    if (!f)
+        return;
+    for (i = 0; i < npend; i++) {
+        fputs(pend[i], f);
+        fputc('\n', f);
+    }
+    fputc(0, f);
+    fclose(f);
+}
+
+/* the pipe is over (or broken off): its files go */
+void pipe_finish(void)
+{
+    remove(PIPEFILE);
+    remove(PIPE1);
+    remove(PIPE2);
+    npend = 0;
+}
+
+/* the next stage to run: 0 if none (a finished pipe is cleaned up) */
+int pipe_next(char *line)
+{
+    int i, n;
+    n = pipe_load();
+    if (n < 0)
+        return 0;
+    if (n == 0) {
+        pipe_finish();
+        return 0;
+    }
+    strcpy(line, pend[0]);
+    for (i = 1; i < npend; i++)
+        strcpy(pend[i - 1], pend[i]);
+    npend--;
+    pipe_save();
+    return 1;
+}
+
+/* the character at p is an operator (c) and not escaped by a backslash */
+int isop(char *s, char *p, int c)
+{
+    return *p == c && (p == s || p[-1] != '\\');
+}
+
+/* line into its stages at the unescaped |; returns how many (the stage texts are in the line) */
+int split_stages(char *line, char **stage)
+{
+    char *p;
+    int n;
+    n = 0;
+    stage[n++] = line;
+    for (p = line; *p; p++)
+        if (isop(line, p, '|')) {
+            *p = 0;
+            if (n < MAXSTAGE)
+                stage[n] = p + 1;
+            n++;
+        }
+    return n;
+}
+
+/* a stage without its redirections: cmd; their names in in, out; *app: >> */
+void redirs(char *stage, char *cmd, char *in, char *out, int *app)
+{
+    char *p, *d;
+    int c, n;
+    in[0] = out[0] = 0;
+    *app = 0;
+    d = cmd;
+    for (p = stage; *p; p++) {
+        if (isop(stage, p, '<') || isop(stage, p, '>')) {
+            c = *p++;
+            if (c == '>' && *p == '>') {
+                *app = 1;
+                p++;
+            }
+            while (*p == ' ')
+                p++;
+            n = 0;
+            while (*p && *p != ' ' && !isop(stage, p, '<') && !isop(stage, p, '>')) {
+                if (n < 23)
+                    (c == '<' ? in : out)[n++] = *p;
+                p++;
+            }
+            (c == '<' ? in : out)[n] = 0;
+            p--;
+            continue;
+        }
+        *d++ = *p;
+    }
+    while (d > cmd && d[-1] == ' ')
+        d--;                    /* (the blanks before a redirection) */
+    *d = 0;
+}
+
+/* the line with the redirections put at its end: ... <in >out */
+void joinstage(char *line, char *cmd, char *in, char *out, int app)
+{
+    int n;
+    strcpy(line, cmd);
+    n = strlen(line);
+    while (n > 0 && line[n - 1] == ' ')
+        line[--n] = 0;
+    if (*in) {
+        strcat(line, " <");
+        strcat(line, in);
+    }
+    if (*out) {
+        strcat(line, app ? " >>" : " >");
+        strcat(line, out);
+    }
+}
+
+/* one command: a builtin (returns 1) or a program (pexec: returns only when it cannot start: 0) */
+int runstage(char *stage)
+{
+    char cmd[LINEMAX + 1];
+    char in[24];
+    char out[24];
+    char full[LINEMAX + 1];
+    char *name, *args;
+    int app, builtin_run;
+    FILE save;
+    redirs(stage, cmd, in, out, &app);
+    name = cmd;
+    while (*name == ' ')
+        name++;
+    if (*name == 0)
+        return 1;
+    args = name;
+    while (*args && *args != ' ')
+        args++;
+    if (*args) {
+        *args++ = 0;
+        while (*args == ' ')
+            args++;
+    }
+    if (isbuiltin(name)) {
+        if (*out) {                     /* its output to the file, then the console again */
+            memcpy(&save, stdout, sizeof(FILE));
+            if (!freopen(out, app ? "a" : "w", stdout)) {
+                printf("%s: cannot open it\n", out);
+                return 1;
+            }
+        }
+        builtin(name, args);
+        if (*out) {
+            fclose(stdout);
+            memcpy(stdout, &save, sizeof(FILE));
+        }
+        return 1;
+    }
+    joinstage(full, args, in, out, app);        /* its arguments and redirections: the program takes them */
+    run(name, full);
+    return 0;
+}
+
+/* a line typed (or a stage taken from the pipe): the stages after the first go to the pipe
+   file, then the first runs; returns 1 when it ran and the shell is still here */
+void runline(char *line)
+{
+    char text[LINEMAX + 1];
+    char *stage[MAXSTAGE + 1];
+    char cmd[LINEMAX + 1];
+    char in[24];
+    char out[24];
+    int n, i, app, ok;
+    strcpy(text, line);
+    n = split_stages(text, stage);
+    if (n > MAXSTAGE) {
+        printf("too many | (%d programs at most)\n", MAXSTAGE);
+        return;
+    }
+    if (n == 1) {
+        runstage(stage[0]);
+        return;
+    }
+    npend = 0;
+    for (i = 0; i < n; i++) {
+        redirs(stage[i], cmd, in, out, &app);
+        if (i > 0 && *in) {
+            printf("a < after a |: the pipe is its input\n");
+            return;
+        }
+        if (i < n - 1 && *out) {
+            printf("a > before a |: the pipe is its output\n");
+            return;
+        }
+        if (i > 0)
+            strcpy(in, (i - 1) % 2 == 0 ? PIPE1 : PIPE2);
+        if (i < n - 1)
+            strcpy(out, i % 2 == 0 ? PIPE1 : PIPE2);
+        if (strlen(cmd) + strlen(in) + strlen(out) + 5 > LINEMAX) {
+            printf("command line too long (80 characters at most)\n");
+            return;
+        }
+        joinstage(pend[i], cmd, in, out, app);
+        if (strlen(pend[i]) > 80 && !isbuiltin(cmd)) {
+            printf("command line too long (80 characters at most)\n");
+            return;
+        }
+    }
+    strcpy(text, pend[0]);              /* the first now, the others when it ends */
+    for (i = 1; i < n; i++)
+        strcpy(pend[i - 1], pend[i]);
+    npend = n - 1;
+    pipe_save();
+    ok = runstage(text);
+    if (!ok)
+        pipe_finish();                  /* it did not start: no pipe */
+}
+
 int main(void)
 {
     char line[130];                     /* more than pexec takes (80): it says so */
-    char here;
-    char *heaptop;
     char *name;
-    char *args;
-    int n;
-    if (pexec_returned())
+    int n, back;
+    back = pexec_returned();
+    if (!back)
+        pipe_finish();                  /* a pipe a break left behind */
+    else if (pipe_load() <= 0)
         printf("[exit status %d]\n", pexec_status());
     loadhist();
     for (;;) {
+        if (pipe_next(line)) {          /* the next program of a pipe */
+            runline(line);
+            continue;
+        }
         printf("shell> ");
         editline(line);
         n = strlen(line);
@@ -1008,59 +1340,10 @@ int main(void)
             name++;
         if (*name == 0)
             continue;
-        if (!same(name, "bye"))
+        if (!isbye(name))
             savehist(name);             /* before it runs: pexec ends the shell */
-        args = name;
-        while (*args && *args != ' ')
-            args++;
-        if (*args) {
-            *args++ = 0;
-            while (*args == ' ')
-                args++;
-        }
-        if (same(name, "bye"))
+        if (isbye(name))
             return 0;
-        if (same(name, "cd")) {
-            cd(args);
-            continue;
-        }
-        if (same(name, "dir")) {
-            dir(args);
-            continue;
-        }
-        if (same(name, "type")) {
-            type(args);
-            continue;
-        }
-        if (same(name, "delete") || same(name, "del")) {
-            delete(args);
-            continue;
-        }
-        if (same(name, "whereis")) {
-            whereis(args);
-            continue;
-        }
-        if (same(name, "volumes") || same(name, "vols")) {
-            volumes();
-            continue;
-        }
-        if (same(name, "copy")) {
-            copy(args, 0);
-            continue;
-        }
-        if (same(name, "move")) {
-            copy(args, 1);
-            continue;
-        }
-        if (same(name, "rename") || same(name, "ren")) {
-            rename(args);
-            continue;
-        }
-        if (same(name, "mem")) {
-            __cspv(32, &heaptop);       /* MARK: the top of the heap */
-            printf("shell: %u words free\n", (unsigned)(&here - heaptop) / 2);
-            continue;
-        }
-        run(name, args);
+        runline(name);
     }
 }

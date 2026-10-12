@@ -84,6 +84,9 @@ int fflush(FILE *f);
 
 int fclose(FILE *f);
 
+/* the file as stdin / stdout / stderr, or any FILE (redirect.c) */
+FILE *freopen(char *name, char *mode, FILE *f);
+
 int remove(char *name);
 
 int feof(FILE *f);

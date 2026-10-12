@@ -610,7 +610,7 @@ void perror(char *s)
 void __stdio_exit(void)
 {
     int i;
-    for (i = 3; i < FOPEN_MAX + 3; i++)
+    for (i = 0; i < FOPEN_MAX + 3; i++)    /* (stdin and stdout may be redirected files) */
         if (__files[i].flags)
             fclose(&__files[i]);
     __conflush();

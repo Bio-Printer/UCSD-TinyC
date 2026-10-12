@@ -368,16 +368,29 @@ int main(int argc, char **argv)
         exact = 1;
         a++;
     }
-    if (argc - a < 2) {
+    if (argc - a < 1) {
         printf("use: GREP [-i] PATTERN [VOL: | #n:]FILES ...   (from the shell)\n");
         printf("  case is ignored unless -i; FILES: * = ? wildcards, every disk\n");
         printf("  unless a volume is named; PATTERN: * any characters, . any one,\n");
         printf("  [] [^] a class, x+ x?, ^ $ start/end, \\c c itself, \\s a blank\n");
+        printf("  no FILES: the lines of the standard input (GREP PAT <FILE, DIR | GREP PAT)\n");
         return 2;
     }
     for (k = 0; k < 256; k++)
         fold[k] = exact ? k : toupper(k);
     setfirst(argv[a]);
+    if (argc - a == 1) {                /* no files: the standard input, its lines as they are */
+        while (fgets(line, 1090, stdin)) {
+            k = strlen(line);
+            if (k > 0 && line[k - 1] == '\n')
+                line[k - 1] = 0;
+            if (match(argv[a], line)) {
+                puts(line);
+                nlines++;
+            }
+        }
+        return nlines ? 0 : 1;
+    }
     for (k = a + 1; k < argc; k++)      /* argv[a]: the pattern */
         files(argv[a], argv[k]);
     printf("%ld line%s in %d of %d file%s\n", nlines, nlines == 1 ? "" : "s", nfiles, nsearched,

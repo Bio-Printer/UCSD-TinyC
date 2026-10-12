@@ -4,6 +4,7 @@
 #include <psys.h>
 
 int main(int argc, char **argv);
+void __redirect(int *argcp, char **argv);
 
 /* checksum of a Pascal string: tells pexec's command line from anything
    else the OS's prompt line PL may hold */
@@ -57,6 +58,7 @@ int __callmain(void)
             line[i++] = 0;
     }
     argv[argc] = NULL;
+    __redirect(&argc, argv);            /* >NAME, <NAME */
     return main(argc, argv);
 }
 

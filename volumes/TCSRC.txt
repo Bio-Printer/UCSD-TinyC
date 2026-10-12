@@ -1,4 +1,4 @@
-TCSRC:  37 files  (a UCSD directory holds 77)
+TCSRC:  38 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -30,6 +30,7 @@ TCSRC:  37 files  (a UCSD directory holds 77)
   MATH.C               6  library: <math.h>
   MEMSCAN.C            6  library: memfill, memgap (<psys.h>)
   PEXEC.C             12  library: pexec, main(argc, argv) (<psys.h>)
+  REDIRECT.C           6  library: freopen; >NAME and <NAME on the command line
   SETJMP.C             8  library: <setjmp.h>
   STDIO.C             46  library: <stdio.h>
   STDIOBLK.C          10  library: <stdioblk.h>

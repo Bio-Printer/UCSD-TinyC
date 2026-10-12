@@ -349,6 +349,7 @@ WHAT = {
     'fltfmt.c': "printf's %f %e %g (linked only when floats are used)",
     'memscan.c': 'memfill, memgap (<psys.h>)',
     'pexec.c': 'pexec, main(argc, argv) (<psys.h>)',
+    'redirect.c': 'freopen; >NAME and <NAME on the command line',
     'strtold.c': 'strtold, atold (<stdlib.h>, P-Code mode)',
     'tcrt.c': 'runtime helpers: C division, shifts, unsigned, longs',
     'vi.h': "vi's modules share this: configuration, globals",
