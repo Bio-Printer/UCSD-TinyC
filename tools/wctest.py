@@ -51,7 +51,7 @@ def session(cmds, z):
               'TYPE "cd #5\\r"', 'WAIT "shell> "']
     for i, c in enumerate(cmds):
         script += ['TYPE "%s >#5:O%d.TEXT\\r"' % (c, i), 'WAIT "shell> "']
-    script += ['TYPE "wc -x\\r"', 'WAIT "shell> "', 'TYPE "wc #5:NOSUCH.TEXT\\r"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
+    script += ['TYPE "wc -x\\r"', 'WAIT "shell> "', 'TYPE "wc #5:NOSUCH.TEXT\\r"', 'WAIT "shell> "', 'TYPE "wc ZZ*\\r"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 3000)
     tr = tr.replace('\r', '\n')
     img = ucsdvol.Volume(os.path.join(ps.out, 'VERIFY_SOURCE.BLK'))
@@ -75,6 +75,16 @@ def main():
         cases.append(('stdin <FILE %s' % opt, 'wc %s < #5:W1.TEXT' % opt, exp))
         cases.append(('stdin pipe %s' % opt, 'cat #5:W1.TEXT | wc %s' % opt, exp))
         cases.append(('stdin - %s' % opt, 'wc %s - < #5:W1.TEXT' % opt, [e + ['-'] for e in exp]))
+    # wild cards (the directory's order is the order the files were written)
+    allt = ['W1.TEXT', 'W2.TEXT', 'W3.TEXT', 'W4.TEXT']
+    for opt, pat, names, prefix in (('-l', 'W*.TEXT', allt, ''), ('-lw', '#5:W?.TEXT', allt, ''), ('', 'W[13].TEXT', None, ''),
+                                    ('-c', 'W=.TEXT', allt, ''), ('-l', 'W1.TEXT W3.*', ['W1.TEXT', 'W3.TEXT'], '')):
+        if names is None:
+            continue
+        exp = hostwc(opt, names)
+        if prefix:
+            exp = [e[:-1] + [prefix + e[-1]] if e[-1] != 'total' else e for e in exp]
+        cases.append(('wild card %s %s' % (opt, pat), 'wc %s %s' % (opt, pat), exp))
     # a binary file: whole blocks
     nblk = (len(BIN) + 511) // 512
     cases.append(('binary -c', 'wc -c #5:B.DAT', [[str(nblk * 512), 'B.DAT']]))
@@ -93,6 +103,7 @@ def main():
                 print('--- %s\n got: %s\n want: %s' % (label, g, exp))
             checks.append((label, good))
     checks.append(('a bad option: said', "invalid option -- 'x'" in tr))
+    checks.append(('a wild card that matches nothing: said', 'ZZ*: no file matches' in tr and '[exit status 1]' in tr[tr.find('ZZ*'):]))
     checks.append(('a missing file: said', 'NOSUCH.TEXT: cannot open it' in tr))
     bad = [n for n, g in checks if not g]
     for n, g in checks:

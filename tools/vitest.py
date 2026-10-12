@@ -61,7 +61,8 @@ KEYKEYS = ["<PGDN>", "x", "<PGUP>", "j", "<END>", "x", "<HOME>", "x", "3j", "<DE
            "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>",
            "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "<WHDN>", "x", "<WHUP>", "<WHUP>", "x",
            "i", "<WHDN-INSERT>", "wheel", "\x1b", "ZZ"]
-SESSIONS = [('small file', TEXT, KEYS, True), ('1500 lines', BIG, BIGKEYS, False),
+SESSIONS = [('small file', TEXT, KEYS, True), ('save after x', TEXT, ["x", ":w\r", "dd", "ZZ"], False),
+            ('save after dd', TEXT, ["dd", ":w\r", "ZZ"], False), ('1500 lines', BIG, BIGKEYS, False),
             ('PC keys', BIG, KEYKEYS, False)]
 
 
@@ -115,6 +116,8 @@ def psystem(work, text, keys, y):
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 900)
     if not ok:
         raise SystemExit('the P-System run did not complete:\n' + info[-500:])
+    if 'System re-initialized' in tr or 'STK OFLOW' in tr:      # (a crash after the file was saved is a crash too)
+        raise SystemExit('the P-System crashed in VI:\n' + tr[-400:])
     v = ucsdvol.Volume(os.path.join(ps.out, 'VERIFY_SOURCE.BLK'))
     text = lambda n: ucsdvol.ucsd_to_text(v.read(n)[0])
     return text('X.C'), text('Y.C') if y else None

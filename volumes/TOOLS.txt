@@ -3,7 +3,7 @@ TOOLS:  17 files  (a UCSD directory holds 77)
   FILE            BLOCKS  WHAT
 
   README.TEXT         16  what is on this volume
-  VI.CODE             72  vi, the screen editor: VI NAME.C from the shell
+  VI.CODE             73  vi, the screen editor: VI NAME.C from the shell
   GREP.CODE           23  grep: GREP [-i] PATTERN FILES from the shell
   CAT.CODE            19  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
   HEXDUMP.CODE        18  hexdump: HEXDUMP [-i] [FILE ...] from the shell
@@ -12,7 +12,7 @@ TOOLS:  17 files  (a UCSD directory holds 77)
   LESS.CODE           30  less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards
   SED.CODE            45  sed: SED [-nEsur] [-i[SUF]] [-e S] [-f F] [S] [FILE ...] a stream editor
   DIFF.CODE           29  diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2
-  WC.CODE             20  wc: WC [-clmwL] [FILE ...] lines, words and bytes
+  WC.CODE             23  wc: WC [-clmwL] [FILE ...] lines, words and bytes
   LC.CODE             20  lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns
   PATCH.CODE          32  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
   MAN.CODE            19  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)

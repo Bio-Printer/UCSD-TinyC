@@ -104,15 +104,16 @@ char *strerror(int e)
 	return "I/O error";
 }
 
-/* The library's printf family is 2.8 KB of resident code; vi needs %s %d %i %u %c %%
-   and nothing else (no width, no long): this is that, into a buffer of n bytes
+/* The library's printf family is 2.8 KB of resident code; vi needs %s %d %i %u %ld %c %%
+   and nothing else (no width): this is that, into a buffer of n bytes
    (cut, always ended); the length it would have had. */
 int vi_vsnprintf(char *buf, size_t n, const char *fmt, va_list ap)
 {
 	size_t len;
-	char num[8];
+	char num[12];
 	const char *s;
-	unsigned u;
+	unsigned long u;
+	int lng;
 	int c;
 	int k;
 
@@ -123,20 +124,28 @@ int vi_vsnprintf(char *buf, size_t n, const char *fmt, va_list ap)
 		if (*fmt == '%') {
 			fmt++;
 			c = *fmt;
+			lng = c == 'l';
+			if (lng)
+				c = *++fmt;
 			if (c == 's') {
 				s = va_arg(ap, const char *);
 				if (!s)
 					s = "(null)";
 				k = strlen(s);
 			} else if (c == 'd' || c == 'i' || c == 'u') {
-				u = va_arg(ap, unsigned);
-				if (c != 'u' && (int)u < 0) {
+				if (lng)
+					u = va_arg(ap, unsigned long);
+				else if (c == 'u')
+					u = va_arg(ap, unsigned);
+				else
+					u = (long)va_arg(ap, int);
+				if (c != 'u' && (long)u < 0) {
 					if (len + 1 < n)
 						buf[len] = '-';
 					len++;
 					u = -u;
 				}
-				s = num + 7;
+				s = num + 11;
 				k = 0;
 				do {
 					*--s = '0' + u % 10;

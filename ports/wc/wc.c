@@ -12,17 +12,121 @@
    .TEXT, .C and .H files are text files (a line is what ends in a CR on the disk,
    the DLE blanks are put back); any other file is read as the bytes it holds,
    whole 512-byte blocks.  Run it from the shell: WC A.C, WC -l A.C B.C,
-   DIR | WC -l. */
+   DIR | WC -l.
+
+   A FILE may have the wild cards of DIR: * or = (any characters) and ? (any one),
+   in the name after an optional VOL: or #n: (WC *.C, WC #5:*.TEXT); the shell does
+   not expand them, WC does, and the names it counts are the files that match. */
 #pragma segment MAIN	/* calls within the program: 2-byte CGPs, no NOP after them */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <psys.h>
 
 int optl, optw, optc, optm, optL;
 char ibuf[512];
-#define MAXF 40
+#define MAXF 78                 /* a directory holds 77 files */
+#define OS_DKVID 59
+
+int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
+int dir[1024];
+char fname[MAXF][32];                   /* the names the wild cards gave */
 long cl[MAXF + 1], cw[MAXF + 1], cb[MAXF + 1], cL[MAXF + 1];
 char *names[MAXF + 1];
+
+int same(char *a, char *b)
+{
+    while (*a && toupper(*a) == toupper(*b)) {
+        a++;
+        b++;
+    }
+    return *a == 0 && *b == 0;
+}
+
+/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
+int readdir(int u)
+{
+    unsigned char *d;
+    d = (unsigned char *)dir;
+    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
+    if (__cspi(34) != 0)
+        return 0;
+    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
+}
+
+/* a directory's volume name, or entry i's file name */
+void dirname(int i, char *s)
+{
+    unsigned char *e;
+    int n;
+    e = (unsigned char *)dir + 26 * i + 6;
+    for (n = 0; n < e[0] && n < 15; n++)
+        s[n] = e[1 + n];
+    s[n] = 0;
+}
+
+/* the unit of a volume: "#n", "n", "*" (the system volume) or a name
+   (":" after it or not); 0 when no disk on line has it */
+int unitof(char *vol)
+{
+    char name[20];
+    char got[16];
+    int n, k, u;
+    strncpy(name, vol, 19);
+    name[19] = 0;
+    n = strlen(name);
+    if (n > 0 && name[n - 1] == ':')
+        name[--n] = 0;
+    if (n == 0)
+        return 0;
+    if (strcmp(name, "*") == 0)
+        return SYSCOM->sysunit;
+    if (name[0] == '#' || isdigit(name[0])) {
+        u = atoi(name[0] == '#' ? name + 1 : name);
+        return u > 0 && u <= 14 && readdir(u) ? u : 0;
+    }
+    for (k = 0; k < 8; k++)
+        if (readdir(units[k])) {
+            dirname(0, got);
+            if (same(got, name))
+                return units[k];
+        }
+    return 0;
+}
+
+/* the prefix volume's name (the OS's DKVID) */
+void prefix(char *s)
+{
+    unsigned char *v;
+    int n;
+    v = (unsigned char *)__osvaraddr(OS_DKVID);
+    for (n = 0; n < v[0] && n < 7; n++)
+        s[n] = v[1 + n];
+    s[n] = 0;
+}
+
+/* does name match the pattern: * or = any characters, ? any one */
+int match(char *pat, char *name)
+{
+    if (*pat == 0)
+        return *name == 0;
+    if (*pat == '*' || *pat == '=') {
+        for (;;) {
+            if (match(pat + 1, name))
+                return 1;
+            if (*name == 0)
+                return 0;
+            name++;
+        }
+    }
+    if (*name == 0)
+        return 0;
+    if (*pat != '?' && toupper(*pat) != toupper(*name))
+        return 0;
+    return match(pat + 1, name + 1);
+}
+
 
 int more(FILE *f)
 {
@@ -115,6 +219,61 @@ void show(int k, int w)
     printf("\n");
 }
 
+/* one FILE argument: a name as it is, or the wild card's matches (VOL:PAT, #n:PAT, PAT)
+   added to files[]; returns the new count, -1 when there is no room */
+int expand(char *arg, char **files, int nf, int *status)
+{
+    char vol[20];
+    char name[16];
+    char *colon, *pat;
+    int u, i, n, before;
+    if (strpbrk(arg, "*=?") == NULL) {
+        if (nf >= MAXF)
+            return -1;
+        files[nf] = arg;
+        return nf + 1;
+    }
+    colon = strchr(arg, ':');
+    if (colon) {
+        n = colon - arg;
+        if (n > 19)
+            n = 19;
+        memcpy(vol, arg, n);
+        vol[n] = 0;
+        pat = colon + 1;
+    } else {
+        prefix(vol);
+        pat = arg;
+    }
+    u = unitof(vol);
+    if (u == 0 || !readdir(u)) {
+        fprintf(stderr, "wc: no disk %s on line\n", *vol ? vol : ":");
+        *status = 1;
+        return nf;
+    }
+    before = nf;
+    for (i = 1; i <= dir[8]; i++) {
+        dirname(i, name);
+        if (!match(pat, name))
+            continue;
+        if (nf >= MAXF)
+            return -1;
+        if (colon) {
+            strncpy(fname[nf], arg, colon - arg + 1);
+            fname[nf][colon - arg + 1] = 0;
+            strcat(fname[nf], name);
+        } else
+            strcpy(fname[nf], name);
+        files[nf] = fname[nf];
+        nf++;
+    }
+    if (nf == before) {
+        fprintf(stderr, "wc: %s: no file matches\n", arg);
+        *status = 1;
+    }
+    return nf;
+}
+
 int main(int argc, char **argv)
 {
     int i, j, endopt, nf, k, w, status;
@@ -143,15 +302,19 @@ int main(int argc, char **argv)
                     fprintf(stderr, "use: WC [-clmwL] [FILE ...]   (no FILE or -: the standard input)\n");
                     return 1;
                 }
-        } else if (nf < MAXF)
-            files[nf++] = a;
-        else {
-            fprintf(stderr, "wc: more than %d files\n", MAXF);
-            return 1;
+        } else {
+            nf = expand(a, files, nf, &status);
+            if (nf < 0) {
+                fprintf(stderr, "wc: more than %d files\n", MAXF);
+                return 1;
+            }
         }
     }
     if (!(optl || optw || optc || optm || optL))
         optl = optw = optc = 1;
+    if (nf == 0 && status) {
+        return status;                  /* only wild cards, none matched */
+    }
     if (nf == 0) {
         files[0] = "-";
         nf = 1;

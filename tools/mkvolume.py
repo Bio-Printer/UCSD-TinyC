@@ -328,7 +328,8 @@ DIFF    DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2  from the shell: what
         exit status 0 same, 1 different, 2 trouble.  Any size of file.
 
 WC      WC [-clmwL] [FILE ...]  from the shell: the lines, words and bytes of
-        the files (-L the longest line) and a total; DIR | WC -l.
+        the files (-L the longest line) and a total; wild cards in the names
+        (WC *.C); DIR | WC -l.
 
 LC      LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]  from the shell: the file names
         of a disk in columns as wide as the console (down the columns, -x

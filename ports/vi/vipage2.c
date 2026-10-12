@@ -274,11 +274,22 @@ int pg_find_line(const char *pat)
 
 /* ---- the file ---- */
 
+/* the file being read is closed: the page buffer and file information block it held
+   (malloc gave it the blocks ucsd_reserve() had set aside for saving) go back to the
+   reserve, or the save finds none and its fopen takes the memory the stack needs */
+static void pg_rclose(void)
+{
+	fclose(pg_rf);
+	pg_rf = NULL;
+#ifdef __UCSD__
+	ucsd_reserve();
+#endif
+}
+
 void pg_close(void)
 {
 	if (pg_rf) {
-		fclose(pg_rf);
-		pg_rf = NULL;
+		pg_rclose();
 	}
 	if (pg_f) {
 		fclose(pg_f);
@@ -313,8 +324,7 @@ void pg_init(void)
 void pg_reset(void)
 {
 	if (pg_rf) {
-		fclose(pg_rf);
-		pg_rf = NULL;
+		pg_rclose();
 	}
 	pg_carry = pg_bad = 0;
 	pg_nb = pg_na = pg_lb = pg_la = pg_top = 0;
@@ -355,8 +365,7 @@ int pg_more(void)
 	last = len;
 	k = n < PG_SLOT - pg_carry;             /* the end of the file */
 	if (k) {
-		fclose(pg_rf);
-		pg_rf = NULL;
+		pg_rclose();
 		last_file_modified = -1;        /* the status line's total */
 		if (len > 0 && pg_buf[len - 1] != '\n')
 			pg_buf[len++] = '\n';         /* the last line gets its end */
@@ -371,8 +380,7 @@ int pg_more(void)
 		if (pg_nb + pg_na == 0 && end == text)
 			pg_abandon(current_filename, "cannot be loaded");     /* nothing shown yet: vi stops */
 		if (pg_rf) {
-			fclose(pg_rf);
-			pg_rf = NULL;
+			pg_rclose();
 		}
 		pg_bad = 1;
 		status_line_bold("%s: not loaded to its end", current_filename);
@@ -443,6 +451,9 @@ int pg_load(const char *fn)
 		if (len >= pg_cap - 1 && fgetc(f) != EOF)
 			pg_abandon(fn, "too big for memory (no " PG_SWAP ")");
 		fclose(f);
+#ifdef __UCSD__
+		ucsd_reserve();
+#endif
 		if (len > 0 && text[len - 1] != '\n')
 			text[len++] = '\n';             /* the last line gets its end */
 		end = text + len;

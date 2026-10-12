@@ -425,7 +425,11 @@ SYNOPSIS
     WC [-clmwL] [FILE ...]
 DESCRIPTION
     Writes the number of lines, words and bytes of each FILE and, for more than
-    one, a line "total".  No FILE or a FILE of - is the standard input.  The
+    one, a line "total".  No FILE or a FILE of - is the standard input.  A FILE
+    may have the wild cards of DIR: * or = (any characters) and ? (any one) in
+    the name, after an optional VOL: or #n: (WC *.C, WC #5:*.TEXT); WC expands
+    them itself (the shell does not): every file that matches is counted, and
+    "no file matches" is said, status 1, when none does.  The
     counts are right-aligned in the width of the largest one, in the order
     lines, words, characters, bytes, longest line; the file name follows.  A
     line is what ends in a newline, a word is a run of characters that are not
@@ -439,6 +443,7 @@ OPTIONS
     With none of them: -lwc.  Several in one word (-lw) are all right.
 EXAMPLES
     WC A.C                  WC -l A.C B.C
+    WC -l *.C               WC -w #5:*.TEXT
     DIR | WC -l             LC -1 *.CODE | WC -l
     WC -L README.TEXT
 SEE ALSO
