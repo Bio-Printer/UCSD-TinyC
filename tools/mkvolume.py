@@ -228,6 +228,7 @@ TOOLS = [
     ('OBJCOPY', ['ports/objcopy/objcopy.c'], [], 'objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file'),
     ('MORE', ['ports/more/more.c'], [], 'more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time'),
     ('LESS', ['ports/less/less.c'], [], 'less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards'),
+    ('MAN', ['ports/man/man.c'], [], 'man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
 ]
 
@@ -310,6 +311,12 @@ LESS    LESS [-NSiF] [+N] [FILE ...]  from the shell: a screen at a time,
         N.  Any size of file: it reads as far as the keys need and keeps a
         sparse index of line starts (needs emulator 2.04).
 
+MAN     MAN [-l] [-k WORD] [NAME ...]  from the shell: the manual page of a
+        program on this volume (what it is for, every option and key); MAN
+        alone lists them, -k WORD finds the pages with WORD in them.  The text
+        is the one file MAN.TEXT next to MAN.CODE (add a page there for each
+        new tool: MAN VI | LESS).
+
 BINDERC [FILE]  (or X(ecute TOOLS:BINDERC): the Pascal System's
         Binder, BINDER.CODE, rewritten in Tiny-C (its Pascal source is lost;
         it makes the same SYSTEM.PASCAL).  Puts the GOTOXY(X,Y: INTEGER)
@@ -345,6 +352,8 @@ VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
 GREP.C  grep (a regular expression, wildcards, every disk).
 
 CAT.C   cat (the options of cat(1)).
+
+MAN.C   man (the manual pages program; MAN.TEXT on TOOLS: is its data).
 
 HEXDUMP.C  hexdump (a hex dump, Intel Hex with -i).
 
@@ -568,6 +577,13 @@ def tools():
     for name, mods, hdrs, desc in TOOLS:
         code = compile_modules([os.path.join(ROOT, m) for m in mods], os.path.join(TMP, name + '.CODE'), True)
         t.binary(name + '.CODE', open(code, 'rb').read(), desc)
+    # the manual pages, one file next to MAN.CODE: every program on this volume needs a page
+    man = open(os.path.join(ROOT, 'ports', 'man', 'MAN.TEXT')).read()
+    pages = {n for line in man.split('\n') if line.startswith('%% ') for n in line[3:].upper().split()}
+    missing = [name for name, mods, hdrs, desc in TOOLS if name not in pages]
+    if missing:
+        raise SystemExit('ports/man/MAN.TEXT has no page (%%%% NAME) for: %s' % ', '.join(missing))
+    t.text('MAN.TEXT', man, 'the manual pages MAN shows (one %% NAME entry a program: edit and add here)')
     t.finish()
     s = Vol('TOOLSRC', 4000)
     s.text('README.TEXT', README_TOOLSRC, 'what is on this volume')

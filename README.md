@@ -24,6 +24,7 @@ Start here when picking the project up in a new session.
 | `ports/objcopy/` | **objcopy.c**: `OBJCOPY [-I ihex|hexdump] [-O binary] [INFILE [OUTFILE]]` -- HEXDUMP's output (either form) back into the bytes (offsets place them, gaps are zero filled, Intel Hex checksums checked) (TOOLS:OBJCOPY.CODE) |
 | `ports/more/` | **more.c**: `MORE [-N] [-s] [-i] [+N] [FILE ...]` -- a screen at a time with a `--More--(NN%)` prompt (TOOLS:MORE.CODE) |
 | `ports/less/` | **less.c**: `LESS [-NSiF] [+N] [FILE ...]` -- forwards and backwards through any size of file (a sparse index of line starts and 1 KB page reads), search, line numbers, several files, the console's scroll codes (emulator 2.04) (TOOLS:LESS.CODE) |
+| `ports/man/` | **man.c** and **MAN.TEXT**: `MAN [-l] [-k WORD] [NAME ...]` -- the manual page (purpose, every option and key) of each program on TOOLS:; all the text is the one file MAN.TEXT next to MAN.CODE (a `%% NAME` heading per page; `tools/mkvolume.py` refuses to build TOOLS: when a program has no page), with a --More-- stop on the screen (TOOLS:MAN.CODE, TOOLS:MAN.TEXT) |
 | `ports/grep/` | **grep.c**: `GREP [-i] PATTERN [FILES]` from the shell (no FILES: the standard input, `DIR | GREP .C`) -- a regular expression (`*` any characters as in file names, `. [] + ? ^ $`), case ignored unless `-i`, `VOL:NAME:LINE: text`; FILES with wildcards on every disk unless a volume is named (TOOLS:GREP.CODE) |
 | `verify/` | Tiny-C Verify: `TCVERIFY.SCRIPT`, `cmpcode.c`, `rmfiles.c`, README; the content is on the volumes **TCVERIF.zip** (script, RMFILES) and **TCEXPCT.zip** (expected output of every test) in `volumes/` |
 | `repro/` | engine bug repros (REAL compare, DEEPCXP: both fixed in the engine) |
@@ -54,6 +55,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `viscrolltest.py` | vi on the P-System with the emulator's scroll codes (2.03) and without: the same screen after every key |
 | `bindertest.py` | BINDERC against the real BINDER.CODE on the boot disk: the same SYSTEM.PASCAL |
 | `redirtest.py` | the shell's `>`, `>>`, `<`, `|` (`freopen`, the library's `redirect.c`): output to a file, input from one, pipes of two and three programs, the pipe files gone afterwards, `\>` |
+| `mantest.py` | MAN with the real MAN.TEXT: the list, a page, several, case, -k, a missing page, a bad option, the --More-- stop, a page into a file; every program on TOOLS: has a page |
 | `objcopytest.py` | OBJCOPY: HEXDUMP's output in both forms turned back into the files (binary, over 64 KB, a short last line of text), a gap, a bad checksum, errors |
 | `pagertest.py` | LESS and MORE: the screen read after every key (j k SPACE b G g Ng / ? n d u, the wheel, PgDn, -N -S, wrapped lines, a pipe, <FILE, :n :p; more's prompt, SPACE, RETURN, d, /, -10, q) |
 | `hexdumptest.py` | HEXDUMP, its output redirected into files read back from the disk image: the dump layout, Intel Hex (read back by the host's objcopy), binary and text files, one over 64 KB, several files, stdin, a pipe, errors |

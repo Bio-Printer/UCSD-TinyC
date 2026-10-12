@@ -1,0 +1,321 @@
+This is MAN.TEXT, the manual pages that MAN shows (MAN NAME, MAN alone lists them, MAN -k WORD).
+It sits on TOOLS: next to MAN.CODE and is the only file MAN reads.
+
+HOW TO ADD OR CHANGE A PAGE (nothing else needs to change; mkvolume.py refuses to build TOOLS:
+when a program on it has no page):
+  - a page starts with a line  %% NAME [ALIAS ...]  at the left margin (the names MAN NAME finds)
+    and goes on until the next such line; the lines before the first %% (these) are not shown;
+  - the first line after the heading NAME is the one-line purpose: "    NAME - what it does";
+    MAN alone and MAN -k print it
+  - then SYNOPSIS, DESCRIPTION, OPTIONS, KEYS, EXAMPLES, SEE ALSO ... as they fit, indented 4
+  - keep a line under 78 characters, plain letters and blanks only (a tab is a blank here)
+  - a line that must begin with %% can be indented: only column 1 counts
+Edit ports/man/MAN.TEXT in UCSD-TinyC, run tools/mkvolume.py, and the new text is on TOOLS:MAN.TEXT.
+
+%% MAN
+NAME
+    MAN - the manual pages of the programs on TOOLS:
+SYNOPSIS
+    MAN [-l] [-k WORD] [NAME ...]
+DESCRIPTION
+    Shows the page of each program NAME (case does not matter): what it is for
+    and every option and key it takes.  The text is the file MAN.TEXT next to
+    MAN.CODE, on the volume MAN was run from.  On the screen a long page stops
+    at --More--: SPACE shows the next screen, RETURN one more line, q quits.
+    When the output is redirected or piped it is just the text.
+OPTIONS
+    (none)   the programs there are pages for, one line each
+    -l       the same
+    -k WORD  the programs whose page has WORD in it (case ignored), one line each
+EXAMPLES
+    MAN GREP          the page of GREP
+    MAN CAT HEXDUMP   two pages
+    MAN -k hex        which programs have to do with hex
+    MAN VI | LESS     a page in LESS, to go back and forth
+    MAN SHELL >SHELL.TEXT    a page into a file
+
+%% VI
+NAME
+    VI - the screen editor (BusyBox "tiny vi" for Tiny-C)
+SYNOPSIS
+    VI [-R] [-c COMMAND] [FILE]
+DESCRIPTION
+    A vi: moving, inserting, deleting, searching and substituting on a screen.
+    FILE is a text file as typed (.C, .H and .TEXT files are text files).  A
+    file larger than memory is edited through a window (the rest is kept in a
+    temporary file VI.SWAP on the prefix volume): moving, searching, G and :N
+    move the window; a command that needs more lines than the window holds
+    (500dd on a big file) is refused.  Needs emulator 2.04.
+OPTIONS
+    -R          read only: the file cannot be written (:w! does it)
+    -c COMMAND  run the colon COMMAND when the file is loaded (-c 120 goes to line 120)
+MOVING
+    h j k l, the arrow keys   left, down, up, right
+    0  ^  $                   start of the line, first character, end
+    w b e   W B E             by word, by blank-delimited word
+    f t F T x  ;  ,          find / up to the character x, repeat, repeat backwards
+    G  gg  NG  N|  H M L     last line, first line, line N, column N, top/middle/bottom of the screen
+    %                         the matching ( ) [ ] { }
+    ^F ^B  ^D ^U  ^E ^Y       a screen, half a screen, a line (also Page Up/Down, the mouse wheel)
+    z RETURN  z.  z-          the line at the top, middle, bottom of the screen
+    /pat  ?pat  n  N          search forward, back, repeat, repeat backwards
+    ma  'a                    mark a place, go to it
+    Home End Insert Delete    start of line, end of line, i, x (emulator 2.00 or later)
+CHANGING
+    i a I A o O               insert (before, after, at the line's start, end, a new line below, above)
+    x X  r  R  s  ~           delete a character, replace one, replace many, substitute, change case
+    dd D  dw  d$  d motion    delete: line, to the end of the line, word, ... (a count first: 3dd)
+    cc C  cw  c motion        change; yy Y  y motion  copy (yank); p P  put after, before
+    J  .  u  U                join lines, repeat the last change, undo, undo the changes to a line
+    > <  >> <<                shift lines right, left
+    ESC                       ends insert mode; ^V quotes the next character
+COLON COMMANDS (: then the command; ranges 1,5  .,$  %  'a,'b  /pat/)
+    :w  :w NAME  :wq  :x  ZZ  write, write to NAME, write and quit
+    :q  :q!                   quit, quit without writing
+    :e NAME  :e!              edit another file; edit the file again
+    :r NAME                   read a file in below the cursor line
+    :N  :$                    go to line N, the last line
+    :d  :y  :p                delete, yank, put lines of the range
+    :s/old/new/  :s/old/new/g  substitute (in the range; g: every one in a line)
+    :set ai  noai             autoindent;  :set ic  noic  ignorecase;  :set sm  nosm  showmatch
+    :set ts=N                 the tab stop;  :set fl  noflash;  :set  shows them
+    :f  ^G                    file name and line;  :version  the version
+EXAMPLES
+    VI A.C            edit A.C
+    VI -R A.C         look at it, no writing
+    VI -c 120 A.C     start at line 120
+SEE ALSO
+    LESS, MORE (to read a file), GREP (to find a line)
+
+%% GREP
+NAME
+    GREP - the lines of text files that match a pattern
+SYNOPSIS
+    GREP [-i] PATTERN [[VOL: | #n:]FILE ...]
+DESCRIPTION
+    Prints each line of the text files that matches PATTERN as
+    VOL:NAME:LINE: text.  A FILE has wildcards (* or = any characters, ? any
+    one) and is looked for on every disk on line unless a volume is named
+    (VOL: or #n:).  Only text files are searched.  With no FILE it reads the
+    standard input and prints the matching lines as they are (DIR | GREP .C).
+    At the end: N lines in M of K files.  Exit status 0 if a line was found.
+OPTIONS
+    -i       case counts (the other way round from Unix: case is ignored
+             unless -i is given)
+PATTERN
+    c         the character c               .       any one character
+    *         any characters (none or more, as in file names)
+    [abc]     one of them   [a-z] a range   [^abc]  any other character
+    x+        x one or more times           x?      x once or not at all
+    ^  $      the line's start, end         \c      c itself (\. \* \[ \> ...)
+    \s        a blank or a tab (the shell splits its words at blanks)
+EXAMPLES
+    GREP printf *.C            every .C file on every disk
+    GREP -i ^int #9:*.H        lines starting with int, case counts
+    GREP vi*pageup TOOLSRC:=.C a pattern with * in it
+    GREP p-\>q A.C             the shell would take a bare > for a redirection
+    DIR #5:= | GREP .TEXT      lines of another program's output
+SEE ALSO
+    CAT, LESS, SHELL (redirection, \> \< \|)
+
+%% CAT
+NAME
+    CAT - the files one after the other on the standard output
+SYNOPSIS
+    CAT [-AbeEnstTuv] [FILE ...]
+DESCRIPTION
+    Puts each FILE on the standard output.  No FILE, or a FILE that is -, is
+    the standard input.  .TEXT, .C and .H files are text; any other file is
+    read as the bytes it holds, in whole 512-byte blocks.  Line numbers (-n,
+    -b) go on from one file to the next.  Several options may be joined (-bn).
+    -- ends the options.  The long options of cat(1) (--show-all, ...) are not here.
+OPTIONS
+    -A   show all: the same as -vET
+    -b   number the non-empty output lines (beats -n)
+    -e   the same as -vE
+    -E   a $ at the end of each line
+    -n   number all the output lines (6 wide, then a tab)
+    -s   squeeze: several empty lines in a row become one
+    -t   the same as -vT
+    -T   show the tabs as ^I
+    -u   ignored
+    -v   show the control characters as ^X (DEL as ^?) and the bytes of 128
+         and up as M-x (M-^X, M-^?), all but the newline and the tab
+EXAMPLES
+    CAT -n A.C                 a file with line numbers
+    CAT A.C B.C >ALL.TEXT      two files into one
+    CAT -A B.DAT               every byte of a data file, visibly
+    CAT -s NOTES.TEXT | LESS   squeezed, in LESS
+SEE ALSO
+    LESS, MORE, HEXDUMP
+
+%% HEXDUMP
+NAME
+    HEXDUMP - a hex dump of files, or Intel Hex
+SYNOPSIS
+    HEXDUMP [-i] [FILE ...]
+DESCRIPTION
+    Dumps the bytes of the files, one after the other as one stream (the
+    offsets go on); no FILE or - is the standard input.  A line is the offset
+    in hex, 16 bytes in hex with a blank between them (two more blanks after
+    the 8th), then the same bytes as characters (a . for the unprintable ones):
+        00000000  48 65 6C 6C 6F 20 77 6F   72 6C 64 0A 00 01 02 03  Hello world.....
+    .TEXT, .C and .H files are text (a line ends in 0A here); any other file
+    is read as the bytes it holds, in whole 512-byte blocks.
+OPTIONS
+    -i   Intel Hex instead:  :LLAAAATTDD...CC  16 data bytes a line (LL their
+         number, AAAA the address in the 64 KB segment, TT 00 data, 04 extended
+         linear address (at every 64 KB), 01 end; CC the checksum), and the end
+         record :00000001FF
+EXAMPLES
+    HEXDUMP A.CODE | LESS      look at a code file
+    HEXDUMP -i A.CODE >A.HEX   Intel Hex into a file (OBJCOPY turns it back)
+SEE ALSO
+    OBJCOPY, CAT -A
+
+%% OBJCOPY
+NAME
+    OBJCOPY - a hex dump or Intel Hex back into a file
+SYNOPSIS
+    OBJCOPY [-I ihex|hexdump] [-O binary] [INFILE [OUTFILE]]
+DESCRIPTION
+    Reads the listing HEXDUMP made (either form, or the same style by another
+    program) and writes the bytes it describes.  The offsets (the addresses of
+    Intel Hex) place the bytes: the first one is where the file starts, a gap
+    is filled with 0 bytes, going back is an error.  Intel Hex checksums are
+    checked.  No INFILE, or -: the standard input; no OUTFILE: the standard
+    output.  UCSD files do not keep a length: an OUTFILE that is not .TEXT,
+    .C or .H is whole 512-byte blocks, the last one filled up with 0 bytes.
+OPTIONS
+    -I ihex      the input is Intel Hex
+    -I hexdump   the input is a HEXDUMP listing (hex is the same)
+    (no -I)      the first non-blank character decides: ':' is Intel Hex
+    -O binary    the output format; the only one
+EXAMPLES
+    OBJCOPY A.HEX B.CODE                  Intel Hex into a code file
+    HEXDUMP A.CODE | OBJCOPY - B.CODE     a round trip through a pipe
+SEE ALSO
+    HEXDUMP
+
+%% MORE
+NAME
+    MORE - a file a screen at a time
+SYNOPSIS
+    MORE [-N] [-s] [-i] [+N] [FILE ...]
+DESCRIPTION
+    Shows the files a screen at a time; no FILE or - is the standard input.
+    At the --More--(NN%) prompt (NN%: how far into the file) the keys below
+    work.  Long lines wrap, tabs go to a multiple of 8, control characters
+    show as ^X and bytes of 128 and up as M-x.  When the output is not the
+    screen (MORE A.C >B.TEXT) it is just the files.  With several files each
+    starts under its name.  Forward only: LESS goes back too.
+OPTIONS
+    -N     N lines to a screen (else the screen less the prompt line)
+    -s     squeeze several empty lines into one
+    -i     searches ignore case
+    +N     start at line N
+KEYS
+    SPACE f ^F z PgDn   the next screen        RETURN j Down  the next line
+    wheel down          3 lines                d ^D           half a screen
+    s                   skip a screen          /text  n       search, again
+    =                   the line number        h  ?           help
+    q Q ESC             quit
+EXAMPLES
+    MORE A.C           MORE -20 +100 A.C        DIR | MORE
+SEE ALSO
+    LESS
+
+%% LESS
+NAME
+    LESS - a file a screen at a time, forwards and backwards
+SYNOPSIS
+    LESS [-NSiF] [+N] [FILE ...]
+DESCRIPTION
+    Shows the files on the screen and lets you move in them in both
+    directions: a file of any size (it reads 1 KB pages as the keys need them
+    and keeps a sparse index of line starts).  No FILE: the standard input
+    when it was redirected (DIR | LESS, LESS <FILE).  .TEXT, .C and .H files
+    are text; any other file is read as the bytes it holds (a line ends at a
+    0A).  Tabs go to a multiple of 8, control characters show as ^X, bytes of
+    128 and up as M-x.  When the output is not the screen it is just the
+    files.  Needs emulator 2.04 (the console's scroll codes).
+OPTIONS
+    -N   line numbers
+    -S   chop long lines (else they wrap)
+    -i   searches ignore case
+    -F   quit at once if the file fits on the screen
+    +N   start at line N
+KEYS (a number before a command is its count)
+    SPACE f ^F z PgDn    forward a screen       b ^B w PgUp   back a screen
+    RETURN j e ^N Down   forward a line         k y ^Y ^P Up  back a line
+    mouse wheel          3 lines                d ^D          half a screen forward
+    u ^U                 half a screen back     g < Home      the first line (Ng: line N)
+    G > End              the last line (NG)     p  N%         N% of the way into the file
+    /text  ?text         search forward, back (the line goes to the top); n N again
+    :n  :p  :x           the next, previous, first file
+    =  ^G  :f            where you are         r ^R ^L        draw again
+    h                    help                  q Q :q ZZ      quit
+EXAMPLES
+    LESS -N A.C      line numbers         LESS +100 A.C   start at line 100
+    DIR | LESS       a listing            MAN VI | LESS   a manual page
+SEE ALSO
+    MORE, CAT, GREP
+
+%% BINDERC
+NAME
+    BINDERC - the Binder: your GOTOXY into SYSTEM.PASCAL
+SYNOPSIS
+    BINDERC [FILE]
+DESCRIPTION
+    The Pascal System's Binder, BINDER.CODE, rewritten in Tiny-C (its Pascal
+    source is lost); it makes the same SYSTEM.PASCAL.  It puts the
+    GOTOXY(X, Y: INTEGER) procedure of your own -- the first procedure of the
+    code file FILE (segment 0, a compiled Pascal program) -- into SYSTEM.PASCAL
+    of the prefix volume, which is replaced.  Run SETUP too, so the system
+    knows your terminal.  Back up the boot disk first.  From X(ecute, with no
+    FILE, it asks for the name.  A name that is not found as typed is tried with
+    .CODE added.
+OPTIONS
+    FILE   the code file with the GOTOXY procedure
+EXAMPLES
+    BINDERC MYGOTO     (MYGOTO.CODE, with the prefix at the boot volume)
+
+%% SHELL
+NAME
+    SHELL - the command line (S at the Command: prompt; SYSTEM.SHELL)
+SYNOPSIS
+    COMMAND [ARGS] [<FILE] [>FILE | >>FILE]    A | B | C
+DESCRIPTION
+    Runs programs (a name without a volume is looked for on every disk, and
+    when several have it you pick one with a key) and its own commands below.
+    The command line keeps the last 10 commands (#4:SYSTEM.CMDS): Up and Down
+    bring them back; Left, Right, Home, End move, Insert switches between
+    inserting and typing over, Delete and Backspace delete, ESC clears the line.
+COMMANDS (upper or lower case)
+    CD [#n | n | VOL | *]      the prefix volume; CD alone shows it
+    DIR [VOL: | #n:][PATTERN]  files (* or = any characters, ? any one)
+    TYPE [VOL: | #n:]NAME      a text file on the console (wildcards: each one)
+    DELETE [VOL: | #n:]PAT     delete (with wildcards it lists them and asks, Y)
+    WHEREIS [VOL: | #n:]PAT    which disks have the file
+    VOLUMES                    every disk on line: unit, volume, files, blocks
+    COPY SRC DEST              copy (DEST a volume or, for one file, a name)
+    MOVE SRC DEST              copy, then SRC goes
+    RENAME [VOL: | #n:]NAME NEW   one file's new name
+    MEM                        the shell's free memory
+    BYE                        back to the Command: prompt
+REDIRECTION AND PIPES
+    COMMAND >FILE     what the command writes goes into FILE (.TEXT: a text file)
+    COMMAND >>FILE    appended to FILE
+    COMMAND <FILE     FILE is the command's standard input
+    A | B | C         A's output is B's input, B's is C's (up to 8 programs)
+    \>  \<  \|        an ordinary character (GREP p-\>q A.C)
+    This works for the shell's own commands and for programs whose main takes
+    arguments (every program on TOOLS:).  The files of a pipe are
+    #4:PIPE1.TEXT and PIPE2.TEXT; they go when it ends.
+KEYS WHILE A PROGRAM RUNS (emulator 2.06)
+    `         the break key: stops a program that is not reading keys
+    ^S  ^Q    stop and start the console output
+EXAMPLES
+    DIR #5:= >LIST.TEXT        GREP int *.C | MORE        CAT A.C B.C >ALL.TEXT
+SEE ALSO
+    MAN GREP, CAT, LESS

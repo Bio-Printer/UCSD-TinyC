@@ -11,6 +11,12 @@ too -- not only a patch or a copy somewhere else:
 * UCSD-Pascal_Windows_Emulator: `main` -- an engine or window change is a new
   version (Version.h, UCSDPascal.rc, README).
 
+## New tools on TOOLS:
+
+A program added to the `TOOLS` list in `tools/mkvolume.py` needs a page in `ports/man/MAN.TEXT` (a
+`%% NAME` heading, then NAME / SYNOPSIS / OPTIONS ...; the header of that file says how): MAN shows it and
+`mkvolume.py` stops when it is missing.  Change an option of a tool, change its page.
+
 ## Emulator versions
 
 New code need not work with older emulators: use the current emulator's features
@@ -36,6 +42,7 @@ whole suite unless asked (it takes a long time).
 | hexdump (`ports/hexdump/`) | `tools/hexdumptest.py` |
 | objcopy (`ports/objcopy/`) | `tools/objcopytest.py` (needs hexdump) |
 | less, more (`ports/less/`, `ports/more/`) | `tools/pagertest.py` |
+| man, MAN.TEXT (`ports/man/`) | `tools/mantest.py` (needs cat) |
 | shell redirection / pipes (`examples/shell.c`, `tinyc/lib/redirect.c`) | `tools/redirtest.py`, `tools/pexectest.py`, `tools/greptest.py` |
 | emulator keys / break / ^S ^Q (`tools/mkbiggy.py` MISCINFO, psys.h handshakes) | `tools/typeaheadtest.py`, `tools/breaktest.py`, `tools/flowtest.py` |
 

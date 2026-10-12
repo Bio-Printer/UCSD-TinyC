@@ -1,4 +1,4 @@
-TOOLS:  10 files  (a UCSD directory holds 77)
+TOOLS:  12 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -10,5 +10,7 @@ TOOLS:  10 files  (a UCSD directory holds 77)
   OBJCOPY.CODE        20  objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file
   MORE.CODE           22  more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time
   LESS.CODE           30  less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards
+  MAN.CODE            19  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
   BINDERC.CODE        22  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
+  MAN.TEXT            34  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
   FILES.TEXT           4  this list
