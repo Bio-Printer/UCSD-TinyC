@@ -222,7 +222,7 @@ VI_MODULES = ['ports/vi/%s.c' % m for m in
               ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'vipage2', 'viucsd')]
 TOOLS = [
     ('VI', VI_MODULES, ['ports/vi/vi.h', 'ports/vi/vipage.h'], 'vi, the screen editor: VI NAME.C from the shell'),
-    ('GREP', ['ports/grep/grep.c'], [], 'grep: GREP [-i] PATTERN FILES from the shell'),
+    ('GREP', ['ports/grep/grep.c'], [], 'grep: GREP [-i] [-n] PATTERN FILES from the shell'),
     ('CAT', ['ports/cat/cat.c'], [], 'cat: CAT [-AbeEnstTuv] [FILE ...] from the shell'),
     ('HEXDUMP', ['ports/hexdump/hexdump.c'], [], 'hexdump: HEXDUMP [-i] [FILE ...] from the shell'),
     ('OBJCOPY', ['ports/objcopy/objcopy.c'], [], 'objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file'),
@@ -259,7 +259,7 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         command on more lines than fit in the window at once (500dd,
         :1,$s/a/b/ on a big file) is refused with a message.
 
-GREP    GREP [-i] PATTERN [VOL: or #5:]FILES ...  from the shell: the
+GREP    GREP [-i] [-n] PATTERN [VOL: or #5:]FILES ...  from the shell: the
         lines of text files that match, as VOL:NAME:LINE: text.  Case is
         ignored unless -i (the other way round from Unix).  FILES takes
         * = ? wildcards and is looked for on every disk unless a volume

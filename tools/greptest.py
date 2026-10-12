@@ -31,7 +31,7 @@ FILES = {
     10: {'C.H': '#define N 42\n#define M x\n', 'D.C': '    case VI_K_PAGEUP:\n    case VI_K_UP:\n'},
 }
 CMDS = ['grep hello *.c', 'grep -i hello *.c', 'grep ^int #5:*.c', 'grep marker150 big.text',
-        'grep [0-9]+$ disk1?:*.h', 'grep vi*pageup *.c', 'grep shell *.code', 'grep x nosuch.z', 'grep']
+        'grep [0-9]+$ disk1?:*.h', 'grep vi*pageup *.c', 'grep shell *.code', 'grep x nosuch.z', 'grep', 'grep -n print #5:a.c', 'grep -in HELLO #9:*.c', 'grep -ni zzz #9:*.c', 'grep -n hello #9:*.c']
 
 
 def main():
@@ -81,7 +81,13 @@ def main():
          and 'D.C:2' not in part(CMDS[5]) and '1 line in 1 of 3 files' in part(CMDS[5])),
         ('grep shell *.code: code files are not searched', 'grep: no text file *.code on any disk on line' in part(CMDS[6])),
         ('grep x nosuch.z', 'grep: no text file nosuch.z on any disk on line' in part(CMDS[7])),
-        ('grep alone: the usage', 'use: GREP [-i] PATTERN' in part(CMDS[8])),
+        ('grep alone: the usage', 'use: GREP [-i] [-n] PATTERN' in part(CMDS[8])),
+        ('grep -n print #5:a.c: the lines without it', 'WORK:A.C:3:' not in part(CMDS[9]) and 'WORK:A.C:1: int main(void)\n' in part(CMDS[9])
+         and 'WORK:A.C:5: }\n' in part(CMDS[9]) and '4 lines in 1 of 1 file' in part(CMDS[9])),
+        ('grep -in HELLO: case counts, the lines without it', 'SPARE:B.C:1:' in part(CMDS[10]) and 'SPARE:B.C:3:' in part(CMDS[10])
+         and 'B.C:2:' not in part(CMDS[10]) and '2 lines in 1 of 1 file' in part(CMDS[10])),
+        ('grep -ni zzz: every line', '3 lines in 1 of 1 file' in part(CMDS[11])),
+        ('grep -n hello: no line left', '0 lines in 0 of 1 file' in part(CMDS[12])),
     ]
     bad = [n for n, good in checks if not good]
     for n, good in checks:

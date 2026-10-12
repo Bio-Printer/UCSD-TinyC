@@ -91,7 +91,7 @@ SEE ALSO
 NAME
     GREP - the lines of text files that match a pattern
 SYNOPSIS
-    GREP [-i] PATTERN [[VOL: | #n:]FILE ...]
+    GREP [-i] [-n] PATTERN [[VOL: | #n:]FILE ...]
 DESCRIPTION
     Prints each line of the text files that matches PATTERN as
     VOL:NAME:LINE: text.  A FILE has wildcards (* or = any characters, ? any
@@ -102,6 +102,7 @@ DESCRIPTION
 OPTIONS
     -i       case counts (the other way round from Unix: case is ignored
              unless -i is given)
+    -n       the lines that do NOT match the pattern (-in: both)
 PATTERN
     c         the character c               .       any one character
     *         any characters (none or more, as in file names)
@@ -112,6 +113,7 @@ PATTERN
 EXAMPLES
     GREP printf *.C            every .C file on every disk
     GREP -i ^int #9:*.H        lines starting with int, case counts
+    GREP -n ^\s*$ A.TEXT       the lines that are not blank
     GREP vi*pageup TOOLSRC:=.C a pattern with * in it
     GREP p-\>q A.C             the shell would take a bare > for a redirection
     DIR #5:= | GREP .TEXT      lines of another program's output

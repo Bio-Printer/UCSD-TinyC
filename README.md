@@ -30,7 +30,7 @@ Start here when picking the project up in a new session.
 | `ports/wc/` | **wc.c**: `WC [-clmwL] [FILE ...]` -- lines, words, bytes, longest line, a `total` line, wild cards in the names (`WC *.C`) (TOOLS:WC.CODE) |
 | `ports/lc/` | **lc.c**: `LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]` -- the file names of a disk in columns (Plan 9's lc): sorted, down the columns, `-x` across, `-F` marks CODE files, `-s` sizes, `-S` by size; one a line into a file or pipe (TOOLS:LC.CODE) |
 | `ports/patch/` | **patch.c**: `PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]` -- applies normal, unified and context diffs: hunks that moved (offset), fuzz up to 2, rejects in NAME.REJ.TEXT, `-R`, `-b`, hunks of up to 190 lines (TOOLS:PATCH.CODE) |
-| `ports/grep/` | **grep.c**: `GREP [-i] PATTERN [FILES]` from the shell (no FILES: the standard input, `DIR | GREP .C`) -- a regular expression (`*` any characters as in file names, `. [] + ? ^ $`), case ignored unless `-i`, `VOL:NAME:LINE: text`; FILES with wildcards on every disk unless a volume is named (TOOLS:GREP.CODE) |
+| `ports/grep/` | **grep.c**: `GREP [-i] [-n] PATTERN [FILES]` from the shell (no FILES: the standard input, `DIR | GREP .C`) -- a regular expression (`*` any characters as in file names, `. [] + ? ^ $`), case ignored unless `-i`, `-n` the lines without the pattern, `VOL:NAME:LINE: text`; FILES with wildcards on every disk unless a volume is named (TOOLS:GREP.CODE) |
 | `verify/` | Tiny-C Verify: `TCVERIFY.SCRIPT`, `cmpcode.c`, `rmfiles.c`, README; the content is on the volumes **TCVERIF.zip** (script, RMFILES) and **TCEXPCT.zip** (expected output of every test) in `volumes/` |
 | `repro/` | engine bug repros (REAL compare, DEEPCXP: both fixed in the engine) |
 | `tools/` | host tools (below) |
@@ -61,6 +61,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `redirtest.py` | the shell's `>`, `>>`, `<`, `|` (`freopen`, the library's `redirect.c`): output to a file, input from one, pipes of two and three programs, the pipe files gone afterwards, `\>` |
 | `mantest.py` | MAN with the real MAN.TEXT: the list, a page, several, case, -k, a missing page, a bad option, the --More-- stop, a page into a file; every program on TOOLS: has a page |
 | `sedtest.py` | SED against the host's GNU sed on the same text: 150 scripts (addresses, ranges, every command, s with its flags, both regular expression dialects, y, a i c, branches, hold space, -n -e -f -E -s -i, w, exit status) |
+| `quicktest.py` | the normal regression test: `cc @libs \| grep Joining` on the P-System, TCLIB2.OBJ IDENTICAL to the host's (10 s) |
 | `keytest.py` | the emulator's keys in both modes: the keys-waiting count (2.04), the break key (2.05), ^S / ^Q (2.06) |
 | `difftest.py` | DIFF: every output form for 16 pairs of files, simple ones equal to the host's diff, all of them applied by the host's patch to make FILE2; -i -w -b -B -q -s, binary files, the exit status |
 | `wctest.py` | WC: every option, several files and the total, the standard input, a binary file; the numbers equal the host's wc |

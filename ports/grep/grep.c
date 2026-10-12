@@ -1,5 +1,6 @@
-/* grep.c -- GREP [-i] PATTERN [VOL: | #n:]FILES ...: the lines of text
-   files that match PATTERN, each as VOL:NAME:LINE: text.
+/* grep.c -- GREP [-i] [-n] PATTERN [VOL: | #n:]FILES ...: the lines of text
+   files that match PATTERN, each as VOL:NAME:LINE: text.  -n: the lines that
+   do not match (-in and -ni are all right).
 
    Case is ignored unless -i is given (-i: exact case; the other way round
    from Unix grep).  FILES takes the shell's wildcards (* or = any
@@ -26,6 +27,7 @@
 
 int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };      /* the disk units */
 int exact;                              /* -i: case counts */
+int invert;                             /* -n: the lines without the pattern */
 long nlines;                            /* lines found */
 int nfiles;                             /* files with a line found */
 int nsearched;                          /* files searched */
@@ -260,7 +262,7 @@ void search(char *re, int u, char *vol, char *name)
             e = cr ? cr - page : end;
             /* the pattern starts with a letter or character: a line without it cannot match
                (a DLE only stands for blanks, so it is not looked for) */
-            if (first1 && n == 0 && cr && !memchr(page + i, first1, e - i)
+            if (first1 && !invert && n == 0 && cr && !memchr(page + i, first1, e - i)
                 && (first2 == first1 || !memchr(page + i, first2, e - i))) {
                 lineno++;
                 i = e + 1;
@@ -289,7 +291,7 @@ void search(char *re, int u, char *vol, char *name)
             }
             if (cr) {
                 line[n] = 0;
-                if (match(re, line)) {
+                if (match(re, line) != invert) {
                     printf("%s:%s:%ld: %s\n", vol, name, lineno, line);
                     nlines++;
                     found = 1;
@@ -302,7 +304,7 @@ void search(char *re, int u, char *vol, char *name)
     }
     if (n > 0) {                        /* a last line without its CR */
         line[n] = 0;
-        if (match(re, line)) {
+        if (match(re, line) != invert) {
             printf("%s:%s:%ld: %s\n", vol, name, lineno, line);
             nlines++;
             found = 1;
@@ -364,13 +366,17 @@ int main(int argc, char **argv)
 {
     int a, k;
     a = 1;
-    if (a < argc && (strcmp(argv[a], "-i") == 0 || strcmp(argv[a], "-I") == 0)) {
-        exact = 1;
+    while (a < argc && argv[a][0] == '-' && argv[a][1] && strspn(argv[a] + 1, "iIn") == strlen(argv[a] + 1)) {
+        for (k = 1; argv[a][k]; k++)
+            if (argv[a][k] == 'n')
+                invert = 1;
+            else
+                exact = 1;
         a++;
     }
     if (argc - a < 1) {
-        printf("use: GREP [-i] PATTERN [VOL: | #n:]FILES ...   (from the shell)\n");
-        printf("  case is ignored unless -i; FILES: * = ? wildcards, every disk\n");
+        printf("use: GREP [-i] [-n] PATTERN [VOL: | #n:]FILES ...   (from the shell)\n");
+        printf("  case is ignored unless -i; -n: the lines without the pattern; FILES: * = ? wildcards, every disk\n");
         printf("  unless a volume is named; PATTERN: * any characters, . any one,\n");
         printf("  [] [^] a class, x+ x?, ^ $ start/end, \\c c itself, \\s a blank\n");
         printf("  no FILES: the lines of the standard input (GREP PAT <FILE, DIR | GREP PAT)\n");
@@ -384,7 +390,7 @@ int main(int argc, char **argv)
             k = strlen(line);
             if (k > 0 && line[k - 1] == '\n')
                 line[k - 1] = 0;
-            if (match(argv[a], line)) {
+            if (match(argv[a], line) != invert) {
                 puts(line);
                 nlines++;
             }

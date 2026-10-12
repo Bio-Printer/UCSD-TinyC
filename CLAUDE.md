@@ -25,8 +25,12 @@ Say in the report which emulator version a change needs.
 
 ## Testing
 
-Test what is likely to show a problem with the change at hand; do not run the
-whole suite unless asked (it takes a long time).
+The normal regression test is `tools/quicktest.py` (about 10 s): the library
+compiles itself on the P-System (`cc @libs | grep Joining` from the shell, so the
+compiler, linker, pipes and GREP are used) and comes out IDENTICAL to the host's.
+Add the tests below that fit the change at hand.  The full set (every
+`tools/*test*.py`, `runtests.py`, `selfcompile.py`, both modes) is run only when a
+full regression test is asked for (it takes a long time).
 
 | Changed | Run |
 |---|---|
@@ -37,7 +41,7 @@ whole suite unless asked (it takes a long time).
 | memory (segments, pools, parser or linker stack): the least free memory of `cc @all` from the shell | `tools/shellalltest.py` (add `PSYS_MODE=z80` before a commit: about 25 minutes), `tools/voltest.py` |
 | where CC finds files (`findfile`, pp.c / main.c) | `tools/findtest.py`, `tools/selfcompile.py` |
 | CC's batch files (`@`, main.c), where objects go | `tools/alltest.py` (TOOLSRC:ALL: BUILD, LIBS, TOOLS in one run), `tools/findtest.py` |
-| grep (`ports/grep/`) | `tools/greptest.py` |
+| grep (`ports/grep/`) | `tools/greptest.py` (both modes) |
 | cat (`ports/cat/`) | `tools/cattest.py` |
 | hexdump (`ports/hexdump/`) | `tools/hexdumptest.py` |
 | objcopy (`ports/objcopy/`) | `tools/objcopytest.py` (needs hexdump) |

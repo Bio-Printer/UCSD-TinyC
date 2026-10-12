@@ -62,7 +62,7 @@ def main():
         ('the script completed', ok),
         ('man: one line a page', all(re.search(r'^%-10s' % n.upper(), p['man'], re.M) for n in names)
          and 'GREP' in p['man'] and 'the lines of text files that match a pattern' in p['man']),
-        ('man grep: the page', 'GREP [-i] PATTERN' in p['man grep'] and '-i       case counts' in p['man grep']
+        ('man grep: the page', 'GREP [-i] [-n] PATTERN' in p['man grep'] and '-n       the lines that do NOT match' in p['man grep'] and '-i       case counts' in p['man grep']
          and 'VI [-R]' not in p['man grep']),
         ('man Cat hexdump: case ignored, two pages', 'CAT [-AbeEnstTuv]' in p['man Cat hexdump | cat'] and
          'HEXDUMP [-i]' in p['man Cat hexdump | cat']),
