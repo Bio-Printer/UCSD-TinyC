@@ -50,7 +50,6 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | Tool | Does |
 |---|---|
 | `runtests.py [name]` | compile each test with the host compiler, run it on the P-System, compare with `.expect` |
-| `crosscheck.py` | compile each test **on the P-System** too; the code files must be identical |
 | `selfcompile.py [module]` | compile the compiler's modules on the P-System, link CC2.CODE, compare with the host build |
 | `buildtc.py` | host build of CC.CODE from the modules (`build/tcmod/`) |
 | `mkvolume.py` | build `volumes/` (TINY-C, TCSRC, TCEXTRA, TCTESTS, TOOLS, TOOLSRC) with FILES.TEXT listings; a new tool is one line in its `TOOLS` table |
@@ -62,6 +61,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `redirtest.py` | the shell's `>`, `>>`, `<`, `|` (`freopen`, the library's `redirect.c`): output to a file, input from one, pipes of two and three programs, the pipe files gone afterwards, `\>` |
 | `mantest.py` | MAN with the real MAN.TEXT: the list, a page, several, case, -k, a missing page, a bad option, the --More-- stop, a page into a file; every program on TOOLS: has a page |
 | `sedtest.py` | SED against the host's GNU sed on the same text: 150 scripts (addresses, ranges, every command, s with its flags, both regular expression dialects, y, a i c, branches, hold space, -n -e -f -E -s -i, w, exit status) |
+| `keytest.py` | the emulator's keys in both modes: the keys-waiting count (2.04), the break key (2.05), ^S / ^Q (2.06) |
 | `difftest.py` | DIFF: every output form for 16 pairs of files, simple ones equal to the host's diff, all of them applied by the host's patch to make FILE2; -i -w -b -B -q -s, binary files, the exit status |
 | `wctest.py` | WC: every option, several files and the total, the standard input, a binary file; the numbers equal the host's wc |
 | `lctest.py` | LC: the column layouts (down, across, one a line), -F -s -r -S, patterns, several patterns, a pipe to WC, the exit status |
@@ -91,8 +91,8 @@ Host compiler: `build/tc [-c] [-z] [-I dir] [-L lib.obj] [-o out] files` (built 
 `VERIFY_RECLAIM=1` (P-Code mode with the Z80 interpreter's memory reclaimed),
 `TINYC_MAP=1` (linker prints procedure addresses).
 
-Before committing a compiler change, run: `runtests.py`, `crosscheck.py`,
-`selfcompile.py`, `mkvolume.py` + `voltest.py`, `mkverify.py` + `tcverify.py`,
+Before committing a compiler change, run: `runtests.py`, `selfcompile.py`,
+`mkvolume.py` + `voltest.py`, `mkverify.py` + `tcverify.py`,
 `pexectest.py`.
 
 ## On the P-System
