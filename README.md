@@ -61,7 +61,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `redirtest.py` | the shell's `>`, `>>`, `<`, `|` (`freopen`, the library's `redirect.c`): output to a file, input from one, pipes of two and three programs, the pipe files gone afterwards, `\>` |
 | `mantest.py` | MAN with the real MAN.TEXT: the list, a page, several, case, -k, a missing page, a bad option, the --More-- stop, a page into a file; every program on TOOLS: has a page |
 | `sedtest.py` | SED against the host's GNU sed on the same text: 150 scripts (addresses, ranges, every command, s with its flags, both regular expression dialects, y, a i c, branches, hold space, -n -e -f -E -s -i, w, exit status) |
-| `quicktest.py` | the normal regression test: `cc @libs \| grep Joining` on the P-System, TCLIB2.OBJ IDENTICAL to the host's (10 s) |
+| `quicktest.py` | the normal regression test, one shell session: `cc @libs \| grep Joining` (IDENTICAL), `hexdump -i system.list \| grep -n :10` (its 3 non-data lines), `lc \| wc`, `wc`, `cat \| grep -n \| wc`, `diff -u` + `patch`, vi `dd` `:w` `ZZ` (12 s; Z80 mode 5 min) |
 | `keytest.py` | the emulator's keys in both modes: the keys-waiting count (2.04), the break key (2.05), ^S / ^Q (2.06) |
 | `difftest.py` | DIFF: every output form for 16 pairs of files, simple ones equal to the host's diff, all of them applied by the host's patch to make FILE2; -i -w -b -B -q -s, binary files, the exit status |
 | `wctest.py` | WC: every option, several files and the total, the standard input, a binary file; the numbers equal the host's wc |

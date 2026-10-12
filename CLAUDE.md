@@ -25,9 +25,13 @@ Say in the report which emulator version a change needs.
 
 ## Testing
 
-The normal regression test is `tools/quicktest.py` (about 10 s): the library
-compiles itself on the P-System (`cc @libs | grep Joining` from the shell, so the
-compiler, linker, pipes and GREP are used) and comes out IDENTICAL to the host's.
+The normal regression test is `tools/quicktest.py` (about 12 s native; about 5 minutes
+in Z80 mode, `PSYS_MODE=z80`): one shell session on the P-System in which the library
+compiles itself (`cc @libs | grep Joining`, IDENTICAL to the host's), `hexdump -i
+system.list | grep -n :10` gives its 3 non-data lines, `lc | wc`, `wc`, `cat | grep -n
+| wc` (two pipes), `diff -u` then `patch` turns one file into the other, and vi
+deletes a line and saves it.  So the compiler, linker, pipes, volumes and most tools
+are used.
 Add the tests below that fit the change at hand.  The full set (every
 `tools/*test*.py`, `runtests.py`, `selfcompile.py`, both modes) is run only when a
 full regression test is asked for (it takes a long time).
