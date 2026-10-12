@@ -995,11 +995,16 @@ void run(char *name, char *args)
 }
 
 /* the shell's own commands */
+char *builtins[] = { "cd", "dir", "type", "delete", "del", "whereis", "volumes", "vols", "copy", "move",
+                     "rename", "ren", "mem", 0 };
+
 int isbuiltin(char *name)
 {
-    return same(name, "cd") || same(name, "dir") || same(name, "type") || same(name, "delete") || same(name, "del")
-        || same(name, "whereis") || same(name, "volumes") || same(name, "vols") || same(name, "copy")
-        || same(name, "move") || same(name, "rename") || same(name, "ren") || same(name, "mem");
+    int i;
+    for (i = 0; builtins[i]; i++)
+        if (same(name, builtins[i]))
+            return 1;
+    return 0;
 }
 
 int isbye(char *name)
