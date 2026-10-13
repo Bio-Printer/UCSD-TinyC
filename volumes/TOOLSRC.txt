@@ -8,7 +8,7 @@ TOOLSRC:  29 files  (a UCSD directory holds 77)
   VIMAIN.C            52  vi: vi: start, main loop, keys, files, the terminal (Linux)
   VISCREEN.C          52  vi: vi: the screen, the status line, the cursor
   VITEXT.C            42  vi: vi: moving in and changing the text, searching ...
-  VICOLON.C           40  vi: vi: the : commands
+  VICOLON.C           36  vi: vi: the : commands
   VICMD.C             58  vi: vi: the vi commands
   VIPAGE.C            24  vi: vi: a window into big files (see vipage.h)
   VIPAGE2.C           30  vi: vi: the rest of the window into big files: jumps ...

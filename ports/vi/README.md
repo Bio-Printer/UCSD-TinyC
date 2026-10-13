@@ -181,7 +181,7 @@ less. VI.SWAP's slot map is one bit for each of the 128 chunks (it was 2048).
 ## Status
 
 Works: moving, inserting, deleting, yank/put, marks, searching, `.`, `J`, `<` `>`,
-`:w` `:w NAME` `:q` `:wq` `ZZ` `:s` `:set` `:r NAME` `:e! NAME`, ... from the shell and
+`:w` `:w NAME` `:q` `:wq` `ZZ` `:s` `:set` `:r NAME`, ... from the shell and
 from X(ecute), in P-Code and in Z80 mode.
 
 Files up to about 125 KB (128 chunks). The window: about 2.8 KB in Z80 mode, 12 KB in

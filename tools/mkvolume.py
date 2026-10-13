@@ -245,7 +245,7 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         VI NAME.C  (the name as typed; .C, .H and .TEXT files are text
         files); from X(ecute TOOLS:VI it asks for the file.  Most of vi's
         commands: moving, i a o O, x dd dw cw D C J p P y yy, . u U,
-        marks, / ? n N, :w :q :wq ZZ :s :set :r :e, ...  The cursor keys
+        marks, / ? n N, :w :q :wq ZZ :s :set :r, ...  The cursor keys
         are the P-System's (they take ^T ^R ^Q ^U); ^L redraws.  Page Up,
         Page Down, Home, End, Insert and Delete work with emulator 2.00
         or later, the mouse wheel (3 lines a notch) with 2.01 or later;

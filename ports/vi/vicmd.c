@@ -619,9 +619,6 @@ again:
 	case VI_K_PAGEDOWN:	// Cursor Key Page Down
 		dot_scroll(rows - 2, 1);
 		break;
-	case 7:			// ctrl-G  show current status
-		format_edit_status(EDIT_STATUS " col %d");
-		break;
 	case 'h':			// h- move left
 	case VI_K_LEFT:	// cursor key Left
 	case 8:		// ctrl-H- move left    (This may be ERASE char)

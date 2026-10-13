@@ -420,55 +420,6 @@ void colon1(char *buf)
 		}
 		dot = yank_delete(q, r, 1, YANKDEL);	// save, then delete lines
 		dot_skip_over_ws();
-	} else if (strncasecmp(cmd, "edit", i) == 0) {	// Edit a file
-		// don't edit, if the current file has been modified
-		if (file_modified && !useforce) {
-			status_line_bold("No write since last change (:edit! overrides)");
-			goto vc1;
-		}
-		if (args[0]) {
-			// the user supplied a file name
-			fn = args;
-		} else if (current_filename && current_filename[0]) {
-			// no user supplied name- use the current filename
-			// fn = current_filename;  was set by default
-		} else {
-			// no user file name, no current name- punt
-			status_line_bold("No current filename");
-			goto vc1;
-		}
-
-		if (init_text_buffer(fn) < 0)
-			goto vc1;
-
-#if ENABLE_FEATURE_VI_YANKMARK
-		if (Ureg >= 0 && Ureg < 28 && reg[Ureg] != 0) {
-			free(reg[Ureg]);	//   free orig line reg- for 'U'
-			reg[Ureg]= 0;
-		}
-		if (YDreg >= 0 && YDreg < 28 && reg[YDreg] != 0) {
-			free(reg[YDreg]);	//   free default yank/delete register
-			reg[YDreg]= 0;
-		}
-#endif
-		// how many lines in text[]?
-		li = TOTLINES();
-		status_line("\"%s\"%s"
-			USE_FEATURE_VI_READONLY("%s")
-			" %dL, %dC", current_filename,
-			(file_size(fn) < 0 ? " [New file]" : ""),
-			((readonly_mode) ? " [Readonly]" : ""),
-			li, ch);
-	} else if (strncasecmp(cmd, "file", i) == 0) {	// what File is this
-		if (b != -1 || e != -1) {
-			not_implemented("No address allowed on this command");
-			goto vc1;
-		}
-		if (args[0]) {
-			// user wants a new filename
-			free(current_filename);
-			current_filename = xstrdup(args);
-		}
 	} else if (strncasecmp(cmd, "list", i) == 0) {	// literal print line
 		if (b < 0) {	// no addr given- use defaults
 			q = begin_line(dot);	// assume .,. for the range
