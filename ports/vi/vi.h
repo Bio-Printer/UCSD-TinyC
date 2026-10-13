@@ -70,18 +70,11 @@
 #define ENABLE_FEATURE_VI_COLON 1
 #define ENABLE_FEATURE_VI_YANKMARK 1
 #define ENABLE_FEATURE_VI_SEARCH 1
-#define ENABLE_FEATURE_VI_USE_SIGNALS 0
 #define ENABLE_FEATURE_VI_DOT_CMD 1
-#define ENABLE_FEATURE_VI_READONLY 0	// (no -R: memory for the window)
 #define ENABLE_FEATURE_VI_SETOPTS 1
 #define ENABLE_FEATURE_VI_SET 1
-#define ENABLE_FEATURE_VI_WIN_RESIZE 0
-#define ENABLE_LOCALE_SUPPORT 0
-#define ENABLE_FEATURE_VI_8BIT 0
-#define ENABLE_FEATURE_ALLOW_EXEC 0
 
 #define USE_FEATURE_VI_COLON(x) x
-#define USE_FEATURE_VI_READONLY(x)
 #define USE_FEATURE_VI_YANKMARK(x) x
 #define USE_FEATURE_VI_SEARCH(x) x
 
@@ -129,21 +122,14 @@ typedef signed char smallint;
 #define ENABLE_FEATURE_VI_COLON 1
 #define ENABLE_FEATURE_VI_YANKMARK 1
 #define ENABLE_FEATURE_VI_SEARCH 1
-#define ENABLE_FEATURE_VI_USE_SIGNALS 1
 #define ENABLE_FEATURE_VI_DOT_CMD 1
-#define ENABLE_FEATURE_VI_READONLY 1
 #define ENABLE_FEATURE_VI_SETOPTS 1
 #define ENABLE_FEATURE_VI_SET 1
-#define ENABLE_FEATURE_VI_WIN_RESIZE 1
-#define ENABLE_LOCALE_SUPPORT 1
-#define ENABLE_FEATURE_VI_8BIT 1
 #define ENABLE_FEATURE_VI_YANKMARK 1
 #define ENABLE_FEATURE_VI_SEARCH 1
-#define	ENABLE_FEATURE_ALLOW_EXEC 1
 #undef ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
 
 #define USE_FEATURE_VI_COLON(...) __VA_ARGS__
-#define USE_FEATURE_VI_READONLY(...) __VA_ARGS__
 #define	USE_FEATURE_VI_YANKMARK(...) __VA_ARGS__
 #define	USE_FEATURE_VI_SEARCH(...) __VA_ARGS__
 
@@ -210,32 +196,9 @@ void *memrchr(const void *s, int c_in, size_t n)
 #define TEXT_SLACK 10240	// free room in the text buffer
 #endif
 
-
-
-#if ENABLE_LOCALE_SUPPORT
-
-#if ENABLE_FEATURE_VI_8BIT
-#define Isprint(c) isprint(c)
-#else
-#define Isprint(c) (isprint(c) && (unsigned char)(c) < 0x7f)
-#endif
-
-#else
-
-/* 0x9b is Meta-ESC */
-#if ENABLE_FEATURE_VI_8BIT
-#define Isprint(c) ((unsigned char)(c) >= ' ' && (c) != 0x7f && (unsigned char)(c) != 0x9b)
-#else
 #define Isprint(c) ((unsigned char)(c) >= ' ' && (unsigned char)(c) < 0x7f)
-#endif
 
-#endif
-
-#if ENABLE_FEATURE_VI_READONLY
-#define EDIT_STATUS		"%s: %s%s%s line %d/%d %d%%"
-#else
 #define EDIT_STATUS		"%s: %s%s line %d/%d %d%%"
-#endif
 
 enum {
 	MAX_TABSTOP = 32, // sanity limit
@@ -316,17 +279,6 @@ struct globals {
 /* indicate error with beep or flash */
 #define err_method (vi_setops & VI_ERR_METHOD)
 
-#if ENABLE_FEATURE_VI_READONLY
-	smallint readonly_mode;
-#define SET_READONLY_FILE(flags)        ((flags) |= 0x01)
-#define SET_READONLY_MODE(flags)        ((flags) |= 0x02)
-#define UNSET_READONLY_FILE(flags)      ((flags) &= 0xfe)
-#else
-#define SET_READONLY_FILE(flags)        ((void)0)
-#define SET_READONLY_MODE(flags)        ((void)0)
-#define UNSET_READONLY_FILE(flags)      ((void)0)
-#endif
-
 	smallint editing;        // >0 while we are editing a file
 	                         // [code audit says "can be 0 or 1 only"]
 	smallint cmd_mode;       // 0=command  1=insert 2=replace
@@ -355,9 +307,6 @@ struct globals {
 #if ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
 	int last_row;		 // where the cursor was last moved to
 #endif
-#if ENABLE_FEATURE_VI_USE_SIGNALS
-	int my_pid;
-#endif
 #if ENABLE_FEATURE_VI_DOT_CMD || ENABLE_FEATURE_VI_YANKMARK
 	char *modifying_cmds;    // cmds that modify text[]
 #endif
@@ -382,9 +331,6 @@ struct globals {
 	int markl[28];          // marks as line numbers: the window moves
 	int ctx_s, ctx_e;       // the context, as line numbers
 #endif
-#endif
-#if ENABLE_FEATURE_VI_USE_SIGNALS
-	sigjmp_buf restart;     // catch_sig()
 #endif
 #ifndef __UCSD__
 	struct termios term_orig, term_vi; // remember what the cooked mode was
@@ -436,17 +382,11 @@ extern struct globals G;
 #define erase_char              (G.erase_char         )
 #define last_input_char         (G.last_input_char    )
 #define last_forward_char       (G.last_forward_char  )
-#if ENABLE_FEATURE_VI_READONLY
-#define readonly_mode           (G.readonly_mode      )
-#else
-#define readonly_mode           0
-#endif
 #define adding2q                (G.adding2q           )
 #define lmc_len                 (G.lmc_len            )
 #define ioq                     (G.ioq                )
 #define ioq_start               (G.ioq_start          )
 #define last_row                (G.last_row           )
-#define my_pid                  (G.my_pid             )
 #define modifying_cmds          (G.modifying_cmds     )
 #define last_search_pattern     (G.last_search_pattern)
 #define chars_to_parse          (G.chars_to_parse     )
@@ -463,7 +403,6 @@ extern struct globals G;
 #define markl          (G.markl         )
 #define ctx_s          (G.ctx_s         )
 #define ctx_e          (G.ctx_e         )
-#define restart        (G.restart       )
 #define term_orig      (G.term_orig     )
 #define ticsPerChar	   (G.ticsPerChar   )
 #define term_vi        (G.term_vi       )
@@ -519,7 +458,6 @@ void createScreen(void);
 int init_text_buffer(char *fn);
 int rawmode(void);
 void cookmode(void);
-void catch_sig(int sig);
 int awaitInput(int tics);
 extern int scroll_ok;	// the console scrolls on request (ESC [ n S, ESC [ n T)
 void scroll_rows(int nrows, int n);	// the first rows screen rows up (n > 0) or down (n < 0) n lines

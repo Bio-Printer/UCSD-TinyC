@@ -494,9 +494,6 @@ int format_edit_status(const char *fmt)
 	ret = snprintf(status_buffer, trunc_at+1, fmt,
 		cmd_mode_indicator[cmd_mode & CMODES],
 		(current_filename != NULL ? current_filename : "No file"),
-#if ENABLE_FEATURE_VI_READONLY
-		(readonly_mode ? " [Readonly]" : ""),
-#endif
 		(file_modified ? " [Modified]" : ""),
 		cur, tot, percent, offset+ccol+1, cmdcnt);
 

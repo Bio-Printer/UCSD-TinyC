@@ -293,10 +293,6 @@ dc5:
 			break;
 		}
 		if (file_modified) {
-			if (ENABLE_FEATURE_VI_READONLY && readonly_mode) {
-				status_line_bold("\"%s\" File is read only", current_filename);
-				break;
-			}
 			cnt = file_write(current_filename, text, end - 1);
 			if (cnt < 0) {
 				if (cnt == -1)

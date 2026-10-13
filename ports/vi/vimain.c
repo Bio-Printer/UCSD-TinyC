@@ -3,11 +3,6 @@
 
 struct globals G;
 
-#if ENABLE_FEATURE_VI_WIN_RESIZE
-/* Report cursor positon */
-static const char CtextAreaQuery[] ALIGN1 = "\033[r\033[999;999H\033[6n";
-#endif
-
 #ifndef __UCSD__
 static int safe_poll(struct pollfd *ufds, nfds_t nfds, int timeout);
 #endif
@@ -21,17 +16,7 @@ static ssize_t safe_write(int fd, const void *buf, size_t count);
 static ssize_t full_write(int fd, const void *buf, size_t len);
 #endif
 static void clampScreenSize(void);
-static const char *snchr(const char *s, int c, size_t n);
-#ifndef __UCSD__
-static ssize_t readResponse(char *buf, size_t bufSize, int endByte);
-#endif
-static void queueAnyInput(void);
-static void getScreenSize(void);
 static void edit_file(char *fn);
-static void winch_sig(int sig ATTRIBUTE_UNUSED);
-static void quit_sig(int sig);
-static void cont_sig(int sig ATTRIBUTE_UNUSED);
-static void suspend_sig(int sig ATTRIBUTE_UNUSED);
 
 #if !defined(__UCSD__) && defined(STANDALONE)
 void *xmalloc(size_t size)
@@ -195,97 +180,10 @@ void clampScreenSize(void)
 		columns = MAX_SCR_COLS;
 }
 
-#if ENABLE_FEATURE_VI_WIN_RESIZE
-static const char *snchr(const char *s, int c, size_t n)
-{
-	while (n--)
-		if (*s++ == c) return --s;
-	return NULL;
-}
-
-static ssize_t
-  readResponse(char *buf, size_t bufSize, int endByte)
-//read response from STDIN into buf until timeout or endByte received
-{
-	size_t cursor = 0;
-	while (cursor < bufSize) {
-		if (!awaitInput(ticsPerChar+9))
-			return -ETIME;
-		int r = safe_read(STDIN_FILENO, buf + cursor, bufSize - cursor);
-		if (r <= 0)
-			return r < 0 ? r : -EIO;
-		if (snchr(buf+cursor, endByte, r))
-			return cursor + r;
-		cursor += r;
-	}
-	return -E2BIG;
-}
-
-static void queueAnyInput(void)
-//add any pending user input to readbuffer
-{
-	if (awaitInput(0)) {
-	  char *s = readbuffer + chars_to_parse;
-	  int r = safe_read(STDIN_FILENO, s, readbuffer+sizeof(readbuffer) - s);
-	  if (r > 0)
-	    chars_to_parse += r;
-	}
-}
-
-void getScreenSize(void)
-// assigns width and height to best guess as to actual screen size
-// LINES and COLUMNS env vars take priority
-// If either missing, query the terminal using VT100 escape codes
-// 		If that fails, fall back to rows/cols info in the termios struct
-// rows and columns retain their previous values if all methods fail
-{
-	struct winsize win = { 0, 0, 0, 0 };
-	const char *lines = getenv("LINES");
-	const char *cols = getenv("COLUMNS");
-	if (!lines || !cols) {  //if either missing in the environment
-		queueAnyInput();
-		if (!awaitInput(0)) {  //can't query term if there's pending user input
-			write1(CtextAreaQuery);
-			char buf[16];
-			int rspLen = readResponse(buf, sizeof(buf)-1, 'R');
-			if (rspLen > 5 && buf[0]==27 && buf[1]=='[') {
-				buf[rspLen]=0; //terminate response string
-				char *term;
-				unsigned long ul = strtoul(buf+2, &term, 10);
-				if (*term == ';') {
-					win.ws_row = ul;
-					ul = strtoul(term+1, &term, 10);
-					if (*term == 'R') {
-						win.ws_col = ul;
-					}
-				}
-			}
-		}
-		if (!win.ws_row || !win.ws_col)  //try termios if textAreaQuery failed
-			ioctl(STDIN_FILENO, TIOCGWINSZ, &win);
-	}
-	//environment variables trump all
-	if (lines)
-		rows = atoi(lines);
-	else if (win.ws_row)
-		rows = win.ws_row;
-	if (cols)
-		columns = atoi(cols);
-	else if (win.ws_col)
-		columns = win.ws_col;
-}
-#endif
-
-
 void createScreen(void)
 {
-#if ENABLE_FEATURE_VI_WIN_RESIZE
-	getScreenSize();
-	clampScreenSize();
-#endif
 	new_screen(rows, columns);	// get memory for virtual screen
 }
-
 
 int vi_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
 int vi_main(int argc, char **argv)
@@ -301,7 +199,6 @@ int vi_main(int argc, char **argv)
 	if (SYSCOM->crtinfo.width > 0)
 		columns = SYSCOM->crtinfo.width;
 #endif
-#if !ENABLE_FEATURE_VI_WIN_RESIZE
 	{  //try to get terminal dimensions from environment
 		char *txt = getenv("LINES");
 		if (txt)
@@ -311,17 +208,6 @@ int vi_main(int argc, char **argv)
 			columns = atoi(txt);
 		clampScreenSize();
 	}
-#endif
-
-#if ENABLE_FEATURE_VI_USE_SIGNALS
-	my_pid = getpid();
-#endif
-#ifdef NO_SUCH_APPLET_YET
-	/* If we aren't "vi", we are "view" */
-	if (ENABLE_FEATURE_VI_READONLY && applet_name[2]) {
-		SET_READONLY_MODE(readonly_mode);
-	}
-#endif
 
 	vi_setops = VI_AUTOINDENT | VI_SHOWMATCH | VI_IGNORECASE;
 #if ENABLE_FEATURE_VI_DOT_CMD || ENABLE_FEATURE_VI_YANKMARK
@@ -339,13 +225,8 @@ int vi_main(int argc, char **argv)
 			initial_cmds[0] = xstrndup(p, MAX_INPUT_LEN);
 	}
 #endif
-	while ((c = getopt(argc, argv, "hCR" USE_FEATURE_VI_COLON("c:"))) != -1) {
+	while ((c = getopt(argc, argv, "hC" USE_FEATURE_VI_COLON("c:"))) != -1) {
 		switch (c) {
-#if ENABLE_FEATURE_VI_READONLY
-		case 'R':		// Read-only flag
-			SET_READONLY_MODE(readonly_mode);
-			break;
-#endif
 #if ENABLE_FEATURE_VI_COLON
 		case 'c':		// cmd line vi command
 			if (*optarg)
@@ -475,21 +356,6 @@ static void edit_file(char *fn)
 	offset = 0;			// no horizontal offset
 	clear_screen();
 
-#if ENABLE_FEATURE_VI_USE_SIGNALS
-	catch_sig(0);
-	sigsetjmp(restart, 1);
-	signal(SIGWINCH, winch_sig);
-	signal(SIGTSTP, suspend_sig);
-	signal(SIGQUIT, quit_sig);
-	signal(SIGTERM, quit_sig);
-	signal(SIGPIPE, quit_sig);
-	signal(SIGHUP, quit_sig);
-	signal(SIGILL, quit_sig);
-	signal(SIGSEGV, quit_sig);
-	signal(SIGBUS, quit_sig);
-	signal(SIGABRT, quit_sig);
-#endif
-
 	cmd_mode = CMODE_COMMAND;
 	cmdcnt = 0;
 	c = '\0';
@@ -576,7 +442,6 @@ static void edit_file(char *fn)
 #undef cur_line
 }
 
-
 //----- Set terminal attributes --------------------------------
 #ifndef __UCSD__
 int rawmode(void)
@@ -632,52 +497,6 @@ void cookmode(void)
 #endif
 
 //----- Come here when we get a window resize signal ---------
-#if ENABLE_FEATURE_VI_USE_SIGNALS
-static void winch_sig(int sig ATTRIBUTE_UNUSED)
-{
-	createScreen();
-	redraw();
-	fflush(stdout);
-}
-
-//----- Come here on QUIT, PIPE, TERM, HUP ----------------------
-static void quit_sig(int sig)
-{
-	gracefulExit();
-	signal(sig, SIG_DFL);
-	kill(my_pid, sig);
-}
-
-
-//----- Come here when we get a continue signal -------------------
-static void cont_sig(int sig ATTRIBUTE_UNUSED)
-{
-	rawmode();			// terminal to "raw"
-	*status_buffer=0;	// force status update
-	redraw();
-	fflush(stdout);
-	signal(SIGTSTP, suspend_sig);
-	signal(SIGCONT, SIG_DFL);
-	kill(my_pid, SIGCONT);
-}
-
-//----- Come here when we get a Suspend signal -------------------
-static void suspend_sig(int sig ATTRIBUTE_UNUSED)
-{
-	gracefulExit();
-	signal(SIGCONT, cont_sig);
-	signal(SIGTSTP, SIG_DFL);
-	kill(my_pid, SIGTSTP);
-}
-
-//----- Come here when we get a INT signal ---------------------------
-void catch_sig(int sig)
-{
-	signal(SIGINT, catch_sig);
-	if (sig)
-		siglongjmp(restart, sig);
-}
-#endif /* FEATURE_VI_USE_SIGNALS */
 
 #ifndef __UCSD__
 int awaitInput(int tics)
@@ -941,17 +760,6 @@ int file_insert(const char *fn, char *p
 		(file_modified++, scr_gen++);
 	close(fd);
  fi0:
-#if ENABLE_FEATURE_VI_READONLY
-	if (update_ro_status
-	 && ((access(fn, W_OK) < 0) ||
-		/* root will always have access()
-		 * so we check fileperms too */
-		!(statbuf.st_mode & (S_IWUSR | S_IWGRP | S_IWOTH))
-	    )
-	) {
-		SET_READONLY_FILE(readonly_mode);
-	}
-#endif
 	return cnt;
 }
 #endif
