@@ -11,6 +11,9 @@ whose free space is one area at its end), then from the shell:
   vi C.LIST (Big_Disk's SYSTEM.LIST: a compiler's listing, a data file of 146 KB with CR line ends),
   1Gdd, ZZ                                        -> written with CR line ends, without its first line
   vi C.LIST again, G                              -> its 2487 lines, no NULs from the filled-out last block
+  vi C.LIST again, 687G, 60 times k, dd, ZZ       -> line 627 is the one gone: lines above the window keep coming in (the
+                                                     lines going out join the chunk below when they fit,
+                                                     so VI.SWAP's slots do not run out)
   no VI.SWAP left on the volume afterwards
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
 import os, sys
@@ -46,6 +49,8 @@ def main():
               'TYPE "vi B.C\\r"', 'WAIT "B.C"', 'TYPE "200Gdd:w\\r"', 'WAIT "299L"', 'TYPE "ZZ"', 'WAIT "shell> "',
               'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'TYPE "1Gdd"', 'TYPE "ZZ"', 'WAIT "shell> "',
               'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'TYPE "G"', 'WAIT "2487/2487"', 'TYPE ":q\\r"', 'WAIT "shell> "',
+              'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'WAIT "2487 0%"', 'TYPE "687G"', 'TYPE "%s"' % ('k' * 60),
+              'TYPE "ddZZ"', 'WAIT "shell> "',
               'TYPE "bye\\r"', 'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 1800 if z else 300)
     tr = tr.replace('\r', '\n')
@@ -61,10 +66,14 @@ def main():
               ('A.C written with the x on line 101', a2 == ea),
               ('B.C written without line 200', b2 == eb)]
     c2 = img.read('C.LIST')[0] if img.find('C.LIST') else b''
-    ec = c[c.index(b'\r') + 1:]
-    checks.append(('C.LIST (CR line ends) written without its first line', c2[:len(ec)] == ec and not c2[len(ec):].strip(b'\0')))
-    i = tr.rfind('shell> vi C.LIST')
-    checks.append(('C.LIST again: 2487 lines, no ^@', i >= 0 and '2487/2487' in tr[i:] and '^@' not in tr[i:]))
+    ec = c[c.index(b'\r') + 1:].split(b'\r')
+    ec = b'\r'.join(ec[:626] + ec[627:])
+    checks.append(('C.LIST (CR line ends) written without its lines 1 and 628 (627 after the first dd)',
+                   c2[:len(ec)] == ec and not c2[len(ec):].strip(b'\0')))
+    i = tr.find('shell> vi C.LIST', tr.find('shell> vi C.LIST') + 1)
+    j = tr.find('shell> vi C.LIST', i + 1)
+    checks.append(('C.LIST again: 2487 lines, no ^@', i >= 0 and '2487/2487' in tr[i:j] and '^@' not in tr[i:j]))
+    checks.append(('C.LIST: 687G and 60 k reach line 627 (the dd there)', j >= 0 and c2[:len(ec)] == ec))
     checks.append(('no VI.SWAP left', img.find('VI.SWAP') is None))
     bad = 0
     for what, good in checks:

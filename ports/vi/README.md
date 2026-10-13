@@ -103,6 +103,12 @@ compiler's listing (`SYSTEM.LIST`) the lines end in CR.  The loader takes a CR a
 end (`pg_cr`) and `pg_save` writes CRs back; the NULs that fill out a data file's last block
 are dropped.
 
+When lines go out of the window onto a stack and fit, with the chunk on top of that stack,
+in one slot, they are joined to it (`pg_join`): no new slot and no new table entry.  Without
+that the chunks the window leaves behind as it moves are often part full, and VI.SWAP (the file
+and 25 KB) ran out of slots: on SYSTEM.LIST, 687G and some Up arrows and the lines above the
+window no longer came in.  (Not while the file is still loading: `pg_buf` holds its carry.)
+
 * Before every command (and every repeat of a counted one) a screen of lines is kept
   in memory on both sides of the cursor, and 512 bytes free for typing: `j`, `k`, `^F`,
   `^B`, `}` ... move the window as they reach its edge. Inserting more than fits writes

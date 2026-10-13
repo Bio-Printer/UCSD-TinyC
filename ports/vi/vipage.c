@@ -175,6 +175,22 @@ static void pg_cut(void)
 
 /* ---- moving the window: a chunk at a time ---- */
 
+/* len bytes at p (n lines) joined to chunk c, before its lines (first) or
+   after them, when they fit its slot and the load is done (pg_buf is free):
+   no new slot, no new entry (else VI.SWAP and the table fill up with part
+   full chunks as the window moves to and fro); 1 if joined */
+static int pg_join(struct pgchunk *c, char *p, int len, int n, int first)
+{
+	if (pg_rf || c->len + len > PG_SLOT || pg_io(c->slot, pg_buf + (first ? len : 0), c->len, 0))
+		return 0;
+	memcpy(first ? pg_buf : pg_buf + c->len, p, len);
+	if (pg_io(c->slot, pg_buf, c->len + len, 1))
+		return 0;
+	c->len += len;
+	c->lines += n;
+	return 1;
+}
+
 /* lines from the top of the window, all of them starting before lim, onto
    the before stack (one chunk); 0 if none can go */
 int pg_spill_top(char *lim)
@@ -182,6 +198,7 @@ int pg_spill_top(char *lim)
 	char *s;
 	char *n;
 	int k;
+	int cnt;
 	int len;
 	s = text;
 	while (s < lim) {
@@ -191,23 +208,25 @@ int pg_spill_top(char *lim)
 		s = n;
 	}
 	len = s - text;
-	if (len == 0 || pg_nb + pg_na >= pg_maxch)
+	if (len == 0)
 		return 0;
-	k = pg_slot();
-	if (k < 0)
-		return 0;
-	if (pg_io(k, text, len, 1)) {
-		pg_unslot(k);
-		return 0;
+	cnt = pg_count(text, s);
+	if (!pg_nb || !pg_join(&PGB(pg_nb - 1), text, len, cnt, 0)) {
+		if (pg_nb + pg_na >= pg_maxch || (k = pg_slot()) < 0)
+			return 0;
+		if (pg_io(k, text, len, 1)) {
+			pg_unslot(k);
+			return 0;
+		}
+		PGB(pg_nb).slot = k;
+		PGB(pg_nb).len = len;
+		PGB(pg_nb).lines = cnt;
+		pg_nb++;
 	}
 	if (!pg_top && screenbegin < s)
 		pg_top = pg_abs(screenbegin);
-	PGB(pg_nb).slot = k;
-	PGB(pg_nb).len = len;
-	PGB(pg_nb).lines = pg_count(text, s);
-	pg_lb += PGB(pg_nb).lines;
+	pg_lb += cnt;
 	pg_bb += len;
-	pg_nb++;
 	memmove(text, s, end - s);
 	memset(end - len, 0, len);
 	pg_shift(-len);
@@ -221,6 +240,7 @@ int pg_spill_bottom(char *lim)
 	char *s;
 	char *p;
 	int k;
+	int cnt;
 	int len;
 	s = end;
 	while (s > lim && s > text) {
@@ -232,22 +252,24 @@ int pg_spill_bottom(char *lim)
 		s = p;
 	}
 	len = end - s;
-	if (len == 0 || pg_nb + pg_na >= pg_maxch)
+	if (len == 0)
 		return 0;
-	k = pg_slot();
-	if (k < 0)
-		return 0;
-	if (pg_io(k, s, len, 1)) {
-		pg_unslot(k);
-		return 0;
+	cnt = pg_count(s, end);
+	if (!pg_na || !pg_join(&PGA(0), s, len, cnt, 1)) {
+		if (pg_nb + pg_na >= pg_maxch || (k = pg_slot()) < 0)
+			return 0;
+		if (pg_io(k, s, len, 1)) {
+			pg_unslot(k);
+			return 0;
+		}
+		pg_na++;
+		PGA(0).slot = k;
+		PGA(0).len = len;
+		PGA(0).lines = cnt;
 	}
 	if (!pg_top && screenbegin >= s)
 		pg_top = pg_abs(screenbegin);
-	pg_na++;
-	PGA(0).slot = k;
-	PGA(0).len = len;
-	PGA(0).lines = pg_count(s, end);
-	pg_la += PGA(0).lines;
+	pg_la += cnt;
 	pg_ba += len;
 	memset(s, 0, len);
 	end = s;
