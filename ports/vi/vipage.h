@@ -55,6 +55,7 @@ extern int pg_keep;             /* the : command leaves the cursor where it was 
 extern int pg_atend;    /* a delete reached the window's end, the next lines not in */
 extern FILE *pg_rf;             /* the file being loaded (lazily): NULL when all of it is in */
 extern int pg_carry;            /* bytes of its last, unfinished line held in pg_buf */
+extern int pg_cr;               /* the file's lines end in CR */
 extern int pg_bad;              /* the file could not be loaded to its end: not to be saved */
 #define PG_MORE() (pg_na || pg_rf)      /* lines after the window, or still to load */
 

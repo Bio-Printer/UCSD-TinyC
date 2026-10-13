@@ -346,7 +346,7 @@ void pg_reset(void)
 	if (pg_rf) {
 		pg_rclose();
 	}
-	pg_carry = pg_bad = 0;
+	pg_carry = pg_bad = pg_cr = 0;
 	pg_nb = pg_na = pg_lb = pg_la = pg_top = 0;
 	pg_bb = pg_ba = 0;
 	memset(pg_used, 0, PG_MAXSLOT / 8);
@@ -382,11 +382,18 @@ int pg_more(void)
 		return 0;
 	n = fread(pg_buf + pg_carry, 1, PG_SLOT - pg_carry, pg_rf);
 	len = pg_carry + n;
+	for (last = pg_carry; last < len; last++)
+		if (pg_buf[last] == '\r') {    /* (a text file's come as '\n': a data file's, as in a listing) */
+			pg_buf[last] = '\n';
+			pg_cr = 1;
+		}
 	last = len;
 	k = n < PG_SLOT - pg_carry;             /* the end of the file */
 	if (k) {
 		pg_rclose();
 		last_file_modified = -1;        /* the status line's total */
+		while (len > 0 && pg_buf[len - 1] == 0)
+			len--;                  /* (a data file's last block is filled out with NULs) */
 		if (len > 0 && pg_buf[len - 1] != '\n')
 			pg_buf[len++] = '\n';         /* the last line gets its end */
 		last = len;
@@ -490,6 +497,17 @@ int pg_load(const char *fn)
 	return 1;
 }
 
+/* len bytes of b to f, 1 if written; a file read with CR line ends gets them back */
+static int pg_put(char *b, int len, FILE *f)
+{
+	if (!pg_cr)
+		return (int)fwrite(b, 1, len, f) == len;
+	for (; len > 0; len--, b++)
+		if (putc(*b == '\n' ? '\r' : *b, f) == EOF)
+			return 0;
+	return 1;
+}
+
 /* the whole file: before, window, after; 1 if written, -1 if it cannot be
    opened, 0 if writing failed */
 int pg_save(const char *fn)
@@ -514,13 +532,11 @@ int pg_save(const char *fn)
 	}
 	ok = 1;
 	for (i = 0; ok && i < pg_nb; i++)
-		ok = !pg_io(PGB(i).slot, pg_buf, PGB(i).len, 0)
-		  && (int)fwrite(pg_buf, 1, PGB(i).len, f) == PGB(i).len;
+		ok = !pg_io(PGB(i).slot, pg_buf, PGB(i).len, 0) && pg_put(pg_buf, PGB(i).len, f);
 	if (ok && end > text)
-		ok = fwrite(text, 1, end - text, f) == (size_t)(end - text);
+		ok = pg_put(text, end - text, f);
 	for (i = 0; ok && i < pg_na; i++)
-		ok = !pg_io(PGA(i).slot, pg_buf, PGA(i).len, 0)
-		  && (int)fwrite(pg_buf, 1, PGA(i).len, f) == PGA(i).len;
+		ok = !pg_io(PGA(i).slot, pg_buf, PGA(i).len, 0) && pg_put(pg_buf, PGA(i).len, f);
 	if (fclose(f) == EOF)
 		ok = 0;
 #ifdef __UCSD__

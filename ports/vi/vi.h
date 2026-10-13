@@ -60,7 +60,7 @@
 #define ENABLE_FEATURE_VI_PAGING 1	// a window into big files (vipage.h)
 #define VI_ROW_SUMS 1	// the screen as a checksum per row, not a copy
 #define PG_RESERVE 1024	// memory left out of the window: yanks, and so on
-#define PG_MAXCH 128	// chunks in VI.SWAP: files up to about 125 KB
+#define PG_MAXCH 192	// chunks in VI.SWAP: files up to about 185 KB
 #include <limits.h>
 /* The P-System opens an include file with a 2K buffer on the stack, so the
    includes come before the macros below: Tiny-C's preprocessor has the least

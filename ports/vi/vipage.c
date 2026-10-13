@@ -22,6 +22,7 @@ int pg_keep;             /* the : command leaves the cursor where it was */
 int pg_atend;    /* a delete reached the window's end, the next lines not in */
 FILE *pg_rf;             /* the file being loaded: what is not yet in the stores; NULL: all in */
 int pg_carry;            /* bytes of its last, unfinished line held in pg_buf */
+int pg_cr;               /* the file's lines end in CR (a data file: a compiler's listing) */
 int pg_bad;              /* the file could not be loaded to its end */
 
 

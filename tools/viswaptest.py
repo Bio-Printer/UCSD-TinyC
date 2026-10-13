@@ -8,6 +8,9 @@ whose free space is one area at its end), then from the shell:
 
   vi A.C (vi's vicmd.c), x on line 101, ZZ        -> A.C written, that character gone
   vi B.C (300 short lines), 200G, dd, :w, ZZ      -> B.C written without line 200
+  vi C.LIST (Big_Disk's SYSTEM.LIST: a compiler's listing, a data file of 146 KB with CR line ends),
+  1Gdd, ZZ                                        -> written with CR line ends, without its first line
+  vi C.LIST again, G                              -> its 2487 lines, no NULs from the filled-out last block
   no VI.SWAP left on the volume afterwards
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
 import os, sys
@@ -33,12 +36,16 @@ def main():
     v = ucsdvol.Volume(ps.src)
     v.write('A.C', ucsdvol.text_to_ucsd('\n'.join(a) + '\n'), 3)    # (tabs as spaces: as the P-System keeps them)
     v.write('B.C', make_text(b), 3)
+    c = ucsdvol.Volume(os.path.join(ROOT, 'build', 'BIGGY.BLK')).read('SYSTEM.LIST')[0]
+    v.write('C.LIST', c, 5)
     v.save()
     script = ['WAIT "Command:"', 'TYPE "F"', 'WAIT "Filer:"', 'TYPE "P"', 'WAIT "?"', 'TYPE "#5\\r"',
               'WAIT "Filer:"', 'TYPE "Q"', 'WAIT "Command:"',
               'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "SHELL\\r"', 'WAIT "shell> "',
               'TYPE "vi A.C\\r"', 'WAIT "A.C"', 'TYPE "101Gx"', 'TYPE "ZZ"', 'WAIT "shell> "',
               'TYPE "vi B.C\\r"', 'WAIT "B.C"', 'TYPE "200Gdd:w\\r"', 'WAIT "299L"', 'TYPE "ZZ"', 'WAIT "shell> "',
+              'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'TYPE "1Gdd"', 'TYPE "ZZ"', 'WAIT "shell> "',
+              'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'TYPE "G"', 'WAIT "2487/2487"', 'TYPE ":q\\r"', 'WAIT "shell> "',
               'TYPE "bye\\r"', 'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 1800 if z else 300)
     tr = tr.replace('\r', '\n')
@@ -53,6 +60,11 @@ def main():
               ('no I/O error on the screen', 'I/O error' not in tr and 'Write error: I/O' not in tr),
               ('A.C written with the x on line 101', a2 == ea),
               ('B.C written without line 200', b2 == eb)]
+    c2 = img.read('C.LIST')[0] if img.find('C.LIST') else b''
+    ec = c[c.index(b'\r') + 1:]
+    checks.append(('C.LIST (CR line ends) written without its first line', c2[:len(ec)] == ec and not c2[len(ec):].strip(b'\0')))
+    i = tr.rfind('shell> vi C.LIST')
+    checks.append(('C.LIST again: 2487 lines, no ^@', i >= 0 and '2487/2487' in tr[i:] and '^@' not in tr[i:]))
     checks.append(('no VI.SWAP left', img.find('VI.SWAP') is None))
     bad = 0
     for what, good in checks:

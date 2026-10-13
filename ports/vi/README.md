@@ -98,6 +98,11 @@ area of the volume, so vi writes its last slot, closes it (the rest of that area
 again) and opens it again to read and write; a `:w` of a file on the same volume then finds
 room.
 
+A file that is not text (not .TEXT, .C or .H) comes from the library byte for byte: in a
+compiler's listing (`SYSTEM.LIST`) the lines end in CR.  The loader takes a CR as a line's
+end (`pg_cr`) and `pg_save` writes CRs back; the NULs that fill out a data file's last block
+are dropped.
+
 * Before every command (and every repeat of a counted one) a screen of lines is kept
   in memory on both sides of the cursor, and 512 bytes free for typing: `j`, `k`, `^F`,
   `^B`, `}` ... move the window as they reach its edge. Inserting more than fits writes
@@ -137,7 +142,7 @@ file's size. The rest is read
   and `ZZ` (`pg_complete()`; `TOTLINES()` completes, `STATLINES()` does not).
 
 Until it is all in, the status line's total is the lines loaded so far. A line
-longer than 1023 characters, a file of more than 128 chunks, or VI.SWAP full:
+longer than 1023 characters, a file of more than 192 chunks (about 185 KB), or VI.SWAP full:
 at the start vi stops with a message as before; later (the screen is up, edits
 may be made) the file stays as far as it was loaded (`pg_bad`) and `:w` refuses
 to save it.
