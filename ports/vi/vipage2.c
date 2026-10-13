@@ -334,13 +334,23 @@ static void pg_swap(long bytes)
 
 /* everything for paging, once: the stores, VI.SWAP, the window (text) as
    big as memory allows; without VI.SWAP the window is the whole file */
-void pg_init(void)
+void pg_init(const char *fn)
 {
 	long cap;
-	pg_ch = (struct pgchunk *)xzalloc(PG_MAXCH * sizeof(struct pgchunk));
 	pg_used = (unsigned char *)xzalloc(PG_MAXSLOT / 8);
 	pg_buf = (char *)xzalloc(PG_SLOT + 3);
-	pg_swap(30L * PG_SLOT);
+	hdr_read(fn);				/* the file's size in blocks: VI.SWAP and the tables are sized by it */
+	cap = (long)hdr_blocks * 512 + 25600L;
+	pg_maxch = (int)(cap / PG_SLOT) - 8;	/* a chunk to a slot, and some slots to spare */
+	if (pg_maxch > PG_MAXCH)
+		pg_maxch = PG_MAXCH;
+	if (pg_maxch < 16)
+		pg_maxch = 16;
+#ifndef __UCSD__
+	pg_maxch = PG_MAXCH;
+#endif
+	pg_ch = (struct pgchunk *)xzalloc(pg_maxch * sizeof(struct pgchunk));
+	pg_swap(cap);
 #ifdef __UCSD__
 	/* MEMAVAIL words, less malloc's room for the stack and some for yanks */
 	cap = 2L * __cspi(40) - 600 - PG_RESERVE;
@@ -409,7 +419,7 @@ int pg_more(void)
 			last--;
 	/* no whole line in a full chunk (a line over 1023 characters), the chunk
 	   table or VI.SWAP full or not written: the file stays loaded as far as it is */
-	if (last == 0 && !k || last > 0 && (pg_nb + pg_na >= PG_MAXCH || (n = pg_slot()) < 0
+	if (last == 0 && !k || last > 0 && (pg_nb + pg_na >= pg_maxch || (n = pg_slot()) < 0
 	 || pg_io(n, pg_buf, last, 1) && (pg_unslot(n), 1))) {
 		if (pg_nb + pg_na == 0 && end == text)
 			pg_abandon(current_filename, "cannot be loaded");     /* nothing shown yet: vi stops */
@@ -421,12 +431,12 @@ int pg_more(void)
 		return 0;
 	}
 	if (last > 0) {
-		memmove(&pg_ch[PG_MAXCH - pg_na - 1], &pg_ch[PG_MAXCH - pg_na], pg_na * sizeof(struct pgchunk));
+		memmove(&pg_ch[pg_maxch - pg_na - 1], &pg_ch[pg_maxch - pg_na], pg_na * sizeof(struct pgchunk));
 		pg_na++;
-		pg_ch[PG_MAXCH - 1].slot = n;
-		pg_ch[PG_MAXCH - 1].len = last;
-		pg_ch[PG_MAXCH - 1].lines = pg_count(pg_buf, pg_buf + last);
-		pg_la += pg_ch[PG_MAXCH - 1].lines;
+		pg_ch[pg_maxch - 1].slot = n;
+		pg_ch[pg_maxch - 1].len = last;
+		pg_ch[pg_maxch - 1].lines = pg_count(pg_buf, pg_buf + last);
+		pg_la += pg_ch[pg_maxch - 1].lines;
 		pg_ba += last;
 	}
 	if (pg_rf) {

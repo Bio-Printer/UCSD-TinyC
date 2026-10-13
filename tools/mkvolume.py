@@ -254,7 +254,8 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         Big files: vi keeps a window of the file in memory (about 2.8 KB in
         Z80 mode, 12 KB in P-Code mode, 30 KB with the Harvard layout) and
         the rest in VI.SWAP, a temporary file on the prefix volume (deleted
-        when vi ends).  Moving, searching (/ ? n N go on through the whole
+        when vi ends; the size of the file and 25 KB, so a file saved to the
+        same disk finds room).  Moving, searching (/ ? n N go on through the whole
         file), G and :N move the window; files up to about 125 KB.  A
         command on more lines than fit in the window at once (500dd,
         :1,$s/a/b/ on a big file) is refused with a message.

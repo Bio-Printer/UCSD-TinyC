@@ -395,7 +395,7 @@ int init_text_buffer(char *fn)
 #if ENABLE_FEATURE_VI_PAGING
 	/* the window: allocated once, as big as memory allows */
 	if (!text) {
-		pg_init();
+		pg_init(fn);
 		text_size = pg_cap;
 		text = xzalloc(text_size + 1);
 	}
