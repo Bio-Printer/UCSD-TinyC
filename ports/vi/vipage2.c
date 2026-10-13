@@ -298,66 +298,15 @@ void pg_close(void)
 	}
 }
 
-/* VI.SWAP of bytes (at least): the UCSD system makes a new file out of the largest free piece
-   of the disk, so a file written next to it (the file vi saves, on the same disk) would find no room.
-   One block is written at the end of the size wanted and the file closed: it keeps that size and
-   the rest of the disk is free again; then it is opened to read and write. */
-static void pg_swap(long bytes)
-{
-	if (bytes > (long)PG_MAXSLOT * PG_SLOT)
-		bytes = (long)PG_MAXSLOT * PG_SLOT;
-#ifndef __UCSD__
-	bytes = (long)PG_MAXSLOT * PG_SLOT;	/* (a host has the room) */
-#endif
-	pg_f = fopen(PG_SWAP, "w+b");
-#ifdef __UCSD__
-	if (pg_f) {
-		bytes = (bytes + PG_SLOT - 1) / PG_SLOT * PG_SLOT;
-		fseek(pg_f, bytes - PG_SLOT, SEEK_SET);
-		fwrite(pg_buf, 1, PG_SLOT, pg_f);
-		fclose(pg_f);
-		pg_f = fopen(PG_SWAP, "r+b");
-	}
-#endif
-	pg_slots = pg_f ? (int)(bytes / PG_SLOT) : 0;
-	if (pg_slots > PG_MAXSLOT)
-		pg_slots = PG_MAXSLOT;
-}
-
-#ifdef __UCSD__
-int hdr_slot = -1;
-char *hdr_name;
-int hdr_xline, hdr_xcol, hdr_xok;
-int hdr_saved;				/* the file was written (its header page is empty now) */
-#endif
-
 /* everything for paging, once: the stores, VI.SWAP, the window (text) as
    big as memory allows; without VI.SWAP the window is the whole file */
-void pg_init(const char *fn)
+void pg_init(void)
 {
 	long cap;
+	pg_ch = (struct pgchunk *)xzalloc(PG_MAXCH * sizeof(struct pgchunk));
 	pg_used = (unsigned char *)xzalloc(PG_MAXSLOT / 8);
 	pg_buf = (char *)xzalloc(PG_SLOT + 3);
-	hdr_read(fn);				/* the file's size, the place it was left, its header page */
-	pg_maxch = hdr_blocks + 24;		/* chunks: the chunks are about half full: two to a KB of the file, and some more */
-	if (pg_maxch > PG_MAXCH)
-		pg_maxch = PG_MAXCH;
-	if (pg_maxch < 48)
-		pg_maxch = 48;
-#ifndef __UCSD__
-	pg_maxch = PG_MAXCH;
-#endif
-	pg_ch = (struct pgchunk *)xzalloc(pg_maxch * sizeof(struct pgchunk));
-	pg_swap((long)(pg_maxch + 8) * PG_SLOT);	/* VI.SWAP: a slot to a chunk, and some to spare: only that much of the disk */
-#ifdef __UCSD__
-	if (hdr_have && pg_f && (hdr_slot = pg_slot()) >= 0) {	/* the header page: for when the file is written again */
-		if (pg_io(hdr_slot, pg_buf, 1024, 1)) {
-			pg_unslot(hdr_slot);
-			hdr_slot = -1;
-		} else
-			hdr_name = (char *)fn;		/* (the command line's: it stays) */
-	}
-#endif
+	pg_f = fopen(PG_SWAP, "w+b");
 #ifdef __UCSD__
 	/* MEMAVAIL words, less malloc's room for the stack and some for yanks */
 	cap = 2L * __cspi(40) - 600 - PG_RESERVE;
@@ -370,13 +319,6 @@ void pg_init(const char *fn)
 		cap = PG_SLOT + 2 * PG_ROOM;
 	pg_cap = (int)cap;
 	pg_margin = rows;
-	/* the screen, half a margin above it and a margin below it have to be in the window together with
-	   PG_ROOM bytes to type in (36 bytes a line, a guess): a smaller window gets a smaller margin, or
-	   pg_fix would move chunks in and out at every key trying for what cannot fit */
-	cap = (pg_cap - PG_ROOM) / 36 - rows;
-	cap = cap > 0 ? cap * 2 / 3 : 0;
-	if (pg_margin > cap)
-		pg_margin = cap < 2 ? 2 : (int)cap;
 }
 
 void pg_reset(void)
@@ -388,10 +330,6 @@ void pg_reset(void)
 	pg_nb = pg_na = pg_lb = pg_la = pg_top = 0;
 	pg_bb = pg_ba = 0;
 	memset(pg_used, 0, PG_MAXSLOT / 8);
-#ifdef __UCSD__
-	if (hdr_slot >= 0)
-		pg_used[hdr_slot >> 3] |= 1 << (hdr_slot & 7);
-#endif
 	pg_lock = pg_over = 0;
 }
 
@@ -437,7 +375,7 @@ int pg_more(void)
 			last--;
 	/* no whole line in a full chunk (a line over 1023 characters), the chunk
 	   table or VI.SWAP full or not written: the file stays loaded as far as it is */
-	if (last == 0 && !k || last > 0 && (pg_nb + pg_na >= pg_maxch || (n = pg_slot()) < 0
+	if (last == 0 && !k || last > 0 && (pg_nb + pg_na >= PG_MAXCH || (n = pg_slot()) < 0
 	 || pg_io(n, pg_buf, last, 1) && (pg_unslot(n), 1))) {
 		if (pg_nb + pg_na == 0 && end == text)
 			pg_abandon(current_filename, "cannot be loaded");     /* nothing shown yet: vi stops */
@@ -449,12 +387,12 @@ int pg_more(void)
 		return 0;
 	}
 	if (last > 0) {
-		memmove(&pg_ch[pg_maxch - pg_na - 1], &pg_ch[pg_maxch - pg_na], pg_na * sizeof(struct pgchunk));
+		memmove(&pg_ch[PG_MAXCH - pg_na - 1], &pg_ch[PG_MAXCH - pg_na], pg_na * sizeof(struct pgchunk));
 		pg_na++;
-		pg_ch[pg_maxch - 1].slot = n;
-		pg_ch[pg_maxch - 1].len = last;
-		pg_ch[pg_maxch - 1].lines = pg_count(pg_buf, pg_buf + last);
-		pg_la += pg_ch[pg_maxch - 1].lines;
+		pg_ch[PG_MAXCH - 1].slot = n;
+		pg_ch[PG_MAXCH - 1].len = last;
+		pg_ch[PG_MAXCH - 1].lines = pg_count(pg_buf, pg_buf + last);
+		pg_la += pg_ch[PG_MAXCH - 1].lines;
 		pg_ba += last;
 	}
 	if (pg_rf) {
@@ -561,8 +499,6 @@ int pg_save(const char *fn)
 	if (fclose(f) == EOF)
 		ok = 0;
 #ifdef __UCSD__
-	if (ok && hdr_name && strcmp(fn, hdr_name) == 0)
-		hdr_saved = 1;
 	ucsd_reserve();
 #endif
 	return ok;

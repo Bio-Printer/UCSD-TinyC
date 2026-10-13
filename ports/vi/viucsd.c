@@ -104,15 +104,16 @@ char *strerror(int e)
 	return "I/O error";
 }
 
-/* The library's printf family is 2.8 KB of resident code; vi needs %s %d %i %u %c %%
-   and nothing else (no width, no long): this is that, into a buffer of n bytes
+/* The library's printf family is 2.8 KB of resident code; vi needs %s %d %i %u %ld %c %%
+   and nothing else (no width): this is that, into a buffer of n bytes
    (cut, always ended); the length it would have had. */
 int vi_vsnprintf(char *buf, size_t n, const char *fmt, va_list ap)
 {
 	size_t len;
-	char num[8];
+	char num[12];
 	const char *s;
-	unsigned u;
+	unsigned long u;
+	int lng;
 	int c;
 	int k;
 
@@ -123,20 +124,28 @@ int vi_vsnprintf(char *buf, size_t n, const char *fmt, va_list ap)
 		if (*fmt == '%') {
 			fmt++;
 			c = *fmt;
+			lng = c == 'l';
+			if (lng)
+				c = *++fmt;
 			if (c == 's') {
 				s = va_arg(ap, const char *);
 				if (!s)
 					s = "(null)";
 				k = strlen(s);
 			} else if (c == 'd' || c == 'i' || c == 'u') {
-				u = va_arg(ap, unsigned);
-				if (c != 'u' && (int)u < 0) {
+				if (lng)
+					u = va_arg(ap, unsigned long);
+				else if (c == 'u')
+					u = va_arg(ap, unsigned);
+				else
+					u = (long)va_arg(ap, int);
+				if (c != 'u' && (long)u < 0) {
 					if (len + 1 < n)
 						buf[len] = '-';
 					len++;
 					u = -u;
 				}
-				s = num + 7;
+				s = num + 11;
 				k = 0;
 				do {
 					*--s = '0' + u % 10;
@@ -481,69 +490,4 @@ void clear_to_eos(void)
 	*displayed_buffer=0;   //status line was also cleared
 }
 
-#endif
-
-#ifdef __UCSD__
-/* ---- the place where the file was left ----
-   A text file starts with a 1 KB header page (two blocks) that the Pascal Editor owns: its markers,
-   environment and dates, then 892 bytes it never uses.  Vi keeps 6 bytes of its own in that unused
-   part, at HDR_OFF:  'V' 'I' 1 column line-low line-high.  The Editor reads and writes the whole
-   page and leaves them alone (when it starts a file it has not used it clears the page, then they
-   are gone: the file is the same).  When vi rewrites the file (the library makes a new, empty header)
-   the old header has been put into a slot of VI.SWAP when the file was opened (pg_init); at the end of
-   the session it is written back with the place.  (Small on purpose: vi's window in Z80 mode is what
-   memory is left after its code.) */
-int __istext(char *name);
-void __ptitle(char *name, char *title);
-#define HDR_OFF 1000
-int hdr_line, hdr_col, hdr_blocks, hdr_have;
-
-/* rd: the header page of the file fn into pg_buf (1 if it is there), and its size in blocks into
-   hdr_blocks; else pg_buf is written into it */
-static int hdr_io(const char *fn, int rd)
-{
-	char hdr_fib[80];
-	char title[32];
-	int n;
-	__ptitle((char *)fn, title);
-	__cxp0v(3, hdr_fib, 0, -1);			/* FINIT(fib, NIL, untyped) */
-	__cxp0v(5, hdr_fib, title, 1, 0);		/* FOPEN, an old file */
-	if (__cspi(34) != 0)
-		return 0;
-	n = 0;
-	if (rd)
-		hdr_blocks = ((int *)hdr_fib)[17] - ((int *)hdr_fib)[16];
-	if (!rd || __istext((char *)fn))
-		n = __cxp0i(28, hdr_fib, pg_buf, 0, 2, 0, rd, 0, 0) == 2 && __cspi(34) == 0;	/* FBLOCKIO: blocks 0, 1 */
-	__cxp0v(6, hdr_fib, 0);				/* FCLOSE */
-	return n;
-}
-
-void hdr_read(const char *fn)
-{
-	unsigned char *r;
-	hdr_line = hdr_col = hdr_blocks = 0;
-	hdr_have = hdr_io(fn, 1);
-	r = (unsigned char *)pg_buf + HDR_OFF;
-	if (hdr_have && r[0] == 'V' && r[1] == 'I' && r[2] == 1) {
-		hdr_col = r[3];
-		hdr_line = r[4] + 256 * r[5];
-	}
-}
-
-/* the header page kept in hdr_slot, with the place, into the file fn (which vi has written meanwhile) */
-void hdr_put(const char *fn, int line, int col)
-{
-	unsigned char *r;
-	if (pg_io(hdr_slot, pg_buf, 1024, 0))
-		return;
-	r = (unsigned char *)pg_buf + HDR_OFF;
-	r[0] = 'V';
-	r[1] = 'I';
-	r[2] = 1;
-	r[3] = col > 255 ? 255 : col;
-	r[4] = line & 255;
-	r[5] = (line >> 8) & 255;
-	hdr_io(fn, 0);
-}
 #endif

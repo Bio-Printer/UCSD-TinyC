@@ -13,8 +13,7 @@ shell's pipes and most of the tools together:
                                    the lines without an "a" (case ignored), through two pipes
   diff -u A B >P, patch -i P A, diff A B
                                    a round trip: patching A with the diff gives B (status 0)
-  vi: 20G dd :w ZZ, vi again: x      line 20 deleted and saved (no crash), and the second vi opens at the line
-                                   the first left (kept in the file's header page)
+  vi: dd, :w, ZZ                   the first line deleted and saved (no crash, the file changed)
 
 The full set of tools/*test*.py is for when a full regression test is asked for.
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
@@ -32,7 +31,7 @@ B = list(A)
 B[4] = 'line 05 CHANGED'
 del B[12]
 B[20:20] = ['an inserted line', 'and another one']
-V = ['line %d of V' % i for i in range(1, 41)]
+V = ['first line of V', 'second line of V', 'third line of V']
 
 
 def main():
@@ -67,8 +66,7 @@ def main():
          'WAIT "Joining TINY-C:TCLIB2.OBJ"', 'WAIT "shell> "']
     for c in cmds:
         L += ['TYPE "%s\\r"' % c, 'WAIT "shell> "']
-    L += ['TYPE "vi V.TEXT\\r"', 'WAIT "V.TEXT"', 'TYPE "20Gdd:w\\rZZ"', 'WAIT "shell> "',
-          'TYPE "vi V.TEXT\\r"', 'WAIT "V.TEXT"', 'TYPE "xZZ"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
+    L += ['TYPE "vi V.TEXT\\r"', 'WAIT "V.TEXT"', 'TYPE "dd:w\\rZZ"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
     L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
     sp = os.path.join(d, 'quick.script')
     open(sp, 'w').write('\n'.join(L) + '\n')
@@ -115,8 +113,8 @@ def main():
         ('cat | grep -n a | wc -l: %d lines without an a' % noa, str(noa) in (part(cmds[3]) or '').split()),
         ('diff -u | patch | diff: A.TEXT became B.TEXT', got('A.TEXT') == B and '[exit status 0]' in (part(cmds[6]) or '')
          and '[exit status 0]' in (part(cmds[5]) or '')),
-        ('vi: 20G dd :w ZZ, then opened again: x at line 20 (the place it was left)',
-         got('V.TEXT') == V[:19] + [V[20][1:]] + V[21:] and 'System re-initialized' not in tr and 'STK OFLOW' not in tr),
+        ('vi: dd, :w, ZZ: V.TEXT without its first line, no crash', got('V.TEXT') == V[1:]
+         and 'System re-initialized' not in tr and 'STK OFLOW' not in tr),
     ]
     bad = [n for n, g in checks if not g]
     for n, g in checks:

@@ -254,14 +254,10 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         Big files: vi keeps a window of the file in memory (about 2.8 KB in
         Z80 mode, 12 KB in P-Code mode, 30 KB with the Harvard layout) and
         the rest in VI.SWAP, a temporary file on the prefix volume (deleted
-        when vi ends; the size of the file and 25 KB, so a file saved to the
-        same disk finds room).  Moving, searching (/ ? n N go on through the whole
+        when vi ends).  Moving, searching (/ ? n N go on through the whole
         file), G and :N move the window; files up to about 125 KB.  A
         command on more lines than fit in the window at once (500dd,
         :1,$s/a/b/ on a big file) is refused with a message.
-        Where it was left: on leaving a saved or unchanged text file vi keeps
-        the cursor's line and column in the file's 1 KB header page (6 bytes
-        the Editor never uses); the next VI of the file starts there (-c wins).
 
 GREP    GREP [-i] [-n] PATTERN [VOL: or #5:]FILES ...  from the shell: the
         lines of text files that match, as VOL:NAME:LINE: text.  Case is

@@ -39,8 +39,6 @@ extern struct pgchunk *pg_ch;   /* before: 0 up; after: PG_MAXCH - 1 down */
 extern int pg_nb, pg_na;        /* chunks before / after the window */
 extern int pg_lb, pg_la;        /* lines before / after */
 extern long pg_bb, pg_ba;       /* bytes before / after */
-extern int pg_maxch;            /* chunks the tables hold */
-extern int pg_slots;            /* the slots VI.SWAP holds */
 extern unsigned char *pg_used;  /* PG_MAXSLOT bits: the slots in use */
 extern FILE *pg_f;              /* VI.SWAP; NULL: no paging, all in text */
 extern char *pg_buf;            /* PG_SLOT + 2: a chunk being searched */
@@ -60,7 +58,7 @@ extern int pg_bad;              /* the file could not be loaded to its end: not 
 
 
 #define PGB(i) pg_ch[i]                         /* 0 = the file's first chunk */
-#define PGA(i) pg_ch[pg_maxch - pg_na + (i)]    /* 0 = the chunk after the window */
+#define PGA(i) pg_ch[PG_MAXCH - pg_na + (i)]    /* 0 = the chunk after the window */
 
 /* ---- shared by vipage.c and vipage2.c ---- */
 int pg_slot(void);
@@ -96,7 +94,7 @@ char *pg_makeroom(char *p, int size);
 char *pg_search(const char *pat, int dir, int far);
 int pg_find_line(const char *pat);
 void pg_close(void);
-void pg_init(const char *fn);
+void pg_init(void);
 void pg_reset(void);
 int pg_load(const char *fn);
 int pg_save(const char *fn);

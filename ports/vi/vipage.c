@@ -6,8 +6,6 @@ struct pgchunk *pg_ch;   /* before: 0 up; after: PG_MAXCH - 1 down */
 int pg_nb, pg_na;        /* chunks before / after the window */
 int pg_lb, pg_la;        /* lines before / after */
 long pg_bb, pg_ba;       /* bytes before / after */
-int pg_maxch;           /* chunks the tables hold (a file's size decides) */
-int pg_slots;           /* the slots VI.SWAP holds (at most PG_MAXSLOT) */
 unsigned char *pg_used;  /* PG_MAXSLOT bits: the slots in use */
 FILE *pg_f;              /* VI.SWAP; NULL: no paging, all in text */
 char *pg_buf;            /* PG_SLOT + 2: a chunk being searched */
@@ -43,7 +41,7 @@ int pg_fill_top(void);
 int pg_slot(void)
 {
 	int i;
-	for (i = 0; i < pg_slots; i++)
+	for (i = 0; i < PG_MAXSLOT; i++)
 		if (!(pg_used[i >> 3] & (1 << (i & 7)))) {
 			pg_used[i >> 3] |= 1 << (i & 7);
 			return i;
@@ -190,7 +188,7 @@ int pg_spill_top(char *lim)
 		s = n;
 	}
 	len = s - text;
-	if (len == 0 || pg_nb + pg_na >= pg_maxch)
+	if (len == 0 || pg_nb + pg_na >= PG_MAXCH)
 		return 0;
 	k = pg_slot();
 	if (k < 0)
@@ -231,7 +229,7 @@ int pg_spill_bottom(char *lim)
 		s = p;
 	}
 	len = end - s;
-	if (len == 0 || pg_nb + pg_na >= pg_maxch)
+	if (len == 0 || pg_nb + pg_na >= PG_MAXCH)
 		return 0;
 	k = pg_slot();
 	if (k < 0)
