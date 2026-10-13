@@ -39,6 +39,7 @@ extern struct pgchunk *pg_ch;   /* before: 0 up; after: PG_MAXCH - 1 down */
 extern int pg_nb, pg_na;        /* chunks before / after the window */
 extern int pg_lb, pg_la;        /* lines before / after */
 extern long pg_bb, pg_ba;       /* bytes before / after */
+extern int pg_slots;            /* the slots VI.SWAP holds */
 extern unsigned char *pg_used;  /* PG_MAXSLOT bits: the slots in use */
 extern FILE *pg_f;              /* VI.SWAP; NULL: no paging, all in text */
 extern char *pg_buf;            /* PG_SLOT + 2: a chunk being searched */

@@ -6,6 +6,7 @@ struct pgchunk *pg_ch;   /* before: 0 up; after: PG_MAXCH - 1 down */
 int pg_nb, pg_na;        /* chunks before / after the window */
 int pg_lb, pg_la;        /* lines before / after */
 long pg_bb, pg_ba;       /* bytes before / after */
+int pg_slots;           /* the slots VI.SWAP holds (at most PG_MAXSLOT) */
 unsigned char *pg_used;  /* PG_MAXSLOT bits: the slots in use */
 FILE *pg_f;              /* VI.SWAP; NULL: no paging, all in text */
 char *pg_buf;            /* PG_SLOT + 2: a chunk being searched */
@@ -41,7 +42,7 @@ int pg_fill_top(void);
 int pg_slot(void)
 {
 	int i;
-	for (i = 0; i < PG_MAXSLOT; i++)
+	for (i = 0; i < pg_slots; i++)
 		if (!(pg_used[i >> 3] & (1 << (i & 7)))) {
 			pg_used[i >> 3] |= 1 << (i & 7);
 			return i;

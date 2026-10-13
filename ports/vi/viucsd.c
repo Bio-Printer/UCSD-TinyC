@@ -502,27 +502,29 @@ void clear_to_eos(void)
    library makes a new, empty header) the old header is put into a spare slot of VI.SWAP first and
    written back after, so the Editor's markers survive vi too. */
 #define HDR_OFF 1000
-int hdr_line, hdr_col;
+int hdr_line, hdr_col, hdr_blocks;
 static char hdr_fib[80];
 
 int __istext(char *name);
 void __ptitle(char *name, char *title);
 
-/* the file's two header blocks into pg_buf: 1 if they are there (a text file that exists) */
+/* the file's size in blocks into hdr_blocks (0: it is not there) and, for a text file, its two
+   header blocks into pg_buf: 1 if they are there */
 static int hdr_get(const char *fn)
 {
 	char title[32];
 	int n;
-	if (!__istext((char *)fn))
-		return 0;
+	hdr_blocks = 0;
 	__ptitle((char *)fn, title);
 	__cxp0v(3, hdr_fib, 0, -1);			/* FINIT(fib, NIL, untyped) */
 	__cxp0v(5, hdr_fib, title, 1, 0);		/* FOPEN, an old file */
 	if (__cspi(34) != 0)
 		return 0;
-	n = __cxp0i(28, hdr_fib, pg_buf, 0, 2, 0, 1, 0, 0);	/* FBLOCKIO: blocks 0 and 1 */
+	hdr_blocks = ((int *)hdr_fib)[17] - ((int *)hdr_fib)[16];
+	n = __istext((char *)fn) && __cxp0i(28, hdr_fib, pg_buf, 0, 2, 0, 1, 0, 0) == 2;	/* FBLOCKIO: blocks 0, 1 */
+	n = n && __cspi(34) == 0;
 	__cxp0v(6, hdr_fib, 0);				/* FCLOSE */
-	return n == 2 && __cspi(34) == 0;
+	return n;
 }
 
 static int hdr_sum(unsigned char *r)
@@ -534,7 +536,7 @@ void hdr_read(const char *fn)
 {
 	unsigned char *r;
 	hdr_line = hdr_col = 0;
-	if (!pg_buf || !hdr_get(fn))
+	if (!hdr_get(fn))
 		return;
 	r = (unsigned char *)pg_buf + HDR_OFF;
 	if (r[0] == 'V' && r[1] == 'I' && r[2] == 1 && r[6] == hdr_sum(r)) {

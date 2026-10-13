@@ -53,6 +53,7 @@ def main():
     header('B.C', record(9999, 5))
     header('C.C', record(40, 3, False))
     header('D.C', record(77, 2))
+    header('E.C')
     v.save()
     # (command line, keys)
     runs = [('vi #5:A.C', '150G6lZZ'),               # no record -> line 1; leave at 150, column 6
@@ -61,15 +62,20 @@ def main():
             ('vi #5:C.C', 'ZZ'),                     # a bad check: line 1
             ('vi -c 5 #5:D.C', 'ZZ'),                # -c wins: line 5
             ('vi #5:D.C', 'ZZ'),                     # (ZZ left it at 5)
-            ('vi #5:A.C', 'ddjjdd:w\rZZ')]           # a change and :w: the header is kept
+            ('vi #5:A.C', 'ddjjdd:w\rZZ'),           # a change and :w: the header is kept
+            ('cd #5', None),                         # the prefix volume is the file's: VI.SWAP must leave room
+            ('vi E.C', 'x:w\rZZ')]                   # ... for the new copy :w writes
     script = ['WAIT "Command:"', 'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "#5:SHELL\\r"', 'WAIT "shell> "']
     for cmd, keys in runs:
+        if keys is None:
+            script += ['TYPE "%s\\r"' % cmd, 'WAIT "shell> "']
+            continue
         script += ['TYPE "%s\\r"' % cmd, 'WAIT "%s"' % cmd.split(':')[-1], 'TYPE "%s"' % keys.replace('\r', '\\r'), 'WAIT "shell> "']
     script += ['TYPE "bye\\r"', 'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 900)
     tr = tr.replace('\r', '\n')
     start = []
-    for (cmd, keys) in runs:
+    for (cmd, keys) in [r for r in runs if r[1] is not None]:
         i = tr.find('shell> ' + cmd + '\n', start[-1] + 1 if start else 0)
         start.append(i)
     where = []
@@ -82,6 +88,8 @@ def main():
     a = textlines('A.C')
     checks = [
         ('the script completed', ok),
+        ("the prefix volume is the file's: :w works (VI.SWAP leaves room), the x was saved",
+         'I/O error' not in tr and textlines('E.C')[0] == LINES[0][1:]),
         ('no record: opens at line 1', where[0] == 1),
         ('after 150G6l ZZ: the next open is at line 150', where[1] == 150),
         ('the column came back: x deleted the 7th character of line 150',

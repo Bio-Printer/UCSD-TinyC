@@ -298,6 +298,40 @@ void pg_close(void)
 	}
 }
 
+/* VI.SWAP of bytes (at least): the UCSD system makes a new file out of the largest free piece
+   of the disk, so a file written next to it (the file vi saves, on the same disk) would find no room.
+   One block is written at the end of the size wanted and the file closed: it keeps that size and
+   the rest of the disk is free again; then it is opened to read and write. */
+static long pg_swapsz;
+static void pg_swap(long bytes)
+{
+	if (bytes > (long)PG_MAXSLOT * PG_SLOT)
+		bytes = (long)PG_MAXSLOT * PG_SLOT;
+#ifndef __UCSD__
+	bytes = (long)PG_MAXSLOT * PG_SLOT;	/* (a host has the room) */
+#endif
+	if (pg_f && bytes <= pg_swapsz)
+		return;
+	if (pg_f) {
+		fclose(pg_f);
+		remove(PG_SWAP);
+	}
+	pg_f = fopen(PG_SWAP, "w+b");
+#ifdef __UCSD__
+	if (pg_f) {
+		bytes = (bytes + PG_SLOT - 1) / PG_SLOT * PG_SLOT;
+		fseek(pg_f, bytes - PG_SLOT, SEEK_SET);
+		fwrite(pg_buf, 1, PG_SLOT, pg_f);
+		fclose(pg_f);
+		pg_f = fopen(PG_SWAP, "r+b");
+	}
+#endif
+	pg_swapsz = bytes;
+	pg_slots = pg_f ? (int)(bytes / PG_SLOT) : 0;
+	if (pg_slots > PG_MAXSLOT)
+		pg_slots = PG_MAXSLOT;
+}
+
 /* everything for paging, once: the stores, VI.SWAP, the window (text) as
    big as memory allows; without VI.SWAP the window is the whole file */
 void pg_init(void)
@@ -306,7 +340,7 @@ void pg_init(void)
 	pg_ch = (struct pgchunk *)xzalloc(PG_MAXCH * sizeof(struct pgchunk));
 	pg_used = (unsigned char *)xzalloc(PG_MAXSLOT / 8);
 	pg_buf = (char *)xzalloc(PG_SLOT + 3);
-	pg_f = fopen(PG_SWAP, "w+b");
+	pg_swap(30L * PG_SLOT);
 #ifdef __UCSD__
 	/* MEMAVAIL words, less malloc's room for the stack and some for yanks */
 	cap = 2L * __cspi(40) - 600 - PG_RESERVE;
@@ -437,10 +471,11 @@ int pg_load(const char *fn)
 	int len;
 	pg_reset();
 	end = dot = screenbegin = text;
+	hdr_read(fn);				/* the place it was left, and its size in blocks */
+	pg_swap((long)hdr_blocks * 1024 + 25600L);	/* VI.SWAP: twice the file (the chunks are not all full) and 25 KB for what is typed in */
 #ifdef __UCSD__
 	ucsd_unreserve();
 #endif
-	hdr_read(fn);
 	f = fopen(fn, "r");
 #ifdef __UCSD__
 	ucsd_reserve();

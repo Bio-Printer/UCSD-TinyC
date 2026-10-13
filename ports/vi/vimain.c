@@ -500,12 +500,10 @@ static void edit_file(char *fn)
 
 #ifdef __UCSD__
 	if (hdr_line > 0 && !initial_cmds[0]) {		// the place the file was left (its header page)
-		char where[8];
 		char *p;
 
-		snprintf(where, sizeof(where), "%d", hdr_line);
-		colon(where);				// (beyond the end: the last line)
-		for (p = begin_line(dot); hdr_col > 0 && *p != '\n' && p < end - 1; hdr_col--)
+		dot = find_line(hdr_line);		// (beyond the end: the last line)
+		for (p = dot; hdr_col > 0 && *p != '\n' && p < end - 1; hdr_col--)
 			p++;
 		dot = p;
 	}
