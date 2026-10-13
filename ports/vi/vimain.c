@@ -377,6 +377,14 @@ int vi_main(int argc, char **argv)
 	}
 	//-----------------------------------------------------------
 
+#ifdef __UCSD__
+	if (hdr_xok) {				// the window is not needed any more: its memory is for the header code
+		free(text);
+		text = NULL;
+		ucsd_unreserve();
+		hdr_put(hdr_name, hdr_xline, hdr_xcol);
+	}
+#endif
 #if ENABLE_FEATURE_VI_PAGING
 	pg_close();
 #endif
@@ -506,6 +514,7 @@ static void edit_file(char *fn)
 		for (p = dot; hdr_col > 0 && *p != '\n' && p < end - 1; hdr_col--)
 			p++;
 		dot = p;
+		hdr_line = 0;				// (only the first file of the command line)
 	}
 #endif
 #if ENABLE_FEATURE_VI_COLON
@@ -560,11 +569,10 @@ static void edit_file(char *fn)
 	}
 	//-------------------------------------------------------------------
 #ifdef __UCSD__
-	if (!file_modified && current_filename) {	// (saved, or never changed): where it was left
-		ucsd_unreserve();
-		hdr_put(current_filename, -1);
-		ucsd_reserve();
-	}
+	// where it was left: written back at the end (main), when the window is out of the way
+	hdr_xok = hdr_slot >= 0 && hdr_name && strcmp(hdr_name, current_filename) == 0 && (!file_modified || hdr_saved);
+	hdr_xline = ABSLINE(dot);
+	hdr_xcol = dot - begin_line(dot);
 #endif
 	refresh();
 	gracefulExit();

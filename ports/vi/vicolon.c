@@ -618,7 +618,10 @@ void colon1(char *buf)
 		} else {
 #if ENABLE_FEATURE_VI_PAGING
 			if (q == text && r == end - 1)
-				status_line("\"%s\" %dL, %ldC", fn, li, pg_bytes());
+				if (pg_bytes() > 32000L)	// (no long printf: there is no memory for it in the Z80 window)
+					status_line("\"%s\" %dL, %dK", fn, li, (int)(pg_bytes() / 1024));
+				else
+					status_line("\"%s\" %dL, %dC", fn, li, (int)pg_bytes());
 			else
 #endif
 			status_line("\"%s\" %dL, %dC", fn, li, l);

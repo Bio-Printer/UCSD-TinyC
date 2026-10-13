@@ -260,7 +260,7 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         command on more lines than fit in the window at once (500dd,
         :1,$s/a/b/ on a big file) is refused with a message.
         Where it was left: on leaving a saved or unchanged text file vi keeps
-        the cursor's line and column in the file's 1 KB header page (7 bytes
+        the cursor's line and column in the file's 1 KB header page (6 bytes
         the Editor never uses); the next VI of the file starts there (-c wins).
 
 GREP    GREP [-i] [-n] PATTERN [VOL: or #5:]FILES ...  from the shell: the

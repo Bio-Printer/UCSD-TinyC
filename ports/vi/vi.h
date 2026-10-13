@@ -605,15 +605,23 @@ int getopt(int argc, char **argv, const char *opts);
 void ucsd_reserve(void);
 void ucsd_unreserve(void);
 char *ucsd_askname(void);
-/* the place the file was left, kept in the text file's header page (viucsd.c) */
+/* The place the file was left, kept in the text file's header page (viucsd.c) */
 extern int hdr_line, hdr_col;		// from the file when it was opened (0: none)
-extern int hdr_blocks;			// ... and its size in blocks (0: not there)
-void hdr_read(const char *fn);		// ... into hdr_line, hdr_col
-int hdr_stash(const char *fn);		// before the file is rewritten: its header into a swap slot (-1: none)
-void hdr_put(const char *fn, int stash);	// the header (from the slot, or the file's) with the cursor's place
+extern int hdr_blocks, hdr_have;	// ... its size in blocks (0: not there); its header page is in pg_buf
+extern int hdr_slot;			// the header page kept in VI.SWAP (-1: none) until the end
+extern char *hdr_name;			// ... of this file
+extern int hdr_saved;			// ... and vi has written it (the header page there is empty)
+extern int hdr_xline, hdr_xcol, hdr_xok;	// the place at the end of the session: written back by main() (vimain.c)
+void hdr_read(const char *fn);		// the above, from the file fn
+void hdr_put(const char *fn, int line, int col);	// the kept header page with the place, back into the file
 #else
-#define hdr_read(fn)
+#define hdr_line 0
+#define hdr_col 0
 #define hdr_blocks 0
-#define hdr_stash(fn) (-1)
-#define hdr_put(fn, stash)
+#define hdr_have 0
+#define hdr_slot (-1)
+#define hdr_name 0
+#define hdr_saved 0
+#define hdr_read(fn)
+#define hdr_put(fn, line, col)
 #endif
