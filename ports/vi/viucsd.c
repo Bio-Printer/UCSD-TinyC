@@ -491,3 +491,103 @@ void clear_to_eos(void)
 }
 
 #endif
+
+#ifdef __UCSD__
+/* ---- the place where the file was left ----
+   A text file starts with a 1 KB header page (two blocks) that the Pascal Editor owns: its markers,
+   environment and dates, then 892 bytes it never uses.  Vi keeps 7 bytes of its own in that unused
+   part, at HDR_OFF:  'V' 'I' 1 column line-low line-high check  (check: the sum of the six bytes before).
+   The Editor reads and writes the whole page and leaves them alone (when it starts a file it has not
+   used it clears the page, then they are gone: the file is the same).  When vi rewrites the file (the
+   library makes a new, empty header) the old header is put into a spare slot of VI.SWAP first and
+   written back after, so the Editor's markers survive vi too. */
+#define HDR_OFF 1000
+int hdr_line, hdr_col;
+static char hdr_fib[80];
+
+int __istext(char *name);
+void __ptitle(char *name, char *title);
+
+/* the file's two header blocks into pg_buf: 1 if they are there (a text file that exists) */
+static int hdr_get(const char *fn)
+{
+	char title[32];
+	int n;
+	if (!__istext((char *)fn))
+		return 0;
+	__ptitle((char *)fn, title);
+	__cxp0v(3, hdr_fib, 0, -1);			/* FINIT(fib, NIL, untyped) */
+	__cxp0v(5, hdr_fib, title, 1, 0);		/* FOPEN, an old file */
+	if (__cspi(34) != 0)
+		return 0;
+	n = __cxp0i(28, hdr_fib, pg_buf, 0, 2, 0, 1, 0, 0);	/* FBLOCKIO: blocks 0 and 1 */
+	__cxp0v(6, hdr_fib, 0);				/* FCLOSE */
+	return n == 2 && __cspi(34) == 0;
+}
+
+static int hdr_sum(unsigned char *r)
+{
+	return (r[0] + r[1] + r[2] + r[3] + r[4] + r[5]) & 255;
+}
+
+void hdr_read(const char *fn)
+{
+	unsigned char *r;
+	hdr_line = hdr_col = 0;
+	if (!pg_buf || !hdr_get(fn))
+		return;
+	r = (unsigned char *)pg_buf + HDR_OFF;
+	if (r[0] == 'V' && r[1] == 'I' && r[2] == 1 && r[6] == hdr_sum(r)) {
+		hdr_col = r[3];
+		hdr_line = r[4] + 256 * r[5];
+	}
+}
+
+int hdr_stash(const char *fn)
+{
+	int k;
+	if (!pg_f || !pg_buf || !hdr_get(fn))
+		return -1;
+	k = pg_slot();
+	if (k < 0)
+		return -1;
+	if (pg_io(k, pg_buf, 1024, 1)) {
+		pg_unslot(k);
+		return -1;
+	}
+	return k;
+}
+
+/* the header page of the (existing) file fn, with the cursor's place in it */
+void hdr_put(const char *fn, int stash)
+{
+	unsigned char *r;
+	char title[32];
+	int line, col;
+	if (!pg_buf)
+		return;
+	if (stash >= 0) {
+		if (pg_io(stash, pg_buf, 1024, 0))
+			memset(pg_buf, 0, 1024);
+		pg_unslot(stash);
+	} else if (!hdr_get(fn))
+		return;
+	line = ABSLINE(dot);
+	col = dot - begin_line(dot);
+	r = (unsigned char *)pg_buf + HDR_OFF;
+	r[0] = 'V';
+	r[1] = 'I';
+	r[2] = 1;
+	r[3] = col > 255 ? 255 : col;
+	r[4] = line & 255;
+	r[5] = (line >> 8) & 255;
+	r[6] = hdr_sum(r);
+	__ptitle((char *)fn, title);
+	__cxp0v(3, hdr_fib, 0, -1);
+	__cxp0v(5, hdr_fib, title, 1, 0);
+	if (__cspi(34) != 0)
+		return;
+	__cxp0i(28, hdr_fib, pg_buf, 0, 2, 0, 0, 0, 0);	/* FBLOCKIO write */
+	__cxp0v(6, hdr_fib, 0);
+}
+#endif

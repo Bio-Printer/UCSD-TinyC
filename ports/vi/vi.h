@@ -605,4 +605,13 @@ int getopt(int argc, char **argv, const char *opts);
 void ucsd_reserve(void);
 void ucsd_unreserve(void);
 char *ucsd_askname(void);
+/* the place the file was left, kept in the text file's header page (viucsd.c) */
+extern int hdr_line, hdr_col;		// from the file when it was opened (0: none)
+void hdr_read(const char *fn);		// ... into hdr_line, hdr_col
+int hdr_stash(const char *fn);		// before the file is rewritten: its header into a swap slot (-1: none)
+void hdr_put(const char *fn, int stash);	// the header (from the slot, or the file's) with the cursor's place
+#else
+#define hdr_read(fn)
+#define hdr_stash(fn) (-1)
+#define hdr_put(fn, stash)
 #endif

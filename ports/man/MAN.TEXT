@@ -80,6 +80,12 @@ COLON COMMANDS (: then the command; ranges 1,5  .,$  %  'a,'b  /pat/)
     :set ai  noai             autoindent;  :set ic  noic  ignorecase;  :set sm  nosm  showmatch
     :set ts=N                 the tab stop;  :set fl  noflash;  :set  shows them
     :f  ^G                    file name and line;  :version  the version
+WHERE IT WAS LEFT
+    On leaving a text file (.TEXT, .C, .H) that was saved or not changed, vi keeps the
+    cursor's line and column in 7 bytes of the file's 1 KB header page (the part the
+    Pascal Editor never uses; its markers and environment are kept when vi saves).
+    The next VI of the file starts there; -c CMD wins over it, a file that has become
+    shorter opens at its last line.
 EXAMPLES
     VI A.C            edit A.C
     VI -R A.C         look at it, no writing

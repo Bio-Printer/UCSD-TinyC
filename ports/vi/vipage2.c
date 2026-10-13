@@ -440,6 +440,7 @@ int pg_load(const char *fn)
 #ifdef __UCSD__
 	ucsd_unreserve();
 #endif
+	hdr_read(fn);
 	f = fopen(fn, "r");
 #ifdef __UCSD__
 	ucsd_reserve();
@@ -472,6 +473,7 @@ int pg_save(const char *fn)
 	FILE *f;
 	int i;
 	int ok;
+	int stash;
 	pg_complete();
 	if (pg_bad) {
 		status_line_bold("Not written: the file was not loaded to its end");
@@ -480,8 +482,11 @@ int pg_save(const char *fn)
 #ifdef __UCSD__
 	ucsd_unreserve();
 #endif
+	stash = hdr_stash(fn);			/* (the library writes a new, empty header page) */
 	f = fopen(fn, "w");
 	if (!f) {
+		if (stash >= 0)
+			pg_unslot(stash);
 #ifdef __UCSD__
 		ucsd_reserve();
 #endif
@@ -498,6 +503,10 @@ int pg_save(const char *fn)
 		  && (int)fwrite(pg_buf, 1, PGA(i).len, f) == PGA(i).len;
 	if (fclose(f) == EOF)
 		ok = 0;
+	if (ok)
+		hdr_put(fn, stash);
+	else if (stash >= 0)
+		pg_unslot(stash);
 #ifdef __UCSD__
 	ucsd_reserve();
 #endif
