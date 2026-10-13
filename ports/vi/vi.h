@@ -605,4 +605,8 @@ int getopt(int argc, char **argv, const char *opts);
 void ucsd_reserve(void);
 void ucsd_unreserve(void);
 char *ucsd_askname(void);
+/* the place a text file was left, in its header page (viucsd.c) */
+extern int hdr_line, hdr_col;		// read when the file is opened (0: none)
+void hdr_read(const char *fn);
+void hdr_write(const char *fn, int line, int col);
 #endif

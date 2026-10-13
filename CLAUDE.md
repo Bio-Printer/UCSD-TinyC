@@ -38,7 +38,7 @@ full regression test is asked for (it takes a long time).
 
 | Changed | Run |
 |---|---|
-| vi only (`ports/vi/`) | the Linux comparison (paged build with a tiny `VI_PAGECAP` against `gcc -DSTANDALONE vi*.c`), `tools/viscreentest.py` (screens vs the committed version), `tools/vipagetest.py` (the paged build, lazy loading, vs the committed version), `tools/viscrolltest.py` (with and without the emulator's scroll codes; needs `build/run_verify_new` from UCSD-Pascal_Windows_Emulator), then `tools/vitest.py` in Z80 mode |
+| vi only (`ports/vi/`) | the Linux comparison (paged build with a tiny `VI_PAGECAP` against `gcc -DSTANDALONE vi*.c`), `tools/viscreentest.py` (screens vs the committed version), `tools/vipagetest.py` (the paged build, lazy loading, vs the committed version), `tools/vipostest.py` (the place kept in the header page; both modes), `tools/viscrolltest.py` (with and without the emulator's scroll codes; needs `build/run_verify_new` from UCSD-Pascal_Windows_Emulator), then `tools/vitest.py` in Z80 mode |
 | compiler code generation or library | `tools/runtests.py` in both modes, `tools/selfcompile.py` (the compiler on the P-System against the host's); for stdio (`tinyc/lib/stdio.c`) also `tools/greptest.py`, `tools/pexectest.py` and `tools/vitest.py` |
 | linker, volume layout, memory | add `tools/voltest.py` and `tools/vitest.py --build` |
 | pexec / shell | `tools/pexectest.py` |

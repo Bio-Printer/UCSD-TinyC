@@ -498,6 +498,20 @@ static void edit_file(char *fn)
 	adding2q = 0;
 #endif
 
+#ifdef __UCSD__
+	if (hdr_line > 0 && !initial_cmds[0]) {	// where the file was left: that line in the middle of the screen
+		char *p;
+		int n;
+
+		dot = find_line(hdr_line);	// (beyond the end: the last line)
+		for (p = dot; hdr_col > 0 && *p != '\n' && p < end - 1; hdr_col--)
+			p++;
+		screenbegin = begin_line(dot);
+		for (n = rows / 2; n > 0 && screenbegin > text; n--)
+			screenbegin = prev_line(screenbegin);
+		dot = p;
+	}
+#endif
 #if ENABLE_FEATURE_VI_COLON
 	{
 		char *p, *q;
@@ -549,6 +563,13 @@ static void edit_file(char *fn)
 		do_cmd(c);		// execute the user command
 	}
 	//-------------------------------------------------------------------
+#ifdef __UCSD__
+	if (!file_modified && current_filename) {	// saved, or not changed: where it was left, for next time
+		ucsd_unreserve();
+		hdr_write(current_filename, ABSLINE(dot), dot - begin_line(dot));
+		ucsd_reserve();
+	}
+#endif
 	refresh();
 	gracefulExit();
 #undef cur_line

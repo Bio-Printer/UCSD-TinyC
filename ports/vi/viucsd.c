@@ -490,4 +490,58 @@ void clear_to_eos(void)
 	*displayed_buffer=0;   //status line was also cleared
 }
 
+
+/* ---- the place where the file was left ----
+   A text file starts with a 1 KB header page (blocks 0 and 1) that the Pascal Editor owns: its
+   markers, environment and dates, then 892 bytes it never uses.  Vi keeps 6 bytes there, at
+   HDR_OFF, in binary:  'V' 'I' 1 column line-low line-high.  (Small on purpose: in Z80 mode vi's
+   window is the memory its code leaves.) */
+#define HDR_OFF 1000
+int hdr_line, hdr_col;
+int __istext(char *name);
+void __ptitle(char *name, char *title);
+
+/* rd: the header page of the text file fn into pg_buf; else pg_buf into it; 1 if done */
+static int hdr_io(const char *fn, int rd)
+{
+	char fib[80];
+	char title[32];
+	int n;
+	if (!__istext((char *)fn))
+		return 0;
+	__ptitle((char *)fn, title);
+	__cxp0v(3, fib, 0, -1);				/* FINIT(fib, NIL, untyped) */
+	__cxp0v(5, fib, title, 1, 0);			/* FOPEN, an old file */
+	if (__cspi(34) != 0)
+		return 0;
+	n = __cxp0i(28, fib, pg_buf, 0, 2, 0, rd, 0, 0) == 2 && __cspi(34) == 0;	/* FBLOCKIO, blocks 0 and 1 */
+	__cxp0v(6, fib, 0);				/* FCLOSE */
+	return n;
+}
+
+void hdr_read(const char *fn)
+{
+	unsigned char *r;
+	r = (unsigned char *)pg_buf + HDR_OFF;
+	hdr_line = hdr_col = 0;
+	if (hdr_io(fn, 1) && r[0] == 'V' && r[1] == 'I' && r[2] == 1) {
+		hdr_col = r[3];
+		hdr_line = r[4] + 256 * r[5];
+	}
+}
+
+void hdr_write(const char *fn, int line, int col)
+{
+	unsigned char *r;
+	r = (unsigned char *)pg_buf + HDR_OFF;
+	if (!hdr_io(fn, 1))
+		return;
+	r[0] = 'V';
+	r[1] = 'I';
+	r[2] = 1;
+	r[3] = col > 255 ? 255 : col;
+	r[4] = line & 255;
+	r[5] = line >> 8;
+	hdr_io(fn, 0);
+}
 #endif

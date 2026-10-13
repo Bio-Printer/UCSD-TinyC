@@ -439,6 +439,7 @@ int pg_load(const char *fn)
 	end = dot = screenbegin = text;
 #ifdef __UCSD__
 	ucsd_unreserve();
+	hdr_read(fn);				/* the place it was left (its header page) */
 #endif
 	f = fopen(fn, "r");
 #ifdef __UCSD__
