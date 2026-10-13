@@ -14,6 +14,10 @@ whose free space is one area at its end), then from the shell:
   vi C.LIST again, 687G, 60 times k, dd, ZZ       -> line 627 is the one gone: lines above the window keep coming in (the
                                                      lines going out join the chunk below when they fit,
                                                      so VI.SWAP's slots do not run out)
+  vi C.LIST again, 687G, 5 times ^B (Page Up), H, dd, ZZ
+                                                  -> a line about 5 screens up is the one gone (the window
+                                                     can hold not much more than a screen in Z80 mode: the
+                                                     lines leaving the bottom of the screen make room)
   no VI.SWAP left on the volume afterwards
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
 import os, sys
@@ -51,6 +55,8 @@ def main():
               'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'TYPE "G"', 'WAIT "2487/2487"', 'TYPE ":q\\r"', 'WAIT "shell> "',
               'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'WAIT "2487 0%"', 'TYPE "687G"', 'TYPE "%s"' % ('k' * 60),
               'TYPE "ddZZ"', 'WAIT "shell> "',
+              'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'WAIT "2486 0%"', 'TYPE "687G"', 'TYPE "%s"' % ('\x02' * 5),
+              'TYPE "HddZZ"', 'WAIT "shell> "',
               'TYPE "bye\\r"', 'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 1800 if z else 300)
     tr = tr.replace('\r', '\n')
@@ -66,14 +72,17 @@ def main():
               ('A.C written with the x on line 101', a2 == ea),
               ('B.C written without line 200', b2 == eb)]
     c2 = img.read('C.LIST')[0] if img.find('C.LIST') else b''
-    ec = c[c.index(b'\r') + 1:].split(b'\r')
-    ec = b'\r'.join(ec[:626] + ec[627:])
-    checks.append(('C.LIST (CR line ends) written without its lines 1 and 628 (627 after the first dd)',
-                   c2[:len(ec)] == ec and not c2[len(ec):].strip(b'\0')))
+    ec = c[c.index(b'\r') + 1:].split(b'\r')          # (the first dd)
+    ec = ec[:626] + ec[627:]                           # (the dd after 687G and 60 k)
+    got = c2.rstrip(b'\0').split(b'\r')
+    d = next((n for n in range(len(got)) if got[n] != ec[n]), len(got))   # the line the dd after ^B took
+    checks.append(('C.LIST (CR line ends) written: only the lines vi deleted are gone, no NULs but the last block\'s',
+                   got == ec[:d] + ec[d + 1:] and c2.rstrip(b'\0').endswith(b'\r')))
     i = tr.find('shell> vi C.LIST', tr.find('shell> vi C.LIST') + 1)
     j = tr.find('shell> vi C.LIST', i + 1)
     checks.append(('C.LIST again: 2487 lines, no ^@', i >= 0 and '2487/2487' in tr[i:j] and '^@' not in tr[i:j]))
-    checks.append(('C.LIST: 687G and 60 k reach line 627 (the dd there)', j >= 0 and c2[:len(ec)] == ec))
+    checks.append(('C.LIST: 687G and 60 k reach line 627 (the dd there)', j >= 0 and got == ec[:d] + ec[d + 1:]))
+    checks.append(('C.LIST: 687G and 5 ^B reach about 5 screens up (the dd at line %d)' % (d + 1), 440 <= d <= 520))   # (Z80: 687G is not centred, the screen starts lower)
     checks.append(('no VI.SWAP left', img.find('VI.SWAP') is None))
     bad = 0
     for what, good in checks:

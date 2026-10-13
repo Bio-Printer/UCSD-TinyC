@@ -456,9 +456,12 @@ int pg_scroll(int cnt, int dir)
 				if (dot > k)
 					dot = begin_line(k);
 			}
-			k = pg_down(s, rows, &got);
-			if (pg_nl(begin_line(dot)) > k)
-				k = pg_nl(begin_line(dot));
+			/* the lines that stay on the screen; those below go out (the cursor
+			   goes up onto the last of them, where the scroll would leave it) */
+			n = cnt - moved < rows ? rows - (cnt - moved) : 1;
+			k = pg_down(s, n, &got);
+			if (dot >= k && k > text)
+				dot = begin_line(k - 1);
 			if (!pg_fill_top() && !pg_spill_bottom(k))
 				return moved;
 		}
