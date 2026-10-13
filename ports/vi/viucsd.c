@@ -189,40 +189,7 @@ int vi_printf(const char *fmt, ...)
 	return fputs(tmp, stdout);
 }
 
-/* getopt for the options vi knows: -R, -c CMD */
-static int optind = 1;
-static char *optarg;
-int getopt(int argc, char **argv, const char *opts)
-{
-	static int sp = 1;
-	char *o;
-	int c;
-	if (sp == 1 && (optind >= argc || argv[optind][0] != '-' || argv[optind][1] == 0))
-		return -1;
-	c = argv[optind][sp];
-	o = strchr(opts, c);
-	if (!o || c == ':') {
-		if (!argv[optind][++sp]) {
-			optind++;
-			sp = 1;
-		}
-		return '?';
-	}
-	if (o[1] == ':') {
-		if (argv[optind][sp + 1])
-			optarg = argv[optind] + sp + 1;
-		else if (optind + 1 < argc)
-			optarg = argv[++optind];
-		else
-			optarg = "";
-		optind++;
-		sp = 1;
-	} else if (!argv[optind][++sp]) {
-		optind++;
-		sp = 1;
-	}
-	return c;
-}
+int optind = 1;		/* the next file name in argv (:n, :rew) */
 
 /* ---- the terminal and the files ---- */
 /* The memory a file needs (stdio's 1 KB page and the 80-byte file

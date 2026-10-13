@@ -72,7 +72,7 @@
 #define ENABLE_FEATURE_VI_SEARCH 1
 #define ENABLE_FEATURE_VI_USE_SIGNALS 0
 #define ENABLE_FEATURE_VI_DOT_CMD 1
-#define ENABLE_FEATURE_VI_READONLY 1
+#define ENABLE_FEATURE_VI_READONLY 0	// (no -R: memory for the window)
 #define ENABLE_FEATURE_VI_SETOPTS 1
 #define ENABLE_FEATURE_VI_SET 1
 #define ENABLE_FEATURE_VI_WIN_RESIZE 0
@@ -81,7 +81,7 @@
 #define ENABLE_FEATURE_ALLOW_EXEC 0
 
 #define USE_FEATURE_VI_COLON(x) x
-#define USE_FEATURE_VI_READONLY(x) x
+#define USE_FEATURE_VI_READONLY(x)
 #define USE_FEATURE_VI_YANKMARK(x) x
 #define USE_FEATURE_VI_SEARCH(x) x
 
@@ -479,7 +479,6 @@ extern struct globals G;
 #define isblank(c) ((c) == ' ' || (c) == '\t')
 #define errno (SYSCOM->iorslt)
 extern int optind;
-extern char *optarg;
 #endif
 
 #if !ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
@@ -601,7 +600,6 @@ char *strerror(int e);
 int snprintf(char *buf, size_t n, const char *fmt, ...);
 int vi_printf(const char *fmt, ...);
 int vi_vsnprintf(char *buf, size_t n, const char *fmt, va_list ap);
-int getopt(int argc, char **argv, const char *opts);
 void ucsd_reserve(void);
 void ucsd_unreserve(void);
 char *ucsd_askname(void);

@@ -38,7 +38,7 @@ EXAMPLES
 NAME
     VI - the screen editor (BusyBox "tiny vi" for Tiny-C)
 SYNOPSIS
-    VI [-R] [-c COMMAND] [FILE]
+    VI [FILE ...]
 DESCRIPTION
     A vi: moving, inserting, deleting, searching and substituting on a screen.
     FILE is a text file as typed (.C, .H and .TEXT files are text files).  A
@@ -46,9 +46,6 @@ DESCRIPTION
     temporary file VI.SWAP on the prefix volume): moving, searching, G and :N
     move the window; a command that needs more lines than the window holds
     (500dd on a big file) is refused.  Needs emulator 2.04.
-OPTIONS
-    -R          read only: the file cannot be written (:w! does it)
-    -c COMMAND  run the colon COMMAND when the file is loaded (-c 120 goes to line 120)
 MOVING
     h j k l, the arrow keys   left, down, up, right
     0  ^  $                   start of the line, first character, end
@@ -84,12 +81,11 @@ WHERE IT WAS LEFT
     On leaving a text file (.TEXT, .C, .H) that was saved or not changed, vi keeps the
     cursor's line and column, in binary, in 6 bytes of the file's 1 KB header page (the
     part the Pascal Editor never uses).  The next VI of the file starts there, with that
-    line in the middle of the screen; -c CMD wins over it, a file that has become shorter
-    opens at its last line.
+    line in the middle of the screen when memory allows it; a file that has become
+    shorter opens at its last line.
 EXAMPLES
     VI A.C            edit A.C
-    VI -R A.C         look at it, no writing
-    VI -c 120 A.C     start at line 120
+    VI A.C B.C        edit A.C, then B.C (:n)
 SEE ALSO
     LESS, MORE (to read a file), GREP (to find a line)
 

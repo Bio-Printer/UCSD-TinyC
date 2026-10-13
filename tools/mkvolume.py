@@ -261,7 +261,7 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         Where it was left: on leaving a saved or unchanged text file vi keeps
         the cursor's line and column in the file's 1 KB header page (6 bytes
         the Editor never uses); the next VI of the file starts there, that line
-        in the middle of the screen (-c wins).
+        in the middle of the screen.
 
 GREP    GREP [-i] [-n] PATTERN [VOL: or #5:]FILES ...  from the shell: the
         lines of text files that match, as VOL:NAME:LINE: text.  Case is

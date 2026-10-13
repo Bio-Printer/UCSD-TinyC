@@ -8,7 +8,6 @@ column.  On the P-System, from the shell:
   150G, 6 columns right, ZZ (unchanged: the place is still written) -> the next open is at line 150, on the
   middle row of the screen, and x there deletes the character at column 6 (the column came back too)
   a record beyond the end of the file (line 9999) -> the last line; a record with a wrong magic -> line 1
-  vi -c 5 FILE: the command wins over the record
   a change and ZZ (vi writes the file): the place is kept all the same (line 100)
   a bigger file and no key: the rest loads while vi waits, the status line then shows the total and no L
   a file left unchanged keeps every other byte of its header page (the Editor's)
@@ -63,8 +62,8 @@ def main():
             ('vi #5:A.C', 'xZZ'),                    # opens at 150: x deletes column 6 there
             ('vi #5:B.C', 'ZZ'),                     # beyond the end: the last line
             ('vi #5:C.C', 'ZZ'),                     # a bad check: line 1
-            ('vi -c 5 #5:D.C', 'ZZ'),                # -c wins: line 5
-            ('vi #5:D.C', 'ZZ'),                     # (ZZ left it at 5)
+            ('vi #5:D.C', 'ZZ'),                     # opens at 77
+            ('vi #5:D.C', 'ZZ'),                     # (ZZ left it at 77)
             ('vi #5:F.C', '100GxZZ'),                # a change, then ZZ (it writes the file)
             ('vi #5:F.C', 'ZZ'),                     # ... the place is kept all the same: line 100
             ('vi #5:G.C', 'WAIT'),                   # no key: the rest loads, the status line says so
@@ -123,8 +122,8 @@ def main():
          a[148 + 0] == LINES[148] and (LINES[149][:6] + LINES[149][7:]) in a),
         ('a record beyond the end: the last line', where[2] == N),
         ('a record with a wrong magic: line 1', where[3] == 1),
-        ('vi -c 5: the command wins', where[4] == 5),
-        ('... and ZZ there leaves the new place: the next open is at line 5', where[5] == 5),
+        ('a record at line 77: opens there', where[4] == 77),
+        ('... and ZZ there leaves it: the next open is at line 77', where[5] == 77),
         ('no key: the whole file loads, the status line then shows its 1500 lines and no L',
          ok and re.search(r'1500 0%[^\n]*?a\d+/\d+ *(?!L)', tr[tr.find('shell> vi #5:G.C'):]) is not None),
         ('a change, ZZ: the next open is at line 100 (%s)' % where[7], where[7] == 100),

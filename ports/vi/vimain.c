@@ -331,6 +331,7 @@ int vi_main(int argc, char **argv)
 	//  1-  process $HOME/.exrc file (not inplemented yet)
 	//  2-  process EXINIT variable from environment
 	//  3-  process command line args
+#ifndef __UCSD__
 #if ENABLE_FEATURE_VI_COLON
 	{
 		char *p = getenv("EXINIT");
@@ -356,6 +357,7 @@ int vi_main(int argc, char **argv)
 			return 1;
 		}
 	}
+#endif	// (the P-System's vi has no options: VI NAME ...)
 
 	// The argv array can be used by the ":next"  and ":rewind" commands
 	// save optind.
@@ -499,7 +501,7 @@ static void edit_file(char *fn)
 #endif
 
 #ifdef __UCSD__
-	if (hdr_line > 0 && !initial_cmds[0]) {	// where the file was left: as if NG had been typed, and the column
+	if (hdr_line > 0) {	// where the file was left: as if NG had been typed, and the column
 		char *p;
 
 		cmdcnt = hdr_line;
@@ -511,7 +513,7 @@ static void edit_file(char *fn)
 		hdr_line = 0;			// (the first file of the command line only)
 	}
 #endif
-#if ENABLE_FEATURE_VI_COLON
+#if ENABLE_FEATURE_VI_COLON && !defined(__UCSD__)
 	{
 		char *p, *q;
 		int n = 0;
