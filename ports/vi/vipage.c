@@ -6,7 +6,7 @@ struct pgchunk *pg_ch;   /* before: 0 up; after: PG_MAXCH - 1 down */
 int pg_nb, pg_na;        /* chunks before / after the window */
 int pg_lb, pg_la;        /* lines before / after */
 long pg_bb, pg_ba;       /* bytes before / after */
-int pg_maxch;            /* the entries of pg_ch (two to a KB of the file: chunks are about half full) */
+int pg_maxch;            /* the entries of pg_ch (no more than VI.SWAP's slots) */
 unsigned char *pg_used;  /* PG_MAXSLOT bits: the slots in use */
 FILE *pg_f;              /* VI.SWAP; NULL: no paging, all in text */
 int pg_slots;            /* the slots VI.SWAP holds (at most PG_MAXSLOT) */
@@ -364,59 +364,6 @@ int pg_toprow(int ro, int tot)
 	return ro < 1 ? 1 : ro;
 }
 
-/* No room for the whole chunk above (top) or below the window: of its n
-   lines nearest the window, as many as there is room for come in, the rest
-   stays in its slot (after the load: pg_buf is free); 0 if none come in */
-static int pg_fill_part(int top, int n)
-{
-	struct pgchunk *c;
-	char *p;
-	char *r;
-	char *q;
-	int k;
-	int len;
-	if (pg_rf || (top ? !pg_nb : !pg_na))
-		return 0;
-	c = top ? &PGB(pg_nb - 1) : &PGA(0);
-	if (pg_io(c->slot, pg_buf, c->len, 0))
-		return 0;
-	q = pg_buf + c->len;
-	p = top ? q : pg_buf;
-	for (k = 0; k < n; k++) {
-		if (top) {
-			for (r = p - 1; r > pg_buf && r[-1] != '\n'; r--)
-				;
-			if (r < pg_buf || q - r > pg_room())
-				break;
-		} else {
-			r = memchr(p, '\n', q - p);
-			if (!r || ++r - pg_buf > pg_room())
-				break;
-		}
-		p = r;
-	}
-	len = top ? q - p : p - pg_buf;
-	if (len == 0 || len == c->len
-	 || pg_io(c->slot, top ? pg_buf : p, c->len - len, 1))
-		return 0;
-	c->len -= len;
-	c->lines -= k;
-	if (top) {
-		memmove(text + len, text, end - text);
-		memcpy(text, p, len);
-		pg_shift(len);
-		pg_lb -= k;
-		pg_bb -= len;
-	} else {
-		memcpy(end, pg_buf, len);
-		end += len;
-		pg_la -= k;
-		pg_ba -= len;
-	}
-	pg_retop();
-	return 1;
-}
-
 /* Before every command, as far as the window allows (it may hold less than a
    screen): the screen in memory, from its top down; pg_margin / 2 lines above
    it (a jump puts the cursor in the middle of the screen); pg_margin lines
@@ -455,9 +402,9 @@ void pg_fix(void)
 		kb = pg_down(d < end ? pg_nl(d) : end, dm, &down);
 		moved = 0;
 		if (scr < dm && PG_MORE())
-			moved = pg_fill_bottom() || pg_spill_top(t) || pg_fill_part(0, dm - scr);
+			moved = pg_fill_bottom() || pg_spill_top(t);
 		if (!moved && up < upm && pg_nb)
-			moved = pg_fill_top() || pg_spill_bottom(kb) || pg_fill_part(1, upm - up);
+			moved = pg_fill_top() || pg_spill_bottom(kb);
 		if (!moved && down < dm && PG_MORE())
 			moved = pg_fill_bottom() || pg_spill_top(kt);
 		if (!moved && pg_room() < PG_ROOM)

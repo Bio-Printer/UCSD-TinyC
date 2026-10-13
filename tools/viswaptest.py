@@ -18,9 +18,10 @@ whose free space is one area at its end), then from the shell:
                                                   -> a line about 5 screens up is the one gone (the window
                                                      can hold not much more than a screen in Z80 mode: the
                                                      lines leaving the bottom of the screen make room)
-  vi C.LIST again, 687G, H, dd, ZZ                -> line 665 is the one gone: 687 is in the middle of the
-                                                     screen (in Z80 mode a chunk above that does not fit
-                                                     comes in in part)
+  vi C.LIST again, 687G, H, dd, ZZ                -> about line 665 is the one gone: 687 is in the middle
+                                                     of the screen (native mode: row 22; Z80 mode: the
+                                                     window holds not much more than a screen of this
+                                                     file, a few rows higher)
   no VI.SWAP left on the volume afterwards
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
 import os, sys
@@ -88,7 +89,7 @@ def main():
     checks.append(('C.LIST again: 2487 lines, no ^@', i >= 0 and '2487/2487' in tr[i:j] and '^@' not in tr[i:j]))
     checks.append(('C.LIST: 687G and 60 k reach line 627 (the dd there)', j >= 0 and got == ec[:d] + ec[d + 1:e + 1] + ec[e + 2:]))
     checks.append(('C.LIST: 687G and 5 ^B reach about 5 screens up (the dd at line %d)' % (d + 1), 440 <= d <= 520))   # (Z80: 687G is not centred, the screen starts lower)
-    checks.append(('C.LIST: 687G puts 687 in the middle of the screen (H, dd took line %d)' % (e + 2), 663 <= e + 2 <= 666))
+    checks.append(('C.LIST: 687G puts 687 in the middle half of the screen (H, dd took line %d)' % (e + 2), 654 <= e + 2 <= 676))
     checks.append(('no VI.SWAP left', img.find('VI.SWAP') is None))
     bad = 0
     for what, good in checks:

@@ -112,9 +112,11 @@ window no longer came in.  (Not while the file is still loading: `pg_buf` holds 
 In Z80 mode the window of a big listing holds not much more than a screen, and a full chunk
 (about 1 KB) often has no room.  So: after a jump `pg_fix` wants just the lines the screen
 will have (`pg_toprow`, shared with `sync_cursor`: the top as it was, scrolled just enough, or
-the cursor's line in the middle), not a whole screen above and below; when a whole chunk does
-not fit, the lines of it that are wanted come in and the rest stays in its slot
-(`pg_fill_part`); and a Page Up may put out the lines leaving the bottom of the screen.
+the cursor's line in the middle), not a whole screen above and below; and a Page Up may put
+out the lines leaving the bottom of the screen.  The chunk table has no more entries than
+VI.SWAP has slots (every chunk has one).  (Bringing in part of a chunk when a whole one does
+not fit would centre exactly, but its code took about 450 bytes from the window: more than it
+gave.  In Z80 mode 687G in SYSTEM.LIST puts the line on row 18 of 44.)
 
 * Before every command (and every repeat of a counted one) a screen of lines is kept
   in memory on both sides of the cursor, and 512 bytes free for typing: `j`, `k`, `^F`,

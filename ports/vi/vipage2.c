@@ -306,22 +306,23 @@ void pg_init(const char *fn)
 	pg_used = (unsigned char *)xzalloc(PG_MAXSLOT / 8);
 	pg_buf = (char *)xzalloc(PG_SLOT + 3);
 	pg_maxch = PG_MAXCH;
+	pg_slots = PG_MAXSLOT;
 #ifdef __UCSD__
-	/* the file: the place it was left (its header page) and its size; the chunk table is sized by it,
-	   two entries to a KB and some more (the memory goes to the window: in Z80 mode it is small) */
+	/* the file: the place it was left (its header page) and its size.  VI.SWAP holds the file and
+	   25 KB for what is typed in, and the chunk table no more than its slots (every chunk has one;
+	   the memory goes to the window: in Z80 mode it is small) */
 	hdr_read(fn);
-	if (hdr_blocks + 24 < pg_maxch)
-		pg_maxch = hdr_blocks + 24 < 48 ? 48 : hdr_blocks + 24;
+	if (hdr_blocks / 2 + 25 < pg_slots)
+		pg_slots = hdr_blocks / 2 + 25;
+	if (pg_slots < pg_maxch)
+		pg_maxch = pg_slots;
 #endif
 	pg_ch = (struct pgchunk *)xzalloc(pg_maxch * sizeof(struct pgchunk));
 	pg_f = fopen(PG_SWAP, "w+b");
-	pg_slots = PG_MAXSLOT;
 #ifdef __UCSD__
-	/* VI.SWAP: the file and 25 KB for what is typed in.  A new file takes the largest free area of
-	   the volume: its last slot is written, it is closed (the rest of the area is free again, so a
-	   :w on the same volume finds room) and opened again to read and write */
-	if (hdr_blocks / 2 + 25 < pg_slots)
-		pg_slots = hdr_blocks / 2 + 25;
+	/* A new file takes the largest free area of the volume: VI.SWAP's last slot is written, it is
+	   closed (the rest of the area is free again, so a :w on the same volume finds room) and
+	   opened again to read and write */
 	if (pg_f) {
 		fseek(pg_f, (long)(pg_slots - 1) * PG_SLOT, SEEK_SET);
 		fwrite(pg_buf, 1, PG_SLOT, pg_f);
