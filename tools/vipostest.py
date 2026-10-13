@@ -9,6 +9,8 @@ column.  On the P-System, from the shell:
   middle row of the screen, and x there deletes the character at column 6 (the column came back too)
   a record beyond the end of the file (line 9999) -> the last line; a record with a wrong magic -> line 1
   vi -c 5 FILE: the command wins over the record
+  a change and ZZ (vi writes the file): the place is kept all the same (line 100)
+  a bigger file and no key: the rest loads while vi waits, the status line then shows the total and no L
   a file left unchanged keeps every other byte of its header page (the Editor's)
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
 import os, re, sys
@@ -52,6 +54,8 @@ def main():
     header0 = header('B.C', record(9999, 5))
     header('C.C', record(40, 3, False))
     header('D.C', record(77, 2))
+    header('F.C')
+    v.write('G.C', make_text(['line %d of a bigger file, to load while vi waits' % i for i in range(1, 1501)]), 3)
     v.save()
     # (command line, keys)
     runs = [('vi #5:A.C', '150G6lZZ'),               # no record -> line 1; leave at 150, column 6
@@ -59,9 +63,15 @@ def main():
             ('vi #5:B.C', 'ZZ'),                     # beyond the end: the last line
             ('vi #5:C.C', 'ZZ'),                     # a bad check: line 1
             ('vi -c 5 #5:D.C', 'ZZ'),                # -c wins: line 5
-            ('vi #5:D.C', 'ZZ')]                     # (ZZ left it at 5)
+            ('vi #5:D.C', 'ZZ'),                     # (ZZ left it at 5)
+            ('vi #5:F.C', '100GxZZ'),                # a change, then ZZ (it writes the file)
+            ('vi #5:F.C', 'ZZ'),                     # ... the place is kept all the same: line 100
+            ('vi #5:G.C', 'WAIT')]                   # no key: the rest loads, the status line says so
     script = ['WAIT "Command:"', 'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "#5:SHELL\\r"', 'WAIT "shell> "']
     for cmd, keys in runs:
+        if keys == 'WAIT':
+            script += ['TYPE "%s\\r"' % cmd, 'WAIT "G.C"', 'WAIT "1500 0%"', 'TYPE "ZZ"', 'WAIT "shell> "']
+            continue
         if keys is None:
             script += ['TYPE "%s\\r"' % cmd, 'WAIT "shell> "']
             continue
@@ -101,6 +111,9 @@ def main():
         ('a record with a wrong magic: line 1', where[3] == 1),
         ('vi -c 5: the command wins', where[4] == 5),
         ('... and ZZ there leaves the new place: the next open is at line 5', where[5] == 5),
+        ('no key: the whole file loads, the status line then shows its 1500 lines and no L',
+         ok and re.search(r'1500 0%[^\n]*?a\d+/\d+ *(?!L)', tr[tr.find('shell> vi #5:G.C'):]) is not None),
+        ('a change, ZZ: the next open is at line 100 (%s)' % where[7], where[7] == 100),
         ('no crash', 'System re-initialized' not in tr and 'STK OFLOW' not in tr),
     ]
     hb = raw('B.C')[:1024]                  # (left unchanged: only vi's 6 bytes differ)

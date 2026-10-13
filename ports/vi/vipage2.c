@@ -428,6 +428,11 @@ void pg_idle(void)
 #endif
 	while (pg_rf && !awaitInput(0))
 		pg_more();
+	if (!pg_rf) {			// all in: the status line's total (counted again), and its L (still loading) gone
+		last_file_modified = -1;
+		*status_buffer = 0;		// (a message there gives way to the status line)
+		refresh();
+	}
 }
 
 /* the file; -1 if it cannot be opened, else a number >= 0 */

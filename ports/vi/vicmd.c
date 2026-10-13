@@ -303,6 +303,7 @@ dc5:
 					status_line_bold("Write error: %s", strerror(errno));
 			} else if (cnt == (end - 1 - text + 1)) {
 				editing = 0;
+				file_modified = 0;	// (written: as :w does; the end of the session then keeps the place)
 			}
 		} else {
 			editing = 0;
