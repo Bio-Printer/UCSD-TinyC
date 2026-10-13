@@ -343,6 +343,80 @@ int pg_fill_bottom(void)
 	return 1;
 }
 
+/* The screen's top line for the cursor on line ro after the screen's top went
+   out of the window (pg_top): as it was if ro is on it, scrolled just enough
+   if ro is near, else ro in the middle (sync_cursor; pg_fix keeps those lines);
+   tot: the file's lines (pg_fix: those loaded, it does not load the rest) */
+int pg_toprow(int ro, int tot)
+{
+	int last;
+	int h;
+	h = (rows - 1) / 2;
+	last = pg_top + rows - 2;	// the screen's last line
+	if (last > tot)
+		last = tot;
+	if (ro < pg_top && pg_top - ro + 1 > h || ro > last && ro - last + 1 > h)
+		ro -= h;
+	else if (ro > last)
+		ro = pg_top + ro - last;
+	else if (ro > pg_top)
+		ro = pg_top;
+	return ro < 1 ? 1 : ro;
+}
+
+/* No room for the whole chunk above (top) or below the window: of its n
+   lines nearest the window, as many as there is room for come in, the rest
+   stays in its slot (after the load: pg_buf is free); 0 if none come in */
+static int pg_fill_part(int top, int n)
+{
+	struct pgchunk *c;
+	char *p;
+	char *r;
+	char *q;
+	int k;
+	int len;
+	if (pg_rf || (top ? !pg_nb : !pg_na))
+		return 0;
+	c = top ? &PGB(pg_nb - 1) : &PGA(0);
+	if (pg_io(c->slot, pg_buf, c->len, 0))
+		return 0;
+	q = pg_buf + c->len;
+	p = top ? q : pg_buf;
+	for (k = 0; k < n; k++) {
+		if (top) {
+			for (r = p - 1; r > pg_buf && r[-1] != '\n'; r--)
+				;
+			if (r < pg_buf || q - r > pg_room())
+				break;
+		} else {
+			r = memchr(p, '\n', q - p);
+			if (!r || ++r - pg_buf > pg_room())
+				break;
+		}
+		p = r;
+	}
+	len = top ? q - p : p - pg_buf;
+	if (len == 0 || len == c->len
+	 || pg_io(c->slot, top ? pg_buf : p, c->len - len, 1))
+		return 0;
+	c->len -= len;
+	c->lines -= k;
+	if (top) {
+		memmove(text + len, text, end - text);
+		memcpy(text, p, len);
+		pg_shift(len);
+		pg_lb -= k;
+		pg_bb -= len;
+	} else {
+		memcpy(end, pg_buf, len);
+		end += len;
+		pg_la -= k;
+		pg_ba -= len;
+	}
+	pg_retop();
+	return 1;
+}
+
 /* Before every command, as far as the window allows (it may hold less than a
    screen): the screen in memory, from its top down; pg_margin / 2 lines above
    it (a jump puts the cursor in the middle of the screen); pg_margin lines
@@ -358,6 +432,7 @@ void pg_fix(void)
 	int down;
 	int scr;
 	int upm;
+	int dm;
 	int moved;
 	int guard;
 	if (!pg_f || pg_lock)
@@ -366,19 +441,24 @@ void pg_fix(void)
 		d = begin_line(dot);
 		t = begin_line(screenbegin);	// the screen stays in the window
 		upm = pg_margin / 2;
-		if (t > d || pg_top) {		// (the screen is to be put round the cursor: a whole screen above it)
-			t = d;
-			upm = pg_margin;
+		dm = pg_margin;
+		if (t > d || pg_top) {		// (a jump: the screen is to be put round the cursor, its lines
+			t = d;			// above the cursor's as sync_cursor will have them, the rest below)
+			upm = (rows - 1) / 2;	// (just above the screen: scrolled to it, or it is in the middle)
+			if (pg_top) {
+				upm = pg_abs(d) - pg_toprow(pg_abs(d), pg_lines());
+				dm = rows - upm;
+			}
 		}
-		pg_down(t, rows, &scr);
+		pg_down(t, dm, &scr);
 		kt = pg_up(t, upm, &up);
-		kb = pg_down(d < end ? pg_nl(d) : end, pg_margin, &down);
+		kb = pg_down(d < end ? pg_nl(d) : end, dm, &down);
 		moved = 0;
-		if (scr < rows && PG_MORE())
-			moved = pg_fill_bottom() || pg_spill_top(t);
+		if (scr < dm && PG_MORE())
+			moved = pg_fill_bottom() || pg_spill_top(t) || pg_fill_part(0, dm - scr);
 		if (!moved && up < upm && pg_nb)
-			moved = pg_fill_top() || pg_spill_bottom(kb);
-		if (!moved && down < pg_margin && PG_MORE())
+			moved = pg_fill_top() || pg_spill_bottom(kb) || pg_fill_part(1, upm - up);
+		if (!moved && down < dm && PG_MORE())
 			moved = pg_fill_bottom() || pg_spill_top(kt);
 		if (!moved && pg_room() < PG_ROOM)
 			moved = pg_spill_bottom(kb) || pg_spill_top(kt);

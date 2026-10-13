@@ -71,6 +71,7 @@ char *pg_nl(char *p);
 int pg_count(char *a, char *b);
 int pg_abs(char *p);
 void pg_retop(void);
+int pg_toprow(int ro, int tot);
 char *pg_up(char *p, int n, int *got);
 char *pg_down(char *p, int n, int *got);
 int pg_spill_top(char *lim);

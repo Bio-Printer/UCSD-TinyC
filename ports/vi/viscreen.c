@@ -77,20 +77,9 @@ static void sync_cursor(char *d, int *row, int *col)
 	if (pg_top) {
 		// the screen's top line went out of the window: the same moves,
 		// counted in line numbers
-		ro = ABSLINE(beg_cur);
-		co = TOTLINES();
-		cnt = pg_top + rows - 2;	// the screen's last line
-		if (cnt > co)
-			cnt = co;
-		if (ro < pg_top && pg_top - ro + 1 > (rows - 1) / 2
-		 || ro > cnt && ro - cnt + 1 > (rows - 1) / 2)
-			ro -= (rows - 1) / 2;	// dot in the middle of the screen
-		else if (ro > cnt)
-			ro = pg_top + ro - cnt;	// scrolled up just enough
-		else if (ro > pg_top)
-			ro = pg_top;		// on the screen as it was
+		ro = pg_toprow(ABSLINE(beg_cur), TOTLINES());
 		pg_top = 0;
-		screenbegin = pg_line(ro < 1 ? 1 : ro);
+		screenbegin = pg_line(ro);
 		if (!screenbegin)
 			screenbegin = text;
 	} else

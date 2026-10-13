@@ -109,6 +109,13 @@ that the chunks the window leaves behind as it moves are often part full, and VI
 and 25 KB) ran out of slots: on SYSTEM.LIST, 687G and some Up arrows and the lines above the
 window no longer came in.  (Not while the file is still loading: `pg_buf` holds its carry.)
 
+In Z80 mode the window of a big listing holds not much more than a screen, and a full chunk
+(about 1 KB) often has no room.  So: after a jump `pg_fix` wants just the lines the screen
+will have (`pg_toprow`, shared with `sync_cursor`: the top as it was, scrolled just enough, or
+the cursor's line in the middle), not a whole screen above and below; when a whole chunk does
+not fit, the lines of it that are wanted come in and the rest stays in its slot
+(`pg_fill_part`); and a Page Up may put out the lines leaving the bottom of the screen.
+
 * Before every command (and every repeat of a counted one) a screen of lines is kept
   in memory on both sides of the cursor, and 512 bytes free for typing: `j`, `k`, `^F`,
   `^B`, `}` ... move the window as they reach its edge. Inserting more than fits writes

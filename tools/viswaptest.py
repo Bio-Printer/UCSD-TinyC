@@ -18,6 +18,9 @@ whose free space is one area at its end), then from the shell:
                                                   -> a line about 5 screens up is the one gone (the window
                                                      can hold not much more than a screen in Z80 mode: the
                                                      lines leaving the bottom of the screen make room)
+  vi C.LIST again, 687G, H, dd, ZZ                -> line 665 is the one gone: 687 is in the middle of the
+                                                     screen (in Z80 mode a chunk above that does not fit
+                                                     comes in in part)
   no VI.SWAP left on the volume afterwards
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
 import os, sys
@@ -57,6 +60,7 @@ def main():
               'TYPE "ddZZ"', 'WAIT "shell> "',
               'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'WAIT "2486 0%"', 'TYPE "687G"', 'TYPE "%s"' % ('\x02' * 5),
               'TYPE "HddZZ"', 'WAIT "shell> "',
+              'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'WAIT "2485 0%"', 'TYPE "687GHddZZ"', 'WAIT "shell> "',
               'TYPE "bye\\r"', 'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 1800 if z else 300)
     tr = tr.replace('\r', '\n')
@@ -76,13 +80,15 @@ def main():
     ec = ec[:626] + ec[627:]                           # (the dd after 687G and 60 k)
     got = c2.rstrip(b'\0').split(b'\r')
     d = next((n for n in range(len(got)) if got[n] != ec[n]), len(got))   # the line the dd after ^B took
+    e = next((n for n in range(d, len(got)) if got[n] != ec[n + 1]), len(got))   # the one after 687G H (+ 1)
     checks.append(('C.LIST (CR line ends) written: only the lines vi deleted are gone, no NULs but the last block\'s',
-                   got == ec[:d] + ec[d + 1:] and c2.rstrip(b'\0').endswith(b'\r')))
+                   got == ec[:d] + ec[d + 1:e + 1] + ec[e + 2:] and c2.rstrip(b'\0').endswith(b'\r')))
     i = tr.find('shell> vi C.LIST', tr.find('shell> vi C.LIST') + 1)
     j = tr.find('shell> vi C.LIST', i + 1)
     checks.append(('C.LIST again: 2487 lines, no ^@', i >= 0 and '2487/2487' in tr[i:j] and '^@' not in tr[i:j]))
-    checks.append(('C.LIST: 687G and 60 k reach line 627 (the dd there)', j >= 0 and got == ec[:d] + ec[d + 1:]))
+    checks.append(('C.LIST: 687G and 60 k reach line 627 (the dd there)', j >= 0 and got == ec[:d] + ec[d + 1:e + 1] + ec[e + 2:]))
     checks.append(('C.LIST: 687G and 5 ^B reach about 5 screens up (the dd at line %d)' % (d + 1), 440 <= d <= 520))   # (Z80: 687G is not centred, the screen starts lower)
+    checks.append(('C.LIST: 687G puts 687 in the middle of the screen (H, dd took line %d)' % (e + 2), 663 <= e + 2 <= 666))
     checks.append(('no VI.SWAP left', img.find('VI.SWAP') is None))
     bad = 0
     for what, good in checks:

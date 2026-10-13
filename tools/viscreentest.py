@@ -184,7 +184,8 @@ def main():
             print('%s, %s: %d screens compared; %d differ; reference %d screens, new %d; the new vi scrolled %d times' %
                   ('paged' if paged else 'unpaged', name, min(len(a), len(b)), len(bad), len(a), len(b), nscroll))
             for i in bad[:3]:
-                print('after key %d (%r):' % (i, KEYS[i - 1] if i else 'start'))
+                sent = [k for k in KEYS if k]                # (the screens are those after the keys sent)
+                print('after key %d (%r):' % (i, sent[i - 1] if i else 'start'))
                 for y in range(ROWS):
                     if a[i][0][y] != b[i][0][y]:
                         print('  row %2d ref: %r\n         new: %r' % (y, a[i][0][y], b[i][0][y]))

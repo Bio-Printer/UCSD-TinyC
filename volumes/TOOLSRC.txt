@@ -10,7 +10,7 @@ TOOLSRC:  29 files  (a UCSD directory holds 77)
   VITEXT.C            42  vi: vi: moving in and changing the text, searching ...
   VICOLON.C           36  vi: vi: the : commands
   VICMD.C             56  vi: vi: the vi commands
-  VIPAGE.C            26  vi: vi: a window into big files (see vipage.h)
+  VIPAGE.C            30  vi: vi: a window into big files (see vipage.h)
   VIPAGE2.C           32  vi: vi: the rest of the window into big files: jumps ...
   VIUCSD.C            26  vi: vi on UCSD Pascal II.0 with Tiny-C: the routines that
   VI.H                44  vi: vi's modules share this: configuration, globals
