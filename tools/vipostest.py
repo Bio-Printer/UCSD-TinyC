@@ -71,6 +71,8 @@ def main():
             continue
         script += ['TYPE "%s\\r"' % cmd, 'WAIT "%s"' % cmd.split(':')[-1], 'TYPE "%s"' % keys.replace('\r', '\\r'), 'WAIT "shell> "']
     script += ['TYPE "bye\\r"', 'WAIT "Command:"']
+    scr = os.path.join(ps.dir, 'screens.txt')
+    os.environ['VERIFY_SCREEN'] = scr
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 900)
     tr = tr.replace('\r', '\n')
     start = []
@@ -85,8 +87,16 @@ def main():
     raw = lambda n: img.read(n)[0]
     textlines = lambda n: ucsdvol.ucsd_to_text(raw(n)).split('\n')[:-1]
     a = textlines('A.C')
+    centre = None            # the row of line 150 on the first screen that shows it as the cursor's line
+    for blk in re.split(r'^== key ', open(scr, encoding='latin1').read(), flags=re.M)[1:]:
+        rows = blk.split('\n')[1:]
+        if any(r.startswith('COMMAND') and ' line 150/300' in r for r in rows):
+            centre = [i for i, r in enumerate(rows) if 'line 150 of the file' in r]
+            break
     checks = [
         ('the script completed', ok),
+        ('the line it opens at is in the middle of the screen (row %s of 45)' % centre,
+         bool(centre) and 18 <= centre[0] <= 26),
         ("the prefix volume is the file's: :w works (VI.SWAP leaves room), the x was saved",
          'I/O error' not in tr and textlines('E.C')[0] == LINES[0][1:]),
         ('no record: opens at line 1', where[0] == 1),

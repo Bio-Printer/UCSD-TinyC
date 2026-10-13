@@ -509,8 +509,12 @@ static void edit_file(char *fn)
 #ifdef __UCSD__
 	if (hdr_line > 0 && !initial_cmds[0]) {		// the place the file was left (its header page)
 		char *p;
+		int n;
 
 		dot = find_line(hdr_line);		// (beyond the end: the last line)
+		screenbegin = dot;			// ... in the middle of the screen
+		for (n = rows / 2; n > 0 && screenbegin > text; n--)
+			screenbegin = prev_line(screenbegin);
 		for (p = dot; hdr_col > 0 && *p != '\n' && p < end - 1; hdr_col--)
 			p++;
 		dot = p;
