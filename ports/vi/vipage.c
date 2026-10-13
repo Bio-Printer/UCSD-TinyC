@@ -9,6 +9,7 @@ long pg_bb, pg_ba;       /* bytes before / after */
 int pg_maxch;            /* the entries of pg_ch (two to a KB of the file: chunks are about half full) */
 unsigned char *pg_used;  /* PG_MAXSLOT bits: the slots in use */
 FILE *pg_f;              /* VI.SWAP; NULL: no paging, all in text */
+int pg_slots;            /* the slots VI.SWAP holds (at most PG_MAXSLOT) */
 char *pg_buf;            /* PG_SLOT + 2: a chunk being searched */
 int pg_cap;              /* the window's size */
 int pg_lock;             /* pointers are held: the window must not move */
@@ -42,7 +43,7 @@ int pg_fill_top(void);
 int pg_slot(void)
 {
 	int i;
-	for (i = 0; i < PG_MAXSLOT; i++)
+	for (i = 0; i < pg_slots; i++)
 		if (!(pg_used[i >> 3] & (1 << (i & 7)))) {
 			pg_used[i >> 3] |= 1 << (i & 7);
 			return i;

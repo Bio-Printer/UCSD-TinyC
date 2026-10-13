@@ -43,8 +43,9 @@ DESCRIPTION
     A vi: moving, inserting, deleting, searching and substituting on a screen.
     FILE is a text file as typed (.C, .H and .TEXT files are text files).  A
     file larger than memory is edited through a window (the rest is kept in a
-    temporary file VI.SWAP on the prefix volume): moving, searching, G and :N
-    move the window; a command that needs more lines than the window holds
+    temporary file VI.SWAP on the prefix volume, the file's size and 25 KB, so
+    a save on that volume finds room): moving, searching, G and :N move the
+    window; a command that needs more lines than the window holds
     (500dd on a big file) is refused.  Needs emulator 2.04.
 MOVING
     h j k l, the arrow keys   left, down, up, right

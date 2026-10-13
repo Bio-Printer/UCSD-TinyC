@@ -251,10 +251,10 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         or later, the mouse wheel (3 lines a notch) with 2.01 or later;
         with 2.02 or later the cursor is a block while vi runs (UCSD-C
         emulator/KEYS.md).
-        Big files: vi keeps a window of the file in memory (about 2.8 KB in
+        Big files: vi keeps a window of the file in memory (about 4 KB in
         Z80 mode, 12 KB in P-Code mode, 30 KB with the Harvard layout) and
-        the rest in VI.SWAP, a temporary file on the prefix volume (deleted
-        when vi ends).  Moving, searching (/ ? n N go on through the whole
+        the rest in VI.SWAP, a temporary file on the prefix volume (the
+        file's size and 25 KB; deleted when vi ends).  Moving, searching (/ ? n N go on through the whole
         file), G and :N move the window; files up to about 125 KB.  A
         command on more lines than fit in the window at once (500dd,
         :1,$s/a/b/ on a big file) is refused with a message.

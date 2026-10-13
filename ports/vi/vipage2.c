@@ -315,7 +315,19 @@ void pg_init(const char *fn)
 #endif
 	pg_ch = (struct pgchunk *)xzalloc(pg_maxch * sizeof(struct pgchunk));
 	pg_f = fopen(PG_SWAP, "w+b");
+	pg_slots = PG_MAXSLOT;
 #ifdef __UCSD__
+	/* VI.SWAP: the file and 25 KB for what is typed in.  A new file takes the largest free area of
+	   the volume: its last slot is written, it is closed (the rest of the area is free again, so a
+	   :w on the same volume finds room) and opened again to read and write */
+	if (hdr_blocks / 2 + 25 < pg_slots)
+		pg_slots = hdr_blocks / 2 + 25;
+	if (pg_f) {
+		fseek(pg_f, (long)(pg_slots - 1) * PG_SLOT, SEEK_SET);
+		fwrite(pg_buf, 1, PG_SLOT, pg_f);
+		fclose(pg_f);
+		pg_f = fopen(PG_SWAP, "r+b");
+	}
 	/* MEMAVAIL words, less malloc's room for the stack and some for yanks */
 	cap = 2L * __cspi(40) - 600 - PG_RESERVE;
 #else

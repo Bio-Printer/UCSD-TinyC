@@ -42,6 +42,7 @@ extern long pg_bb, pg_ba;       /* bytes before / after */
 extern int pg_maxch;            /* the entries of pg_ch */
 extern unsigned char *pg_used;  /* PG_MAXSLOT bits: the slots in use */
 extern FILE *pg_f;              /* VI.SWAP; NULL: no paging, all in text */
+extern int pg_slots;            /* the slots VI.SWAP holds */
 extern char *pg_buf;            /* PG_SLOT + 2: a chunk being searched */
 extern int pg_cap;              /* the window's size */
 extern int pg_lock;             /* pointers are held: the window must not move */

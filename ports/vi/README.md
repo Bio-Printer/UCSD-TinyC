@@ -93,6 +93,10 @@ window writes the lines leaving it at one edge onto that side's stack and reads 
 chunk of the other side's stack in; slots are reused. Every line is in exactly one
 place, so saving writes before + window + after (the file being edited is not kept
 open, and saving over it is safe). `VI.SWAP` is deleted when vi ends.
+It is the file's size and 25 KB for what is typed in: a new file takes the largest free
+area of the volume, so vi writes its last slot, closes it (the rest of that area is free
+again) and opens it again to read and write; a `:w` of a file on the same volume then finds
+room.
 
 * Before every command (and every repeat of a counted one) a screen of lines is kept
   in memory on both sides of the cursor, and 512 bytes free for typing: `j`, `k`, `^F`,
