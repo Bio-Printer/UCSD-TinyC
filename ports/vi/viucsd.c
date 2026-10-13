@@ -497,7 +497,7 @@ void clear_to_eos(void)
    HDR_OFF, in binary:  'V' 'I' 1 column line-low line-high.  (Small on purpose: in Z80 mode vi's
    window is the memory its code leaves.) */
 #define HDR_OFF 1000
-int hdr_line, hdr_col;
+int hdr_line, hdr_col, hdr_blocks;
 int __istext(char *name);
 void __ptitle(char *name, char *title);
 
@@ -507,14 +507,14 @@ static int hdr_io(const char *fn, int rd)
 	char fib[80];
 	char title[32];
 	int n;
-	if (!__istext((char *)fn))
-		return 0;
 	__ptitle((char *)fn, title);
 	__cxp0v(3, fib, 0, -1);				/* FINIT(fib, NIL, untyped) */
 	__cxp0v(5, fib, title, 1, 0);			/* FOPEN, an old file */
 	if (__cspi(34) != 0)
 		return 0;
-	n = __cxp0i(28, fib, pg_buf, 0, 2, 0, rd, 0, 0) == 2 && __cspi(34) == 0;	/* FBLOCKIO, blocks 0 and 1 */
+	if (rd)
+		hdr_blocks = ((int *)fib)[17] - ((int *)fib)[16];	/* (its size: the chunk table's) */
+	n = __istext((char *)fn) && __cxp0i(28, fib, pg_buf, 0, 2, 0, rd, 0, 0) == 2 && __cspi(34) == 0;	/* FBLOCKIO, blocks 0 and 1 */
 	__cxp0v(6, fib, 0);				/* FCLOSE */
 	return n;
 }
@@ -523,7 +523,7 @@ void hdr_read(const char *fn)
 {
 	unsigned char *r;
 	r = (unsigned char *)pg_buf + HDR_OFF;
-	hdr_line = hdr_col = 0;
+	hdr_line = hdr_col = hdr_blocks = 0;
 	if (hdr_io(fn, 1) && r[0] == 'V' && r[1] == 'I' && r[2] == 1) {
 		hdr_col = r[3];
 		hdr_line = r[4] + 256 * r[5];

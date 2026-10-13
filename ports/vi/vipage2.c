@@ -300,12 +300,20 @@ void pg_close(void)
 
 /* everything for paging, once: the stores, VI.SWAP, the window (text) as
    big as memory allows; without VI.SWAP the window is the whole file */
-void pg_init(void)
+void pg_init(const char *fn)
 {
 	long cap;
-	pg_ch = (struct pgchunk *)xzalloc(PG_MAXCH * sizeof(struct pgchunk));
 	pg_used = (unsigned char *)xzalloc(PG_MAXSLOT / 8);
 	pg_buf = (char *)xzalloc(PG_SLOT + 3);
+	pg_maxch = PG_MAXCH;
+#ifdef __UCSD__
+	/* the file: the place it was left (its header page) and its size; the chunk table is sized by it,
+	   two entries to a KB and some more (the memory goes to the window: in Z80 mode it is small) */
+	hdr_read(fn);
+	if (hdr_blocks + 24 < pg_maxch)
+		pg_maxch = hdr_blocks + 24 < 48 ? 48 : hdr_blocks + 24;
+#endif
+	pg_ch = (struct pgchunk *)xzalloc(pg_maxch * sizeof(struct pgchunk));
 	pg_f = fopen(PG_SWAP, "w+b");
 #ifdef __UCSD__
 	/* MEMAVAIL words, less malloc's room for the stack and some for yanks */
@@ -375,7 +383,7 @@ int pg_more(void)
 			last--;
 	/* no whole line in a full chunk (a line over 1023 characters), the chunk
 	   table or VI.SWAP full or not written: the file stays loaded as far as it is */
-	if (last == 0 && !k || last > 0 && (pg_nb + pg_na >= PG_MAXCH || (n = pg_slot()) < 0
+	if (last == 0 && !k || last > 0 && (pg_nb + pg_na >= pg_maxch || (n = pg_slot()) < 0
 	 || pg_io(n, pg_buf, last, 1) && (pg_unslot(n), 1))) {
 		if (pg_nb + pg_na == 0 && end == text)
 			pg_abandon(current_filename, "cannot be loaded");     /* nothing shown yet: vi stops */
@@ -387,12 +395,12 @@ int pg_more(void)
 		return 0;
 	}
 	if (last > 0) {
-		memmove(&pg_ch[PG_MAXCH - pg_na - 1], &pg_ch[PG_MAXCH - pg_na], pg_na * sizeof(struct pgchunk));
+		memmove(&pg_ch[pg_maxch - pg_na - 1], &pg_ch[pg_maxch - pg_na], pg_na * sizeof(struct pgchunk));
 		pg_na++;
-		pg_ch[PG_MAXCH - 1].slot = n;
-		pg_ch[PG_MAXCH - 1].len = last;
-		pg_ch[PG_MAXCH - 1].lines = pg_count(pg_buf, pg_buf + last);
-		pg_la += pg_ch[PG_MAXCH - 1].lines;
+		pg_ch[pg_maxch - 1].slot = n;
+		pg_ch[pg_maxch - 1].len = last;
+		pg_ch[pg_maxch - 1].lines = pg_count(pg_buf, pg_buf + last);
+		pg_la += pg_ch[pg_maxch - 1].lines;
 		pg_ba += last;
 	}
 	if (pg_rf) {
@@ -444,7 +452,6 @@ int pg_load(const char *fn)
 	end = dot = screenbegin = text;
 #ifdef __UCSD__
 	ucsd_unreserve();
-	hdr_read(fn);				/* the place it was left (its header page) */
 #endif
 	f = fopen(fn, "r");
 #ifdef __UCSD__

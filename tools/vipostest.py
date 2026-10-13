@@ -35,7 +35,7 @@ def record(line, col, good=True):
 def main():
     z = os.environ.get('PSYS_MODE') == 'z80'
     ps = PSystem()
-    code = compile_modules([os.path.join(ROOT, m) for m in VI_MODULES], os.path.join(ps.dir, 'VI.CODE'), True)
+    code = compile_modules([os.path.join(os.environ.get('VIROOT', ROOT), m) for m in VI_MODULES], os.path.join(ps.dir, 'VI.CODE'), True)
     ps.put('VI.CODE', open(code, 'rb').read())
     base, sc = compile_c(os.path.join(ROOT, 'examples', 'shell.c'), ps.dir)
     ps.put('SHELL.CODE', open(sc, 'rb').read())
@@ -56,6 +56,7 @@ def main():
     header('D.C', record(77, 2))
     header('F.C')
     v.write('G.C', make_text(['line %d of a bigger file, to load while vi waits' % i for i in range(1, 1501)]), 3)
+    v.write('H.C', ucsdvol.text_to_ucsd(open(os.path.join(ROOT, 'ports', 'vi', 'vicmd.c')).read()), 3)
     v.save()
     # (command line, keys)
     runs = [('vi #5:A.C', '150G6lZZ'),               # no record -> line 1; leave at 150, column 6
@@ -66,7 +67,9 @@ def main():
             ('vi #5:D.C', 'ZZ'),                     # (ZZ left it at 5)
             ('vi #5:F.C', '100GxZZ'),                # a change, then ZZ (it writes the file)
             ('vi #5:F.C', 'ZZ'),                     # ... the place is kept all the same: line 100
-            ('vi #5:G.C', 'WAIT')]                   # no key: the rest loads, the status line says so
+            ('vi #5:G.C', 'WAIT'),                   # no key: the rest loads, the status line says so
+            ('vi #5:H.C', '101GxZZ'),                # vi's own vicmd.c (long lines), a change at line 101, ZZ
+            ('vi #5:H.C', 'ZZ')]                     # ... line 101 on the middle row, no ~ rows
     script = ['WAIT "Command:"', 'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "#5:SHELL\\r"', 'WAIT "shell> "']
     for cmd, keys in runs:
         if keys == 'WAIT':
@@ -99,8 +102,19 @@ def main():
         if any(r.startswith('COMMAND') and ' line 150/300' in r for r in rows):
             centre = [i for i, r in enumerate(rows) if 'line 150 of the file' in r]
             break
+    # the first screen of the second H.C session: the cursor's row, and ~ rows (nothing shown there)
+    hrow, htilde = None, None
+    blocks = re.split(r'^== key ', open(scr, encoding='latin1').read(), flags=re.M)[1:]
+    for blk in blocks:
+        rows_ = blk.split('\n')
+        if any(r.startswith('COMMAND') and 'H.C' in r and ' line 101/' in r for r in rows_[1:]):
+            m = re.search(r'cursor \d+,(\d+)', rows_[0])
+            hrow = int(m.group(1)) if m else None
+            htilde = sum(1 for r in rows_[1:] if r.startswith('~'))
     checks = [
         ('the script completed', ok),
+        ('long lines (vicmd.c): line 101 on the middle row (row %s), no ~ rows (%s)' % (hrow, htilde),
+         hrow is not None and 18 <= hrow <= 26 and htilde == 0),
         ('the line it opens at is in the middle of the screen (row %s of 45)' % centre,
          bool(centre) and 18 <= centre[0] <= 26),
         ('no record: opens at line 1', where[0] == 1),
