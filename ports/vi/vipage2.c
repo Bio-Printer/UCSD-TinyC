@@ -252,7 +252,9 @@ char *pg_search(const char *pat, int dir, int far)
 	return p;
 }
 
-/* the absolute line of pat's first match after the window, 0 if none */
+/* the absolute line of pat's first match after the window, else (wrapping
+   around) from the file's start up to the window; 0 if none.  The window
+   does not move. */
 int pg_find_line(const char *pat)
 {
 	int i;
@@ -267,6 +269,12 @@ int pg_find_line(const char *pat)
 		if (pg_scan(&PGA(i), 0, pat, FORWARD, &line, &col) >= 0)
 			return first + line - 1;
 		first += PGA(i).lines;
+	}
+	first = 1;
+	for (i = 0; i < pg_nb; i++) {
+		if (pg_scan(&PGB(i), i == pg_nb - 1 ? *text : 0, pat, FORWARD, &line, &col) >= 0)
+			return first + line - 1;
+		first += PGB(i).lines;
 	}
 	return 0;
 }

@@ -37,8 +37,14 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 		q = strchrnul(++p, '/');
 		c = *q;
 		*q = '\0';
-		f = char_search(dot, p, FORWARD, FULL);
-		st = f ? ABSLINE(f) : pg_find_line(p);	// (in the window, else further on)
+		// as vi: from the next line to the file's end, then around from its
+		// start (the window from the next line, the chunks after it, those
+		// before it, the window's start: the cursor's line comes last)
+		f = next_line(dot);
+		f = f < end - 1 ? char_search(f, p, FORWARD, FULL) : NULL;
+		st = f ? ABSLINE(f) : pg_find_line(p);
+		if (!st && (f = char_search(text, p, FORWARD, FULL)) != NULL)
+			st = ABSLINE(f);
 		*addr = st ? st : -2;	// (-2: not found, the command is refused)
 		if (!*q)
 			*q = c;	// (the command line again, unless a message took its buffer)

@@ -427,9 +427,6 @@ void showmatching(char *p);
 void colon(char *buf);
 void colon1(char *buf);
 void do_cmd(char c);
-#ifndef __UCSD__
-#define vi_vsnprintf vsnprintf
-#endif
 #ifdef __UCSD__
 /* the P-System: viucsd.c */
 char *strchrnul(const char *s, int c);
@@ -447,4 +444,6 @@ extern int hdr_line, hdr_col;		// read when the file is opened (0: none)
 extern int hdr_blocks;			// ... and its size in blocks
 void hdr_read(const char *fn);
 void hdr_write(const char *fn, int line, int col);
+#else
+#define vi_vsnprintf vsnprintf
 #endif

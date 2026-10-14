@@ -5,14 +5,8 @@ struct globals G;
 
 #ifndef __UCSD__
 static int safe_poll(struct pollfd *ufds, nfds_t nfds, int timeout);
-#endif
-#ifndef __UCSD__
 static ssize_t safe_read(int fd, void *buf, size_t count);
-#endif
-#ifndef __UCSD__
 static ssize_t safe_write(int fd, const void *buf, size_t count);
-#endif
-#ifndef __UCSD__
 static ssize_t full_write(int fd, const void *buf, size_t len);
 #endif
 static void clampScreenSize(void);
