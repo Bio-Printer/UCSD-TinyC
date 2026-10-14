@@ -50,6 +50,9 @@ def main():
     for src in ('examples/shell.c', 'ports/wc/wc.c', 'ports/cat/cat.c', 'ports/grep/grep.c'):
         b, code = compile_c(os.path.join(ROOT, src), ps.dir)
         ps.put(os.path.basename(code), open(code, 'rb').read())
+    v = ucsdvol.Volume(ps.src)
+    v.write('\\TMP', b'x' * 512, 5)         # a file named \TMP (an older shell's COPY made such)
+    v.save()
     s = ['WAIT "Command:"', 'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "#5:SHELL\\r"', 'WAIT "shell> "']
     for step in (('mkdir #5:A 200', 'a sub-volume'), ('mkdir #5:/A/B 60', 'a sub-volume'),
                       ('mkdir #5:A 10', 'there already'),
@@ -77,7 +80,8 @@ def main():
                       ('mkdir #5:T 200', 'a sub-volume'), ('copy #5:\\\\*.code #5:\\\\t', 'WC.CODE'),
                       ('dir #5:\\\\t\\\\', 'blocks used'), ('cd #5:\\\\t', 'path is'), ('cd #5:', 'prefix is'),
                       ('#5:wc #5:\\\\a\\\\b\\\\*.TEXT', 'exit status'), ('#5:grep -n blocks #5:\\\\a\\\\b\\\\*.text', 'exit status'),
-                      ('copy #5:WC.CODE #5:X\\\\Y', 'no volume'), ('rmdir #5:\\\\t', '(Y/N)', 'Y')):
+                      ('copy #5:WC.CODE #5:X\\\\Y', 'no volume'), ('rmdir #5:\\\\t', '(Y/N)', 'Y'),
+                      ('delete #5:?TMP', '(Y/N)', 'Y')):
         cmd, wait = step[:2]
         s.append('TYPE "%s\\r"' % cmd)
         if wait:
@@ -145,8 +149,9 @@ def main():
     checks += [('backslashes as slashes: COPY #5:\\*.code #5:\\t, DIR, CD, WC, GREP in sub-volumes',
                 'WORK:WC.CODE -> WORK:/T/WC.CODE' in bs and 'WORK:/T/ (#5)' in bs and 'path is WORK:/T (#5)' in bs
                 and re.search(r'125 #5:.a.b.C3\.TEXT', bs) is not None and 'WORK:/A/B/C3.TEXT:' in bs),
-               ('no file named with a backslash (COPY to #5:X\\Y: no such sub-volume), T removed (%s)' % ' '.join(names),
-                not any('\\' in n for n in names) and 'no volume or sub-volume' in bs and 'T' not in names)]
+               ('no file named with a backslash (COPY to #5:X\\Y: no such sub-volume; the old \\TMP: DELETE ?TMP), T removed (%s)'
+                % ' '.join(names), not any('\\' in n for n in names) and 'no volume or sub-volume' in bs and 'T' not in names
+                and 'WORK:\\TMP deleted' in bs)]
     bad = 0
     for what, good in checks:
         print('%-4s  %s' % ('ok' if good else 'BAD', what))

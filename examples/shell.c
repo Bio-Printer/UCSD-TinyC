@@ -670,13 +670,14 @@ void type(char *arg)
         printf("type: no file %s on %s\n", pat, vol);
 }
 
+int unlinkat(int u, int base, char *name);  /* (COPY, MOVE, RENAME below) */
+
 /* DELETE [VOL: | #n:]PAT: with wildcards, after a Y */
 void delete(char *arg)
 {
     int dir[1024];
     char vol[80];
     char names[77][16];
-    char path[96];
     char *pat;
     int u, i, n, nf, c, subs;
     if (!*arg) {
@@ -718,8 +719,7 @@ void delete(char *arg)
             return;
     }
     for (i = 0; i < n; i++) {
-        sprintf(path, "%s%s", tfile, names[i]);
-        if (remove(path) == 0)
+        if (unlinkat(u, tbase, names[i]))      /* (the entry itself: a name is not a path) */
             printf("%s%s deleted\n", vol, names[i]);
         else
             printf("%s%s: cannot delete it\n", vol, names[i]);
