@@ -28,6 +28,7 @@ int wildmatch(char *pat, char *name);   /* * or = any characters, ? any one */
 int dirreadat(int u, int base, int *dir);   /* a (sub-)volume's directory; base: its first block */
 int dirwriteat(int u, int base, int *dir);
 int findname(int *dir, char *name);     /* the entry called name, 0 none */
+void slashes(char *s);                  /* every \ in s a / (paths as Windows write them) */
 int pathdir(char *path, int *dir, int *up, int *bp, char *leaf);    /* the directory path's file is in */
 
 /* subvol.c, a code segment of its own (SUBVOL) */

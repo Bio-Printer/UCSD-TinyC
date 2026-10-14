@@ -42,6 +42,7 @@ int target(char *arg, char *vol, char **pat)
     int u, base, n;
     strncpy(path, arg, 70);
     path[70] = 0;
+    slashes(path);                      /* (A\: A/) */
     if (path[0] == '#' && !strchr(path, ':'))
         strcat(path, ":");              /* #5: the unit */
     if (!pathdir(path, dir, &u, &base, patbuf)) {

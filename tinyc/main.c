@@ -159,11 +159,16 @@ static int exists(char *name)
     return f != 0;
 }
 
+/* a command in capitals, its \ as / (paths as Windows write them: A\X) */
 static void upper(char *s)
 {
     for (; *s; s++)
         if (*s >= 'a' && *s <= 'z')
             *s = *s - 32;
+#ifdef __TINYC__
+        else if (*s == '\\')
+            *s = '/';
+#endif
 }
 
 #ifdef __TINYC__

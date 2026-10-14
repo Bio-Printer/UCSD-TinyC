@@ -19,6 +19,6 @@ TOOLS:  20 files  (a UCSD directory holds 77)
   SHRINK.CODE         27  shrink: SHRINK NAME -N | +N | N a sub-volume smaller (krunched first if it must be)
   PATCH.CODE          37  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
   MAN.CODE            25  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
-  BINDERC.CODE        27  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
+  BINDERC.CODE        28  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
   MAN.TEXT            64  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
   FILES.TEXT           6  this list

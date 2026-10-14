@@ -109,7 +109,7 @@ int __svremove(char *path);
 /* a path (a / in it), or a name on the shell's path: dirs.c's sub-volumes */
 static int svname(char *name)
 {
-    return strchr(name, '/') || (__svpath[0] && !strchr(name, ':') && name[0] != '#');
+    return strchr(name, '/') || strchr(name, '\\') || (__svpath[0] && !strchr(name, ':') && name[0] != '#');
 }
 
 int __blockio(FILE *f, int nblocks, int block, int doread)

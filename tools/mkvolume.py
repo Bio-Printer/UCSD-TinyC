@@ -169,7 +169,8 @@ and you choose with one key (no RETURN).  Its own commands:
   MKDIR NAME [BLOCKS]   a sub-volume: a data file NAME (100 blocks unless
         BLOCKS) whose blocks 2..5 are a directory of its own (77 files).
         Its files are VOL:NAME/FILE or VOL:/NAME/FILE, and sub-volumes
-        nest (VOL:/A/B/FILE).  Programs open such paths like any name;
+        nest (VOL:/A/B/FILE); a \\ is a / (VOL:\\A\\FILE, as Windows
+        writes paths).  Programs open such paths like any name;
         DIR, TYPE, DELETE, WHEREIS, COPY, MOVE and RENAME take them too
         (DIR #5:/A/*.C, COPY X.C A, MOVE A/*.C #9:); not yet the
         wildcards of GREP, LC and WC.

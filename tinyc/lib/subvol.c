@@ -18,9 +18,15 @@ int svcanon(char *path, char *out)
     int dir[1024];
     char vol[20];
     char leaf[16];
+    char buf[80];
     char *c;
     char *p;
     int u, base, n;
+    if (strlen(path) >= sizeof buf)
+        return 0;
+    strcpy(buf, path);
+    slashes(buf);                               /* (A\B: A/B) */
+    path = buf;
     c = strchr(path, ':');
     if (c) {
         n = c - path < 19 ? c - path : 19;

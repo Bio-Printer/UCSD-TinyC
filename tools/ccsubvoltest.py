@@ -7,7 +7,7 @@ sub-volume A (made on the host).  WORK: has copies of X.H and Y.H that CC must n
 
   CD #9:/A; CC /Z MAIN          MAIN.C and "x.h" from A (the shell's path first), MAIN.OBJ in A,
                                 MAIN.CODE on WORK: (the OS runs no code file from a sub-volume)
-  CD #9:;   CC /Z #9:A/PROG2     a path: PROG2.C there, and its "y.h" from A (the including file's
+  CD #9:;   CC /Z #9:\\a\\prog2   a path (\\ as /): PROG2.C there, and its "y.h" from A (the including file's
                                 sub-volume), PROG2.CODE on WORK:
   CD #9:/A; CC /Z /C M1, /Z /C M2, /L BOTH=M1,M2   the objects found in A
             CC @MK              the batch file MK.TEXT in A, its PROG3.C there
@@ -37,7 +37,7 @@ A_FILES = {
 }
 WORK_FILES = {'X.H': WRONG, 'Y.H': WRONG, 'MAIN.C': WRONG, 'PROG3.C': WRONG}
 CMDS = [('cd #9:/A', 'path is'), ('tiny-c:cc /z main', 'exit status'), ('#9:main', 'exit status'),
-        ('cd #9:', 'prefix is'), ('tiny-c:cc /z #9:A/PROG2', 'exit status'), ('#9:prog2', 'exit status'),
+        ('cd #9:', 'prefix is'), ('tiny-c:cc /z #9:\\\\a\\\\prog2', 'exit status'), ('#9:prog2', 'exit status'),
         ('cd #9:/A', 'path is'), ('tiny-c:cc /z /c m1', 'exit status'), ('tiny-c:cc /z /c m2', 'exit status'),
         ('tiny-c:cc /l both=m1,m2', 'exit status'), ('#9:both', 'exit status'),
         ('tiny-c:cc @mk', 'exit status'), ('#9:prog3', 'exit status'),
@@ -96,8 +96,8 @@ def main():
               ('CC MAIN on the path: no error, linked', 'rror' not in part('tiny-c:cc /z main')
                and 'Linking WORK:MAIN.CODE' in part('tiny-c:cc /z main')),
               ('MAIN prints A\'s X (11)', 'main 11' in part('#9:main')),
-              ('CC #9:A/PROG2: its y.h from A, PROG2.CODE on #9:', 'rror' not in part('tiny-c:cc /z #9:A/PROG2')
-               and 'Linking #9:PROG2.CODE' in part('tiny-c:cc /z #9:A/PROG2') and 'prog2 22' in part('#9:prog2')),
+              ('CC #9:\\a\\prog2 (backslashes: a path): its y.h from A, PROG2.CODE on #9:', 'rror' not in part('tiny-c:cc /z #9:\\a\\prog2')
+               and 'Linking #9:PROG2.CODE' in part('tiny-c:cc /z #9:\\a\\prog2') and 'prog2 22' in part('#9:prog2')),
               ('/C M1, /C M2, /L BOTH=M1,M2 on the path', 'rror' not in part('tiny-c:cc /l both=m1,m2')
                and 'Linking WORK:BOTH.CODE' in part('tiny-c:cc /l both=m1,m2') and 'both 33' in part('#9:both')),
               ('@MK: the batch file in A, its PROG3.C there', 'rror' not in part('tiny-c:cc @mk')

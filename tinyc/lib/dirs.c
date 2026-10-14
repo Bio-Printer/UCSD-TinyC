@@ -9,7 +9,7 @@
    block numbers counted from the file's first block.  A path names a file
    inside sub-volumes: VOL:A/B/NAME or VOL:/A/B/NAME (A a sub-volume on VOL:,
    B one inside A); without VOL: it is on the shell's path (CD) or the
-   prefix volume.
+   prefix volume.  A \ is a / (VOL:\A\NAME, as Windows writes paths).
 
    The module is a code segment of its own (DIRS): it is in memory only
    while one of its functions runs, so a program that never names a path
@@ -142,6 +142,14 @@ int wildmatch(char *pat, char *name)
     return wildmatch(pat + 1, name + 1);
 }
 
+/* every \ in s a / (a path as Windows writes it) */
+void slashes(char *s)
+{
+    for (; *s; s++)
+        if (*s == '\\')
+            *s = '/';
+}
+
 /* the entry called name: its index, 0 if none */
 int findname(int *dir, char *name)
 {
@@ -167,17 +175,19 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf)
     char *q;
     int u, base, i, n, len;
     p = strchr(path, ':');
-    if (!p && __svpath[0] && path[0] != '/' && path[0] != '#') {
+    full[0] = 0;
+    if (!p && __svpath[0] && path[0] != '/' && path[0] != '\\' && path[0] != '#') {
         n = strlen(__svpath);                   /* on the shell's path */
-        if (n + strlen(path) + 2 > sizeof full)
-            return 0;
         strcpy(full, __svpath);
         if (n > 0 && full[n - 1] != '/' && full[n - 1] != ':')
             strcat(full, "/");
-        strcat(full, path);
-        path = full;
-        p = strchr(path, ':');
     }
+    if (strlen(full) + strlen(path) + 1 > sizeof full)
+        return 0;
+    strcat(full, path);
+    slashes(full);                              /* (A\B: A/B) */
+    path = full;
+    p = strchr(path, ':');
     if (p) {
         n = p - path;
         if (n > 19)

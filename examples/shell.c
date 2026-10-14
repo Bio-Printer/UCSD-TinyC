@@ -42,7 +42,8 @@
                              unless BLOCKS) that holds a volume of its own
                              (77 files); its files are VOL:NAME/FILE or
                              VOL:/NAME/FILE, and sub-volumes nest
-                             (VOL:/A/B/FILE).  Programs open such paths
+                             (VOL:/A/B/FILE; a \ is a /: VOL:\A\FILE).
+                             Programs open such paths
                              like any file name; DIR marks them Sub-volume
      RMDIR NAME              a sub-volume goes (one with files in it
                              after a Y; not one the path is in); DELETE
@@ -741,14 +742,14 @@ int pathin(char *path)
 }
 
 /* a file name for a new entry: upper case, 1 to 15 characters, none of
-   : # * = ? , / or a blank */
+   : # * = ? , / \ or a blank */
 int newname(char *name)
 {
     char *p;
     if (*name == 0 || strlen(name) > 15)
         return 0;
     for (p = name; *p; p++) {
-        if (*p <= ' ' || strchr(":#*=?,/", *p))
+        if (*p <= ' ' || strchr(":#*=?,/\\", *p))
             return 0;
         *p = toupper(*p);
     }
@@ -1439,6 +1440,7 @@ int runstage(char *stage)
             args++;
     }
     if (isbuiltin(name)) {
+        slashes(args);                  /* its words are names: A\B is A/B */
         if (*out) {                     /* its output to the file, then the console again */
             memcpy(&save, stdout, sizeof(FILE));
             if (!freopen(out, app ? "a" : "w", stdout)) {

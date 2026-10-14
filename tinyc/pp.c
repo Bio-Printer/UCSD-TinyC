@@ -163,6 +163,8 @@ static FILE *openinc(char *name, int sys, int *unit, int *many)
         u[i] = name[i];
         if (u[i] >= 'a' && u[i] <= 'z')
             u[i] = u[i] - 32;
+        if (u[i] == '\\')
+            u[i] = '/';                 /* (A\X.H: A/X.H) */
         if (u[i] == ':' || u[i] == '*' || u[i] == '/')
             vol = 1;
     }

@@ -41,5 +41,5 @@ TCTESTS:  41 files  (a UCSD directory holds 77)
   SYSCOM.C             6  <psys.h>: SYSCOM found from main, deep calls and ...
   SYSCOM.CODE         15    (ready to run)
   TEXTPAGE.C           6  text files: lines of every length moved to the next 1 KB
-  TEXTPAGE.CODE       20    (ready to run)
+  TEXTPAGE.CODE       21    (ready to run)
   FILES.TEXT           8  this list

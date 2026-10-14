@@ -73,7 +73,11 @@ def main():
                       ('rmdir c', 'removed'), ('dir #5:C', 'blocks used'),
                       ('mkdir #5:E 60', 'a sub-volume'), ('copy #5:WC.CODE #5:E/', 'WC.CODE'),
                       ('move #5:E #9:', 'SPARE:E'), ('dir #9:E', 'blocks used'), ('rmdir #9:E', '(Y/N)', 'N'),
-                      ('dir #9:E', 'blocks used'), ('rmdir #9:E', '(Y/N)', 'Y')):
+                      ('dir #9:E', 'blocks used'), ('rmdir #9:E', '(Y/N)', 'Y'),
+                      ('mkdir #5:T 200', 'a sub-volume'), ('copy #5:\\\\*.code #5:\\\\t', 'WC.CODE'),
+                      ('dir #5:\\\\t\\\\', 'blocks used'), ('cd #5:\\\\t', 'path is'), ('cd #5:', 'prefix is'),
+                      ('#5:wc #5:\\\\a\\\\b\\\\*.TEXT', 'exit status'), ('#5:grep -n blocks #5:\\\\a\\\\b\\\\*.text', 'exit status'),
+                      ('copy #5:WC.CODE #5:X\\\\Y', 'no volume'), ('rmdir #5:\\\\t', '(Y/N)', 'Y')):
         cmd, wait = step[:2]
         s.append('TYPE "%s\\r"' % cmd)
         if wait:
@@ -137,6 +141,12 @@ def main():
                ('RMDIR of a file: refused', 'rmdir: #5:SHELL.CODE is not a sub-volume' in tr),
                ('RMDIR d, RMDIR c: gone (#5: holds %s)' % ' '.join(names),
                 'd removed' in tr and 'c removed' in tr and 'C' not in names and 'A' in names)]
+    bs = tr[tr.find('shell> mkdir #5:T 200'):]
+    checks += [('backslashes as slashes: COPY #5:\\*.code #5:\\t, DIR, CD, WC, GREP in sub-volumes',
+                'WORK:WC.CODE -> WORK:/T/WC.CODE' in bs and 'WORK:/T/ (#5)' in bs and 'path is WORK:/T (#5)' in bs
+                and re.search(r'125 #5:.a.b.C3\.TEXT', bs) is not None and 'WORK:/A/B/C3.TEXT:' in bs),
+               ('no file named with a backslash (COPY to #5:X\\Y: no such sub-volume), T removed (%s)' % ' '.join(names),
+                not any('\\' in n for n in names) and 'no volume or sub-volume' in bs and 'T' not in names)]
     bad = 0
     for what, good in checks:
         print('%-4s  %s' % ('ok' if good else 'BAD', what))

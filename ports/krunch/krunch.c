@@ -53,6 +53,7 @@ int main(int argc, char **argv)
         } else {
             strncpy(vol, argv[i], 70);
             vol[70] = 0;
+            slashes(vol);               /* (#5:\A: #5:/A) */
         }
     }
     if (!vol[0])

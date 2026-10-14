@@ -297,6 +297,7 @@ void files(char *re, char *spec)
     char *pat;
     char *c;
     int k, u, base, one, n;
+    slashes(spec);                      /* (A\*.C: A/*.C) */
     if (strchr(spec, '/') || (__svpath[0] && !strchr(spec, ':') && spec[0] != '#')) {
         if (strlen(spec) > 70 || !pathdir(spec, dir, &u, &base, leaf)) {   /* a sub-volume: there only */
             printf("grep: no sub-volume for %s\n", spec);
