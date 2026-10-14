@@ -130,7 +130,8 @@ answer  @LIBS.  LIBS.TEXT compiles the library modules and joins them
 with CMPCODE).  To use it, change its name to TCLIB.OBJ with the Filer.
 
 Each module leaves a NAME.OBJ here; remove those with the Filer if you
-like.
+like.  OBJFORMAT.TEXT describes what is in a .OBJ file and how the
+linker reads it.
 
 FILES.TEXT lists every file on this volume.
 """
@@ -557,6 +558,7 @@ def sources():
     t.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C')
     t.text('BUILD.TEXT', BUILD, 'X TINY-C:CC, @BUILD: rebuilds the compiler -> TINY-C:CC2.CODE')
     t.text('LIBS.TEXT', LIBS, 'X TINY-C:CC, @LIBS: rebuilds the library -> TINY-C:TCLIB2.OBJ')
+    t.textfile('OBJFORMAT.TEXT', os.path.join(SRC, 'OBJFORMAT.TEXT'), 'the .OBJ file format: what CC writes, how the linker reads it')
     for m in MODULES:
         p = os.path.join(SRC, m + '.c')
         t.textfile(m.upper() + '.C', p, 'compiler: ' + describe(p))

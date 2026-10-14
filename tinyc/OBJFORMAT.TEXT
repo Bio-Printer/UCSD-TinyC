@@ -1,0 +1,249 @@
+THE TINY-C OBJECT FILE (NAME.OBJ, TCLIB.OBJ)               volume TCSRC:
+
+What CC writes for one source file (CC /C NAME, or each module of a
+program), what the library TINY-C:TCLIB.OBJ is made of, and how the
+linker (CC /L, LINK.C) reads them into a II.0 code file.  The writer is
+GEN.C (gen_objheader, gen_objdata, gen_objuse, gen_objend, endproc); the
+reader is LINK.C (rd, rdw, rds, nextrec, record).
+
+
+1. WHAT IS IN IT
+
+An object file holds one or more MODULES, one after another.  A module
+is what one source file compiled to:
+
+  * its procedures: one for each C function, and "init" procedures that
+    give the module's global variables their initial values;
+  * the global variables it defines (their names and sizes, not their
+    contents: those are written by the init procedures at run time);
+  * the size of its block of static variables;
+  * for each procedure, a list of the places in its code that the linker
+    has to fill in (calls, function pointers, global variable operands).
+
+Each procedure is a finished II.0 P-code procedure: its code, its jump
+table and its attribute table, exactly as it will be in the code file.
+Everything inside a procedure is self-relative, so the linker copies the
+bytes as they are and only fills in the places listed: procedure
+numbers, segment numbers and the addresses of global variables.
+
+A library is simply modules one after another: TCLIB.OBJ is the
+library's modules (LIBS.TEXT compiles them; CC /J joins the NAME.OBJ
+files into one).  There is no index: the linker reads every module and
+keeps what the program uses (section 5).
+
+
+2. THE BASIC ITEMS
+
+  byte     one byte, 0..255
+  word     two bytes, low byte first; read as a 16-bit signed number
+  string   a length byte, then that many characters (no terminating 0)
+
+The file starts with the four characters  TCOB  (Tiny-C OBject), then
+records.  Each record starts with one letter that says what it is:
+
+  M  a module starts        D  a global variable     G  the statics
+  P  a procedure            U  a variable "used"     E  the module ends
+
+A module is:  TCOB M  P... D... U... G E
+
+After E comes either the end of the file or the next module, which
+starts with its own TCOB (a library).  A file on the P-System is whole
+512-byte blocks, so after the last E there may be 0 bytes: the linker
+takes a 0 byte where a record should start as the end of the file.
+
+
+3. THE RECORDS
+
+M  name:string
+   The module's name: the source file's name without its volume and
+   suffix, in capitals (STDIO for TCSRC:STDIO.C).  A static function's
+   name is made from it (below).
+
+P  flags:byte  name:string  segment:string  parmsz:word  rw:byte
+   codelen:word  jtab:word  code:codelen bytes
+   nrel:word  then nrel times:  pos:word  type:byte  target:string
+
+   One procedure.
+   flags    1  an init procedure (named MODULE'initN, segment INIT): the
+               startup code runs it before main, if the module is linked
+            2  a static function: its name is MODULE'name (the module's
+               name, a quote, the function's name), so two modules may
+               each have a static function of the same name
+            0  an ordinary (extern) function
+   name     the function's name as C writes it (or MODULE'name)
+   segment  the code segment it goes in (#pragma segment NAME); the
+            empty string is the program's main segment
+   parmsz   the bytes of its parameters (2 a word)
+   rw       the words of its result (0 void, 1 int or pointer, 2 long
+            or float)
+   codelen  the bytes of the procedure image that follows
+   jtab     where in the image its procedure number and lex level are
+            (the II.0 JTAB: the word the procedure dictionary points to)
+   code     the procedure image (section 4)
+   nrel     how many places the linker fills in; each one is
+            pos     the offset in the image
+            type    what is there (below)
+            target  the function or variable it refers to ("" for a
+                    module static)
+
+   type 1  R_CALL   a call: 3 bytes at pos, filled in as
+                    CXP seg,proc        (CD s p) another segment, or
+                    CGP proc  NOP       (CF p D7) the same segment
+           2  R_FNPTR  a function's address: at pos LDCI (C7) and a
+                    word that becomes  segment + 256 * procedure  (what a
+                    function pointer holds; CALLI calls it)
+           3  R_GSTAT  a module static: the 2-byte operand at pos of a
+                    global load/store (LDO, SRO, LAO ...) holds the
+                    word offset in the module's statics; the linker adds
+                    where the module's statics are
+           4  R_GNAME  a named global variable: the operand holds the
+                    word offset within the variable; the linker adds the
+                    variable's address
+           5  R_NEAR   a call the compiler knew is in this segment: at
+                    pos CGP (CF) and a byte for the procedure number
+                    (error 116 if the linker finds the function in
+                    another segment)
+
+   A global operand is always the 2-byte "big" form of II.0, so that any
+   address fits: first byte 128 + the high 7 bits, then the low 8 bits.
+
+D  strong:byte  name:string  words:word
+   A global variable this module defines (extern, not static).
+   strong   1  defined with a value (int n = 5;): its init procedure
+               writes the value.  Two modules may not both do that
+               (error "variable defined twice").
+            0  a tentative definition (int n;): any number of modules
+               may have one; the size is the largest
+   words    its size in words
+
+U  name:string
+   The module needs the variable name although no code refers to it:
+   a program that uses floating point refers to __fltused this way, and
+   so links FLTFMT, whose init procedure installs printf's %f.
+
+G  words:word
+   The size in words of the module's static variables (static globals
+   and statics inside functions), one block for the module.  String
+   constants are not here: they are inside the code (LPA).
+
+E
+   The module ends.
+
+
+4. A PROCEDURE IMAGE
+
+   offset 0         the P-code
+                    (a 0 byte if needed, so what follows is on a word)
+                    the long-jump table: one self-relative word for each
+                    jump that is too far for a 1-byte offset
+   jtab - 8         DATASZ   bytes of local variables (not parameters)
+   jtab - 6         PARMSZ   bytes of parameters
+   jtab - 4         EXITIC   self-relative: where the exit code starts
+   jtab - 2         ENTRIC   self-relative: where the code starts
+   jtab             the procedure number (0: the linker sets it)
+   jtab + 1         the lex level (1)
+
+   Case tables of switch statements are inside the code; their offsets
+   are self-relative too and need nothing from the linker.
+
+
+5. HOW THE LINKER READS IT
+
+The linker never seeks: it reads all the object files (the program's
+NAME.OBJ files, then TINY-C:TCLIB.OBJ) from the start several times.
+nextrec returns the next record letter over all the files and modules,
+skipping a TCOB between modules and the 0 bytes at the end of a file;
+record reads the rest of a record.
+
+  Pass 1  the names: every module, procedure (with its segment and code
+          size) and variable; the largest procedure, so that one buffer
+          holds any of them.  A function defined twice is an error.
+  Pass 2  the relocations: for each procedure, which procedures and
+          variables it refers to (an undefined one is an error).  The
+          code is skipped.
+  Then    everything reachable from main is marked (and exit, and
+          __callmain when main takes argc and argv).  A module is linked
+          when any of its procedures or variables is used; then its
+          init procedures are linked too, and so are what its U records
+          name.
+  Layout  the globals start at word 3 of the program's base frame: each
+          linked module's static block, then every used variable.
+          Segments get their numbers (main's segment is 1, the others
+          7, 8, ... up to 10 segments), procedures their numbers within
+          their segment (procedure 1 of segment 1 is the startup code).
+  Pass 3  once for each segment: each linked procedure's image is read
+          again, its relocations are filled in (patchproc), its
+          procedure number is put at jtab, and it is written to the code
+          file.  The segment ends with its procedure dictionary (a
+          self-relative word for each procedure, the highest number
+          first), the segment number and the number of procedures.
+
+The startup code (procedure 1 of segment 1, made by the linker, not in
+any object file) sets every global to 0, calls the init procedures of
+the linked modules, calls main (or __callmain, which makes argc and argv
+for it) and then exit with main's result.
+
+The code file is a II.0 code file: block 0 is the segment dictionary
+(for each segment its first block and its length at byte 4 * number,
+its name at byte 64 + 8 * number), then the segments, each from a block
+boundary.
+
+
+6. AN EXAMPLE: ASSERT.OBJ (the library module ASSERT.C)
+
+  void __assertfail(char *e, char *file, int line)
+  {
+      printf("Assertion failed: %s, file %s, line %d\n", e, file, line);
+      exit(1);
+  }
+
+compiles to these 131 bytes (hexadecimal):
+
+  54 43 4F 42                TCOB
+  4D 06 "ASSERT"             M  module ASSERT
+  50 00                      P  flags 0: an ordinary function
+     0C "__assertfail"          name
+     00                         segment "": the main segment
+     06 00                      parmsz 6 (three word parameters)
+     00                         rw 0 (void)
+     48 00                      codelen 72
+     46 00                      jtab 70
+     the 72 bytes of the image:
+        0  DA CC 05 D9 CC 06 D8 CC 07   SLDL/STL: e, file, line copied
+                                      to locals 5..7 (printf's ...)
+        9  D0 28 "Assertion failed: ..."  LPA: the format string's
+                                      address; the 40 bytes follow
+       51  C6 05                      LLA 5: the address of the copies
+       53  CF 00                      CGP printf (procedure number: 0)
+       55  CC 04                      STL 4: printf's result dropped
+       57  01                         SLDC 1: exit's argument
+       58  CF 00                      CGP exit
+       60  AD 00                      RNP 0: return (the exit code)
+       62  08 00                      DATASZ 8
+       64  06 00                      PARMSZ 6
+       66  06 00                      EXITIC: 66 - 6 = 60
+       68  44 00                      ENTRIC: 68 - 68 = 0
+       70  00 01                      procedure number 0, lex level 1
+     02 00                      nrel 2
+     35 00 05 06 "printf"       at 53: R_NEAR, printf
+     3A 00 05 04 "exit"         at 58: R_NEAR, exit
+  47 00 00                   G  no static variables
+  45                         E  the end of the module
+
+(There are no D records: the module defines no global variable.  In a
+program, the linker puts printf's and exit's procedure numbers into the
+two CGP instructions at 54 and 59, and __assertfail's own number at 70.)
+
+
+7. THE LINKER'S MESSAGES ABOUT OBJECT FILES
+
+  103  object file truncated             (a record goes past the end)
+  105  not a Tiny-C object file          (it does not start with TCOB)
+  106  bad object file record            (an unknown record letter)
+  107  function defined twice
+  109  undefined function
+  110  no main function
+  114  undefined variable
+  115  variable defined twice            (two strong D records)
+  116  function is not in the segment its prototype says
+       (#pragma segment)                 (an R_NEAR call)
