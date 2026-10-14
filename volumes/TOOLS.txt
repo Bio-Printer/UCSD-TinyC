@@ -1,10 +1,10 @@
-TOOLS:  18 files  (a UCSD directory holds 77)
+TOOLS:  20 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
   README.TEXT         18  what is on this volume
   VI.CODE             77  vi, the screen editor: VI NAME.C from the shell
-  GREP.CODE           28  grep: GREP [-i] [-n] PATTERN FILES from the shell
+  GREP.CODE           30  grep: GREP [-i] [-n] PATTERN FILES from the shell
   CAT.CODE            25  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
   HEXDUMP.CODE        24  hexdump: HEXDUMP [-i] [FILE ...] from the shell
   OBJCOPY.CODE        26  objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file
@@ -13,10 +13,12 @@ TOOLS:  18 files  (a UCSD directory holds 77)
   SED.CODE            51  sed: SED [-nEsur] [-i[SUF]] [-e S] [-f F] [S] [FILE ...] a stream editor
   DIFF.CODE           35  diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2
   WC.CODE             27  wc: WC [-clmwL] [FILE ...] lines, words and bytes
-  LC.CODE             23  lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns
-  KRUNCH.CODE         23  krunch: KRUNCH [-y] [VOL: | #n] the files moved down, the free blocks in one area
+  LC.CODE             25  lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns
+  KRUNCH.CODE         25  krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area
+  GROW.CODE           27  grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)
+  SHRINK.CODE         27  shrink: SHRINK NAME -N | +N | N a sub-volume smaller (krunched first if it must be)
   PATCH.CODE          37  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
   MAN.CODE            25  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
   BINDERC.CODE        27  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
-  MAN.TEXT            60  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
+  MAN.TEXT            64  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
   FILES.TEXT           6  this list

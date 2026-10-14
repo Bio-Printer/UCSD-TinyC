@@ -1,5 +1,5 @@
-/* lc.c -- LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]: the file names of a disk in
-   columns (Plan 9's lc; the UCSD directory has no subdirectories).
+/* lc.c -- LC [-1xFsrSC] [VOL: | #n: | PATH][PATTERN ...]: the file names of a
+   disk or a sub-volume in columns (Plan 9's lc).
 
      -1  one name on a line         -x  fill the rows first, not the columns
      -F  a * after the names of CODE files
@@ -9,9 +9,11 @@
    The names are sorted (blanks and case do not matter) and written down the
    columns as wide as the console (SYSCOM's crtinfo.width); to a file or a pipe
    they come one on a line unless -C is there.  A PATTERN has * or = (any
-   characters) and ? (any one); with a VOL: or #n: before it the disk is that
-   one, otherwise the prefix volume.  No PATTERN is every file.  With more than
-   one PATTERN each is listed on its own under a line with the disk's name.
+   characters) and ? (any one); with a VOL:, #n: or path (A/, #5:/A/B/) before
+   it the files are there, otherwise on the shell's path or the prefix volume.
+   No PATTERN is every file; a PATTERN that is a sub-volume's name (LC A) is
+   every file in it.  With more than one PATTERN each is listed on its own
+   under a line with the disk's (or sub-volume's) name.
    The status is 1 when a PATTERN matched no file, 2 when a disk is not on line.
 
    Run it from the shell: LC, LC -F *.CODE, LC #5: #4:*.TEXT, LC -1 | WC -l. */
@@ -29,33 +31,45 @@ char names[MAXDIR + 1][20];             /* the name, then * perhaps */
 int size[MAXDIR + 1];
 int ord[MAXDIR + 1];
 
-/* [VOL: | #n:][PAT]: the unit (its directory read into dir, its volume's
-   name into vol) and *pat; 0 (and a message) when no disk has it */
+char patbuf[16];
+
+/* [VOL: | #n: | PATH][PAT]: the unit (its directory read into dir; into vol
+   where that is: "VOL:" or "VOL:/A/") and *pat; 0 (and a message) when there
+   is no such disk or sub-volume.  PAT a sub-volume's name: every file in it */
 int target(char *arg, char *vol, char **pat)
 {
-    char *colon;
-    int u, i;
-    colon = strchr(arg, ':');
-    if (colon) {
-        i = colon - arg;
-        if (i > 19)
-            i = 19;
-        memcpy(vol, arg, i);
-        vol[i] = 0;
-        *pat = colon + 1;
-    } else if (arg[0] == '#') {
-        strcpy(vol, arg);
-        *pat = "";
-    } else {
-        prefixvol(vol);
-        *pat = arg;
-    }
-    u = volunit(vol, dir);
-    if (u == 0 || !dirread(u, dir)) {
-        fprintf(stderr, "lc: no disk %s on line\n", *vol ? vol : ":");
+    char path[80];
+    int u, base, n;
+    strncpy(path, arg, 70);
+    path[70] = 0;
+    if (path[0] == '#' && !strchr(path, ':'))
+        strcat(path, ":");              /* #5: the unit */
+    if (!pathdir(path, dir, &u, &base, patbuf)) {
+        if (strchr(path, '/'))
+            fprintf(stderr, "lc: no sub-volume %s\n", arg);
+        else {
+            if (strchr(path, ':'))
+                *strchr(path, ':') = 0;         /* the disk's name, without its : */
+            fprintf(stderr, "lc: no disk %s on line\n", *path ? path : ":");
+        }
         return 0;
     }
-    direntname(dir, 0, vol);
+    if (patbuf[0] && !strpbrk(patbuf, "*=?")) {
+        strcat(path, "/");              /* a sub-volume?  then what is in it */
+        if (!pathdir(path, dir, &u, &base, patbuf)) {
+            path[strlen(path) - 1] = 0;
+            pathdir(path, dir, &u, &base, patbuf);
+        }
+    }
+    n = strlen(path) - strlen(patbuf);
+    path[n] = 0;
+    if (!svcanon(path, vol)) {
+        fprintf(stderr, "lc: no disk %s on line\n", *arg ? arg : ":");
+        return 0;
+    }
+    if (vol[strlen(vol) - 1] != ':')
+        strcat(vol, "/");
+    *pat = patbuf;
     return u;
 }
 
@@ -166,7 +180,7 @@ int list(char *pat, int header, char *vol)
             ord[n - 1 - i] = t;
         }
     if (header && n) {
-        printf("%s:\n", vol);
+        printf("%s\n", vol);
     }
     if (n)
         show(n, SYSCOM->crtinfo.width);
@@ -177,7 +191,7 @@ int main(int argc, char **argv)
 {
     int i, j, endopt, na, u, status, first;
     char *a, *pat;
-    char vol[20];
+    char vol[80];
     char *args[16];
     endopt = 0;
     na = 0;
@@ -200,7 +214,7 @@ int main(int argc, char **argv)
                 case 'C': optC = 1; break;
                 default:
                     fprintf(stderr, "lc: invalid option -- '%c'\n", a[j]);
-                    fprintf(stderr, "use: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]\n");
+                    fprintf(stderr, "use: LC [-1xFsrSC] [VOL: | #n: | PATH][PATTERN ...]\n");
                     return 2;
                 }
         } else if (na < 16)

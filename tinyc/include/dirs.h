@@ -1,5 +1,5 @@
 /* dirs.h -- the P-System's disks and their directories (the library's
-   dirs.c; with <psys.h>) */
+   dirs.c and subvol.c; with <psys.h>) */
 #ifndef __DIRS_H
 #define __DIRS_H
 
@@ -29,6 +29,14 @@ int dirreadat(int u, int base, int *dir);   /* a (sub-)volume's directory; base:
 int dirwriteat(int u, int base, int *dir);
 int findname(int *dir, char *name);     /* the entry called name, 0 none */
 int pathdir(char *path, int *dir, int *up, int *bp, char *leaf);    /* the directory path's file is in */
+
+/* subvol.c, a code segment of its own (SUBVOL) */
+#pragma segment SUBVOL
+int svcanon(char *path, char *out);     /* path written out: VOL: or VOL:/A/B; 0 if not there */
+int dirfree(int *dir, int nb);          /* the smallest free area for nb blocks: its first block, 0 none */
+int fileson(int u);                     /* a file of the program open on unit u */
+int dirkrunch(int u, int base, int *dir, int show);     /* files moved down, the free blocks at the end */
+int svresize(char *path, char *size, char *cmd);        /* GROW, SHRINK: +N, -N or N blocks */
 #pragma segment MAIN
 
 #endif

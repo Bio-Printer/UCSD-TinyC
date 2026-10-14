@@ -293,65 +293,6 @@ int ispath(char *s)
     return strchr(s, '/') || (__svpath[0] && !strchr(s, ':') && s[0] != '#');
 }
 
-/* path as the shell keeps it: VOL:/A/B (the volume's name, capitals, no /
-   at the end); .. goes up one; 0 when there is no such sub-volume */
-int canon(char *path, char *out)
-{
-    int dir[1024];
-    char vol[20];
-    char leaf[16];
-    char *c;
-    char *p;
-    int u, base, n;
-    c = strchr(path, ':');
-    if (c) {
-        n = c - path < 19 ? c - path : 19;
-        memcpy(vol, path, n);
-        vol[n] = 0;
-        p = c + 1;
-        if (!(u = volunit(vol, dir)))
-            return 0;
-        direntname(dir, 0, out);
-        strcat(out, ":");
-    } else {
-        p = path;
-        if (__svpath[0] && *p != '/')
-            strcpy(out, __svpath);
-        else {
-            prefixvol(out);
-            strcat(out, ":");
-        }
-    }
-    while (*p == '/')
-        p++;
-    while (*p) {
-        for (n = 0; p[n] && p[n] != '/'; n++)
-            ;
-        if (n == 2 && p[0] == '.' && p[1] == '.') {
-            c = strrchr(out, '/');
-            if (c)
-                *c = 0;                         /* (VOL:/A: VOL:) */
-        } else if (n > 0) {
-            if (strlen(out) + n + 2 > sizeof __svpath - 1)
-                return 0;
-            strcat(out, "/");
-            strncat(out, p, n);
-        }
-        p = p + n;
-        while (*p == '/')
-            p++;
-    }
-    for (p = out; *p; p++)
-        *p = toupper(*p);
-    n = strlen(out);
-    if (out[n - 1] == ':')
-        return 1;                               /* the volume itself */
-    strcat(out, "/");
-    n = pathdir(out, dir, &u, &base, leaf);     /* the sub-volume there */
-    out[strlen(out) - 1] = 0;
-    return n;
-}
-
 void cd(char *arg)
 {
     int dir[1024];
@@ -364,7 +305,7 @@ void cd(char *arg)
         n = 0;
         if (ispath(arg) || (arg[0] == '.' && arg[1] == '.')
          || (!strchr(arg, ':') && arg[0] != '#' && arg[0] != '*' && !isdigit(arg[0]))) {   /* (CD A: a sub-volume A, else the volume A) */
-            n = canon(arg, path);
+            n = svcanon(arg, path);
             if (!n && (strchr(arg, '/') || arg[0] == '.')) {
                 printf("cd: no sub-volume %s\n", arg);
                 return;
@@ -438,7 +379,7 @@ int target(char *cmd, char *arg, int *dir, char *vol, char **pat)
         i = *pat - arg;
         memcpy(path, arg, i);
         path[i] = 0;
-        if (!canon(path, vol)) {
+        if (!svcanon(path, vol)) {
             printf("%s: no sub-volume %s\n", cmd, *path ? path : __svpath);
             return 0;
         }
@@ -794,7 +735,7 @@ int pathin(char *path)
 {
     char full[80];
     int n;
-    n = canon(path, full) ? strlen(full) : 0;
+    n = svcanon(path, full) ? strlen(full) : 0;
     return n > 0 && full[n - 1] != ':' && strncmp(__svpath, full, n) == 0
         && (__svpath[n] == 0 || __svpath[n] == '/');
 }
@@ -819,26 +760,6 @@ void unentry(int *dir, int i)
 {
     memmove(dir + 13 * i, dir + 13 * (i + 1), (dir[8] - i) * 26);
     dir[8]--;
-}
-
-/* the smallest free area of dir with room for nb blocks: its first block,
-   0 if there is none */
-int freearea(int *dir, int nb)
-{
-    int k, last, n, at, best;
-    at = 0;
-    best = 0;
-    last = dir[1];                      /* the directory's end */
-    for (k = 1; k <= dir[8] + 1; k++) {
-        n = (k <= dir[8] ? dir[13 * k] : dir[7]) - last;
-        if (n >= nb && (at == 0 || n < best)) {
-            best = n;
-            at = last;
-        }
-        if (k <= dir[8])
-            last = dir[13 * k + 1];
-    }
-    return at;
 }
 
 /* sname, in the directory at block sbase of unit su, to the directory at
@@ -868,7 +789,7 @@ int copyone(int su, int sbase, char *sname, char *svol, int du, int dbase, char 
         printf("%s%s: not into itself\n", svol, sname);     /* (COPY A A/B/) */
         return 0;
     }
-    at = freearea(ddir, nb);
+    at = dirfree(ddir, nb);
     if (at == 0 || (!had && ddir[8] >= MAXDIR)) {
         printf("%s%s: no room on %s\n", svol, sname, dvol);
         return 0;
@@ -967,7 +888,7 @@ int dest(char *cmd, char *dst, int *dir, int *du, int *db, char *dvol, char *dna
     }
     strcpy(dname, leaf);
     path[strlen(path) - strlen(leaf)] = 0;
-    if (!canon(path, dvol)) {
+    if (!svcanon(path, dvol)) {
         printf("%s: no volume or sub-volume %s\n", cmd, dst);
         return 0;
     }

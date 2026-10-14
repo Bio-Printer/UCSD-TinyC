@@ -15,8 +15,9 @@
    DIR | WC -l.
 
    A FILE may have the wild cards of DIR: * or = (any characters) and ? (any one),
-   in the name after an optional VOL: or #n: (WC *.C, WC #5:*.TEXT); the shell does
-   not expand them, WC does, and the names it counts are the files that match. */
+   in the name after an optional VOL:, #n: or path (WC *.C, WC #5:*.TEXT, WC A/*.C,
+   WC #5:/A/B/*.H: in a sub-volume); the shell does not expand them, WC does, and
+   the names it counts are the files that match. */
 #pragma segment MAIN	/* calls within the program: 2-byte CGPs, no NOP after them */
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +30,7 @@ int optl, optw, optc, optm, optL;
 char ibuf[512];
 
 int dir[1024];
-char fname[MAXDIR + 1][32];             /* the names the wild cards gave */
+char fname[MAXDIR + 1][48];             /* the names the wild cards gave */
 long cl[MAXDIR + 2], cw[MAXDIR + 2], cb[MAXDIR + 2], cL[MAXDIR + 2];
 char *names[MAXDIR + 2];
 
@@ -125,38 +126,27 @@ void show(int k, int w)
     printf("\n");
 }
 
-/* one FILE argument: a name as it is, or the wild card's matches (VOL:PAT, #n:PAT, PAT)
-   added to files[]; returns the new count, -1 when there is no room */
+/* one FILE argument: a name as it is, or the wild card's matches (VOL:PAT, #n:PAT,
+   PATH/PAT, PAT) added to files[]; returns the new count, -1 when there is no room */
 int expand(char *arg, char **files, int nf, int *status)
 {
-    char vol[20];
     char name[16];
-    char *colon, *pat;
-    int u, i, n, before;
+    char pat[16];
+    int u, base, i, n, before;
     if (strpbrk(arg, "*=?") == NULL) {
         if (nf >= MAXDIR + 1)
             return -1;
         files[nf] = arg;
         return nf + 1;
     }
-    colon = strchr(arg, ':');
-    if (colon) {
-        n = colon - arg;
-        if (n > 19)
-            n = 19;
-        memcpy(vol, arg, n);
-        vol[n] = 0;
-        pat = colon + 1;
-    } else {
-        prefixvol(vol);
-        pat = arg;
-    }
-    u = volunit(vol, dir);
-    if (u == 0 || !dirread(u, dir)) {
-        fprintf(stderr, "wc: no disk %s on line\n", *vol ? vol : ":");
+    if (!pathdir(arg, dir, &u, &base, pat)) {
+        fprintf(stderr, "wc: %s: no such disk or sub-volume on line\n", arg);
         *status = 1;
         return nf;
     }
+    n = strlen(arg) - strlen(pat);          /* what goes before each name: VOL:, A/ ... */
+    if (n > 31)
+        n = 31;
     before = nf;
     for (i = 1; i <= dir[8]; i++) {
         direntname(dir, i, name);
@@ -164,12 +154,9 @@ int expand(char *arg, char **files, int nf, int *status)
             continue;
         if (nf >= MAXDIR + 1)
             return -1;
-        if (colon) {
-            strncpy(fname[nf], arg, colon - arg + 1);
-            fname[nf][colon - arg + 1] = 0;
-            strcat(fname[nf], name);
-        } else
-            strcpy(fname[nf], name);
+        memcpy(fname[nf], arg, n);
+        fname[nf][n] = 0;
+        strcat(fname[nf], name);
         files[nf] = fname[nf];
         nf++;
     }

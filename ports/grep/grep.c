@@ -1,11 +1,14 @@
-/* grep.c -- GREP [-i] [-n] PATTERN [VOL: | #n:]FILES ...: the lines of text
-   files that match PATTERN, each as VOL:NAME:LINE: text.  -n: the lines that
-   do not match (-in and -ni are all right).
+/* grep.c -- GREP [-i] [-n] PATTERN [VOL: | #n: | PATH]FILES ...: the lines of
+   text files that match PATTERN, each as VOL:NAME:LINE: text (VOL:/A/NAME:...
+   in a sub-volume).  -n: the lines that do not match (-in and -ni are all
+   right).
 
    Case is ignored unless -i is given (-i: exact case; the other way round
    from Unix grep).  FILES takes the shell's wildcards (* or = any
    characters, ? any one) and is looked for on every disk on line unless
-   it names a volume (VOL: or #n:).  Only text files are searched.
+   it names a volume (VOL: or #n:) or a sub-volume (A/*.C, #5:/A/B/*.H; on
+   the shell's path, after a CD into a sub-volume, FILES is there).  Only
+   text files are searched.
 
    PATTERN is a regular expression:
      c        the character c        .      any one character
@@ -179,38 +182,33 @@ int match(char *re, char *s)
 
 /* ---- disks, directories, file names ---- */
 
-/* ---- a text file, read with the OS's untyped file routines: 1 KB pages
-   from block 2, lines ending in CR, DLE n = n - 32 blanks, NULs filling
-   the rest of a page ---- */
+/* ---- a text file, read by its blocks on the disk (a volume's or a
+   sub-volume's file alike): 1 KB pages from block 2, lines ending in CR,
+   DLE n = n - 32 blanks, NULs filling the rest of a page ---- */
 
-void __ptitle(char *name, char *title);     /* the C library's: a Pascal string */
-
-char fib[80];
 char page[1024];
 char line[1100];
 
-void search(char *re, int u, char *vol, char *name)
+/* the text file name (where: "VOL:" or "VOL:/A/"), nb blocks from block
+   first of unit u */
+void search(char *re, int u, int first, int nb, char *vol, char *name)
 {
-    char path[24];
-    char title[32];
-    int b, i, n, c, e, k, end, found;
+    int b, i, n, c, e, k, m, end, found;
     char *z, *cr, *d;
     long lineno;
-    sprintf(path, "#%d:%s", u, name);
-    __ptitle(path, title);
-    __cxp0v(3, fib, 0, -1);             /* FINIT(fib, NIL, untyped) */
-    __cxp0v(5, fib, title, 1, 0);       /* FOPEN, an old file */
-    if (__cspi(34) != 0) {
-        printf("%s:%s: cannot open it\n", vol, name);
-        return;
-    }
     nsearched++;
     found = 0;
     lineno = 1;
     n = 0;
-    for (b = 2;; b = b + 2) {
-        if (__cxp0i(28, fib, page, 0, 2, b, 1, 0, 0) != 2 || __cspi(34) != 0)    /* FBLOCKIO */
+    for (b = 2; b < nb; b = b + 2) {
+        m = nb - b < 2 ? 1 : 2;
+        __cspv(5, u, page, 0, m * 512, first + b, 0);     /* UNITREAD */
+        if (__cspi(34) != 0) {
+            printf("%s%s: disk error %d\n", vol, name, __cspi(34));
             break;
+        }
+        if (m == 1)
+            memset(page + 512, 0, 512);
         z = memchr(page, 0, 1024);      /* the NULs fill the rest of the page */
         end = z ? z - page : 1024;
         i = 0;
@@ -249,7 +247,7 @@ void search(char *re, int u, char *vol, char *name)
             if (cr) {
                 line[n] = 0;
                 if (match(re, line) != invert) {
-                    printf("%s:%s:%ld: %s\n", vol, name, lineno, line);
+                    printf("%s%s:%ld: %s\n", vol, name, lineno, line);
                     nlines++;
                     found = 1;
                 }
@@ -262,26 +260,60 @@ void search(char *re, int u, char *vol, char *name)
     if (n > 0) {                        /* a last line without its CR */
         line[n] = 0;
         if (match(re, line) != invert) {
-            printf("%s:%s:%ld: %s\n", vol, name, lineno, line);
+            printf("%s%s:%ld: %s\n", vol, name, lineno, line);
             nlines++;
             found = 1;
         }
     }
-    __cxp0v(6, fib, 0);                 /* FCLOSE */
     nfiles = nfiles + found;
 }
 
-/* [VOL: | #n:]PAT: every text file that matches, on that volume or on
-   every disk */
+/* the text files of dir (at block base of unit u; vol: where it is) that
+   match pat, searched: how many */
+int dirfiles(char *re, int u, int base, int *dir, char *pat, char *vol)
+{
+    char name[16];
+    int i, n;
+    n = 0;
+    for (i = 1; i <= dir[8]; i++) {
+        direntname(dir, i, name);
+        if ((dir[13 * i + 2] & 15) != 3 || !wildmatch(*pat ? pat : "*", name))
+            continue;                   /* not text, or not the name */
+        n++;
+        search(re, u, base + dir[13 * i], dir[13 * i + 1] - dir[13 * i], vol, name);
+    }
+    return n;
+}
+
+/* [VOL: | #n: | PATH]PAT: every text file that matches, on that volume or
+   sub-volume, or on every disk */
 void files(char *re, char *spec)
 {
     int dir[1024];
     char want[20];
-    char vol[16];
-    char name[16];
+    char vol[80];
+    char path[80];
+    char leaf[16];
     char *pat;
     char *c;
-    int k, u, i, one, n;
+    int k, u, base, one, n;
+    if (strchr(spec, '/') || (__svpath[0] && !strchr(spec, ':') && spec[0] != '#')) {
+        if (strlen(spec) > 70 || !pathdir(spec, dir, &u, &base, leaf)) {   /* a sub-volume: there only */
+            printf("grep: no sub-volume for %s\n", spec);
+            return;
+        }
+        strcpy(path, spec);
+        path[strlen(spec) - strlen(leaf)] = 0;
+        if (!svcanon(path, vol)) {
+            printf("grep: no sub-volume for %s\n", spec);
+            return;
+        }
+        if (vol[strlen(vol) - 1] != ':')
+            strcat(vol, "/");
+        if (dirfiles(re, u, base, dir, leaf, vol) == 0)
+            printf("grep: no text file %s on %s\n", spec, vol);
+        return;
+    }
     c = strchr(spec, ':');
     one = 0;
     want[0] = 0;
@@ -307,13 +339,8 @@ void files(char *re, char *spec)
                 : !wildmatch(want, vol) || strlen(want) != strlen(vol))
                 continue;
         }
-        for (i = 1; i <= dir[8]; i++) {
-            direntname(dir, i, name);
-            if ((dir[13 * i + 2] & 15) != 3 || !wildmatch(*pat ? pat : "*", name))
-                continue;               /* not text, or not the name */
-            n++;
-            search(re, u, vol, name);
-        }
+        strcat(vol, ":");
+        n = n + dirfiles(re, u, 0, dir, pat, vol);
     }
     if (n == 0)
         printf("grep: no text file %s on %s\n", spec, one ? want : "any disk on line");

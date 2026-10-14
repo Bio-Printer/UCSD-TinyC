@@ -249,7 +249,9 @@ TOOLS = [
     ('DIFF', ['ports/diff/diff.c'], [], 'diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2'),
     ('WC', ['ports/wc/wc.c'], [], 'wc: WC [-clmwL] [FILE ...] lines, words and bytes'),
     ('LC', ['ports/lc/lc.c'], [], 'lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns'),
-    ('KRUNCH', ['ports/krunch/krunch.c'], [], 'krunch: KRUNCH [-y] [VOL: | #n] the files moved down, the free blocks in one area'),
+    ('KRUNCH', ['ports/krunch/krunch.c'], [], 'krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area'),
+    ('GROW', ['ports/grow/grow.c'], [], 'grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)'),
+    ('SHRINK', ['ports/shrink/shrink.c'], [], 'shrink: SHRINK NAME -N | +N | N a sub-volume smaller (krunched first if it must be)'),
     ('PATCH', ['ports/patch/patch.c'], [], 'patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]'),
     ('MAN', ['ports/man/man.c'], [], 'man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
@@ -353,15 +355,22 @@ WC      WC [-clmwL] [FILE ...]  from the shell: the lines, words and bytes of
         the files (-L the longest line) and a total; wild cards in the names
         (WC *.C); DIR | WC -l.
 
-LC      LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]  from the shell: the file names
-        of a disk in columns as wide as the console (down the columns, -x
+LC      LC [-1xFsrSC] [VOL: | #n: | PATH][PATTERN ...]  from the shell: the
+        file names of a disk (or a sub-volume) in columns as wide as the console (down the columns, -x
         across), -F marks CODE files, -s shows the sizes; one name to a line
         when the output goes to a file or a pipe.
 
-KRUNCH  KRUNCH [-y] [VOL: | #n]  from the shell: moves the files of a disk
-        down so that its unused blocks become one area at its end (the
-        Filer's K(runch); asks first unless -y).  Running code files
-        (SYSTEM.PASCAL, the shell) may move: KRUNCH tells the OS.
+KRUNCH  KRUNCH [-y] [VOL: | #n | PATH]  from the shell: moves the files of
+        a disk (or of a sub-volume: KRUNCH #5:/A) down so that its unused
+        blocks become one area at its end (the Filer's K(runch); asks first
+        unless -y).  Running code files (SYSTEM.PASCAL, the shell) may move:
+        KRUNCH tells the OS.
+
+GROW    GROW NAME SIZE, SHRINK NAME SIZE  from the shell: the sub-volume NAME
+SHRINK  (MKDIR makes one) becomes SIZE blocks: +N (N more), -N (N fewer) or
+        N.  Growing takes the blocks after it, or moves it to a free area,
+        krunching the volume that holds it when it must; shrinking krunches
+        the sub-volume first only when its files reach past the new end.
 
 PATCH   PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]  from the
         shell: applies a normal, unified or context diff (DIFF's, or the
@@ -419,6 +428,8 @@ WC.C    wc (lines, words, bytes).
 LC.C    lc (the file names of a disk in columns).
 
 KRUNCH.C  krunch (the files of a disk moved down, the free blocks in one area).
+
+GROW.C, SHRINK.C  grow, shrink (a sub-volume's size: the library's svresize).
 
 PATCH.C patch (a diff applied to a file).
 
@@ -491,6 +502,7 @@ WHAT = {
     'redirect.c': 'freopen; >NAME and <NAME on the command line',
     'strtold.c': 'strtold, atold (<stdlib.h>, P-Code mode)',
     'dirs.c': 'units[], dirread, dirwrite, volunit, wildmatch ...: disks and directories (<psys.h>)',
+    'subvol.c': 'svcanon, dirfree, dirkrunch, svresize: KRUNCH, GROW, SHRINK (<dirs.h>)',
     'tcrt.c': 'runtime helpers: C division, shifts, unsigned, longs',
     'vi.h': "vi's modules share this: configuration, globals",
     'vipage.h': "vi's window into big files (VI.SWAP)",

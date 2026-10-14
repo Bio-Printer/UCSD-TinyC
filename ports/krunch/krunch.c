@@ -1,12 +1,13 @@
-/* krunch.c -- KRUNCH [-y] [VOL: | #n]: move the files of a disk down so that
-   the unused blocks between them become one area at the end (the Filer's
-   K(runch).
+/* krunch.c -- KRUNCH [-y] [VOL: | #n | PATH]: move the files of a disk (or a
+   sub-volume) down so that the unused blocks between them become one area
+   at the end (the Filer's K(runch).
 
      -y   no question: krunch at once (without it KRUNCH says what it will
           do and asks, one key: Y goes on)
 
    The disk is the prefix volume, or VOL: (a volume's name), #n (unit n) or
-   * (the system volume).  Each file that has unused blocks before it is
+   * (the system volume); a PATH with a / in it is a sub-volume (KRUNCH A/,
+   KRUNCH #5:/A/B).  Each file that has unused blocks before it is
    copied down, as many blocks at a time as memory allows, and the
    directory is written again after each one, so a disk stopped halfway
    (an I/O error) has every file whole, only some of them moved.
@@ -21,7 +22,8 @@
    The status is 0 when the disk was krunched (or had nothing to move), 1
    when the answer was not Y, 2 when the disk is not on line or a file of
    KRUNCH is open on it, 3 on a disk error (the files moved so far stay
-   where they went, the rest where they were). */
+   where they went, the rest where they were).  The moving is the library's
+   dirkrunch (subvol.c), which GROW and SHRINK use too. */
 #pragma segment MAIN	/* calls within the program: 2-byte CGPs, no NOP after them */
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,84 +35,75 @@
 
 int dir[1024];
 
-/* a file of this program open on unit u (a redirection to that disk) */
-int openon(int u)
-{
-    int i;
-    for (i = 0; i < FOPEN_MAX + 3; i++)
-        if (__files[i].flags && !(__files[i].flags & __F_CON) && __files[i].fib
-         && ((int *)__files[i].fib)[__files[i].flags & __F_SUB ? 0 : 7] == u)  /* FUNIT (in a sub-volume: its record's unit) */
-            return 1;
-    return 0;
-}
-
-/* blocks first..last-1 of unit u went down by d: the OS's segment table
-   and the shell's place to come back to (pexec) follow them */
-void follow(int u, int first, int last, int d)
-{
-    int s;
-    int *e;
-    for (s = 0; s < 16; s++)
-        if (SYSCOM->segtable[s].codeunit == u && SYSCOM->segtable[s].diskaddr >= first
-         && SYSCOM->segtable[s].diskaddr < last)
-            SYSCOM->segtable[s].diskaddr -= d;
-    e = SYSCOM->expansion;
-    if (e[0] == PX_CHILD && e[3] == u && e[4] >= first && e[4] < last)
-        e[4] -= d;
-}
-
 int main(int argc, char **argv)
 {
-    char vol[20];
-    char name[16];
-    char *buf;
+    char vol[80];
+    char path[80];
+    char leaf[16];
     int *e;
-    int u, i, k, n, nb, yes, next, from, len, moves, gain, d;
+    int u, base, i, k, yes, next, moves, gain;
     yes = 0;
     vol[0] = 0;
     for (i = 1; i < argc; i++) {
         if (namesame(argv[i], "-y"))
             yes = 1;
         else if (argv[i][0] == '-') {
-            fprintf(stderr, "usage: KRUNCH [-y] [VOL: | #n]\n");
+            fprintf(stderr, "usage: KRUNCH [-y] [VOL: | #n | PATH]\n");
             return 2;
         } else {
-            strncpy(vol, argv[i], 19);
-            vol[19] = 0;
+            strncpy(vol, argv[i], 70);
+            vol[70] = 0;
         }
     }
     if (!vol[0])
         prefixvol(vol);
-    u = volunit(vol, dir);
-    if (u == 0 || !dirread(u, dir)) {
-        fprintf(stderr, "krunch: no disk %s on line\n", vol);
-        return 2;
+    base = 0;
+    if (strchr(vol, '/')) {                     /* a sub-volume */
+        strcpy(path, vol);
+        if (path[strlen(path) - 1] != '/')
+            strcat(path, "/");
+        if (!pathdir(path, dir, &u, &base, leaf) || !svcanon(path, vol)) {
+            fprintf(stderr, "krunch: no sub-volume %s\n", path);
+            return 2;
+        }
+        strcat(vol, "/");
+    } else {
+        u = volunit(vol, dir);
+        if (u == 0 || !dirread(u, dir)) {
+            fprintf(stderr, "krunch: no disk %s on line\n", vol);
+            return 2;
+        }
+        direntname(dir, 0, vol);
+        strcat(vol, ":");
     }
-    direntname(dir, 0, vol);
-    if (openon(u)) {
-        fprintf(stderr, "krunch: a file of KRUNCH is open on %s: (its output?)\n", vol);
+    if (fileson(u)) {
+        fprintf(stderr, "krunch: a file of KRUNCH is open on %s (its output?)\n", vol);
         return 2;
     }
     /* what moves */
     next = dir[1];                      /* the first block after the directory */
-    moves = gain = 0;
+    moves = 0;
     for (i = 1; i <= dir[8]; i++) {
         e = dir + 13 * i;
         if (e[0] < next || e[1] < e[0]) {
-            fprintf(stderr, "krunch: %s:'s directory is not in order (entry %d)\n", vol, i);
+            fprintf(stderr, "krunch: %s's directory is not in order (entry %d)\n", vol, i);
             return 2;
         }
         if (e[0] > next)
             moves++;
-        next = next + e[1] - e[0];
+        next = e[1];
     }
-    gain = dir[7] - next;               /* the free blocks: after, one area */
+    gain = dir[7];                      /* the free blocks: after, one area */
+    for (i = 1; i <= dir[8]; i++)
+        gain = gain - (dir[13 * i + 1] - dir[13 * i]);
+    gain = gain - dir[1];
+    next = dir[7] - gain;
     if (moves == 0) {
-        printf("%s: (#%d) has nothing to move: %d blocks free, from block %d\n", vol, u, gain, next);
+        printf("%s (#%d) has nothing to move: %d blocks free, from block %d\n", vol, u, gain, next);
         return 0;
     }
     if (!yes) {
-        printf("Krunch %s: (#%d)? %d file%s to move; then %d blocks free, from block %d (Y/N) ",
+        printf("Krunch %s (#%d)? %d file%s to move; then %d blocks free, from block %d (Y/N) ",
                vol, u, moves, moves == 1 ? "" : "s", gain, next);
         fflush(stdout);
         k = getch();
@@ -118,44 +111,13 @@ int main(int argc, char **argv)
         if (toupper(k) != 'Y')
             return 1;
     }
-    /* the buffer: as many blocks as memory allows */
-    for (nb = 32; nb > 1; nb = nb / 2)
-        if ((buf = (char *)malloc(nb * 512)) != NULL)
-            break;
-    if (nb == 1 && (buf = (char *)malloc(512)) == NULL) {
+    k = dirkrunch(u, base, dir, 1);
+    if (k == -2) {
         fprintf(stderr, "krunch: no memory\n");
         return 3;
     }
-    next = dir[1];
-    for (i = 1; i <= dir[8]; i++) {
-        e = dir + 13 * i;
-        from = e[0];
-        len = e[1] - e[0];
-        if (from > next) {
-            direntname(dir, i, name);
-            d = from - next;
-            for (k = 0; k < len; k = k + n) {           /* down: the first blocks first */
-                n = len - k < nb ? len - k : nb;
-                __cspv(5, u, buf, 0, n * 512, from + k, 0);    /* UNITREAD */
-                if (__cspi(34) == 0)
-                    __cspv(6, u, buf, 0, n * 512, next + k, 0);    /* UNITWRITE */
-                if (__cspi(34) != 0) {
-                    fprintf(stderr, "krunch: disk error %d moving %s (block %d)\n", __cspi(34), name, from + k);
-                    dirwrite(u, dir);
-                    return 3;
-                }
-            }
-            e[0] = next;
-            e[1] = next + len;
-            follow(u, from, from + len, d);
-            if (!dirwrite(u, dir)) {
-                fprintf(stderr, "krunch: disk error %d writing the directory\n", __cspi(34));
-                return 3;
-            }
-            printf("  %-15s %5d block%s from block %5d to %5d\n", name, len, len == 1 ? " " : "s", from, next);
-        }
-        next = e[1];
-    }
-    printf("%s: (#%d) krunched: %d blocks free, from block %d\n", vol, u, dir[7] - next, next);
+    if (k < 0)
+        return 3;
+    printf("%s (#%d) krunched: %d blocks free, from block %d\n", vol, u, gain, next);
     return 0;
 }

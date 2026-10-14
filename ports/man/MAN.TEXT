@@ -95,12 +95,14 @@ SEE ALSO
 NAME
     GREP - the lines of text files that match a pattern
 SYNOPSIS
-    GREP [-i] [-n] PATTERN [[VOL: | #n:]FILE ...]
+    GREP [-i] [-n] PATTERN [[VOL: | #n: | PATH]FILE ...]
 DESCRIPTION
     Prints each line of the text files that matches PATTERN as
-    VOL:NAME:LINE: text.  A FILE has wildcards (* or = any characters, ? any
-    one) and is looked for on every disk on line unless a volume is named
-    (VOL: or #n:).  Only text files are searched.  With no FILE it reads the
+    VOL:NAME:LINE: text (VOL:/A/NAME:LINE: in a sub-volume).  A FILE has
+    wildcards (* or = any characters, ? any one) and is looked for on every
+    disk on line unless a volume is named (VOL: or #n:) or a sub-volume
+    (A/*.C, #5:/A/B/*.H; after a CD into a sub-volume FILE is there).  Only
+    text files are searched.  With no FILE it reads the
     standard input and prints the matching lines as they are (DIR | GREP .C).
     At the end: N lines in M of K files.  Exit status 0 if a line was found.
 OPTIONS
@@ -451,7 +453,8 @@ DESCRIPTION
     Writes the number of lines, words and bytes of each FILE and, for more than
     one, a line "total".  No FILE or a FILE of - is the standard input.  A FILE
     may have the wild cards of DIR: * or = (any characters) and ? (any one) in
-    the name, after an optional VOL: or #n: (WC *.C, WC #5:*.TEXT); WC expands
+    the name, after an optional VOL:, #n: or path (WC *.C, WC #5:*.TEXT, WC
+    A/*.C: in a sub-volume); WC expands
     them itself (the shell does not): every file that matches is counted, and
     "no file matches" is said, status 1, when none does.  The
     counts are right-aligned in the width of the largest one, in the order
@@ -476,14 +479,15 @@ SEE ALSO
 NAME
     KRUNCH - move a disk's files down: its free blocks in one area
 SYNOPSIS
-    KRUNCH [-y] [VOL: | #n]
+    KRUNCH [-y] [VOL: | #n | PATH]
 DESCRIPTION
     The unused blocks between the files of a disk (left by files deleted,
     or shorter than the room they had) become one area at the end of the
     disk, so that a big new file finds room: each file with unused blocks
     before it is copied down, and the directory is written again after each
     one.  The disk is the prefix volume (CD sets it), or VOL:, unit #n, or
-    * (the system volume).  KRUNCH says what it will do and asks first, one
+    * (the system volume); a PATH with a / is a sub-volume (KRUNCH A/,
+    KRUNCH #5:/A/B).  KRUNCH says what it will do and asks first, one
     key: Y goes on.  A code file that is running (SYSTEM.PASCAL, the shell,
     KRUNCH itself) may move: KRUNCH tells the operating system where it
     went.  It will not krunch the disk its own output goes to (KRUNCH >F).
@@ -495,21 +499,64 @@ OPTIONS
 EXAMPLES
     KRUNCH                  the prefix volume, after Y
     KRUNCH -y #5            unit 5, at once
+    KRUNCH #5:/A            the sub-volume A on unit 5
     DIR /E #5:              the unused areas, before and after
 SEE ALSO
-    SHELL (DIR /E), LC
+    SHELL (DIR /E, MKDIR), GROW, SHRINK, LC
+
+%% GROW
+NAME
+    GROW - make a sub-volume bigger (or smaller)
+SYNOPSIS
+    GROW NAME +N | -N | N
+DESCRIPTION
+    The sub-volume NAME (made with the shell's MKDIR: A, #5:A, #5:/A/B)
+    becomes N blocks bigger (+N), N blocks smaller (-N) or N blocks (N).
+    Growing takes the free blocks right after it; when they are not free it
+    is moved, whole, to a free area that holds it, and when no area does
+    the volume that holds it is krunched first (as KRUNCH does) and then it
+    grows.  A smaller size works as SHRINK.  Exit status 0: done, 1: a bad
+    size, 2: NAME is not a sub-volume (or GROW's own output is on that disk),
+    3: no room, or a disk error.
+EXAMPLES
+    GROW WORK +100          100 blocks more for WORK
+    GROW #5:/A/B 400        B in A on unit 5: 400 blocks
+SEE ALSO
+    SHRINK, KRUNCH, SHELL (MKDIR, RMDIR)
+
+%% SHRINK
+NAME
+    SHRINK - make a sub-volume smaller (or bigger)
+SYNOPSIS
+    SHRINK NAME -N | +N | N
+DESCRIPTION
+    The sub-volume NAME (A, #5:A, #5:/A/B) becomes N blocks smaller (-N), N
+    bigger (+N) or N blocks (N), as GROW: the same size syntax.  When its
+    files reach past the new end it is krunched first (its files moved
+    down, as KRUNCH does), and only then; it cannot be smaller than its
+    directory and its files (it says how many blocks they take), nor than 7
+    blocks.  The blocks it gives up are free on the volume that holds it.
+    Exit status 0: done, 1: a bad size, 2: NAME is not a sub-volume, 3: too
+    many files for the size, or a disk error.
+EXAMPLES
+    SHRINK WORK -50         50 blocks fewer
+    SHRINK #5:/A/B 60       B in A on unit 5: 60 blocks
+SEE ALSO
+    GROW, KRUNCH, SHELL (MKDIR, RMDIR)
 
 %% LC
 NAME
     LC - list the file names of a disk in columns
 SYNOPSIS
-    LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]
+    LC [-1xFsrSC] [VOL: | #n: | PATH][PATTERN ...]
 DESCRIPTION
     Lists the files of a disk by name, sorted (case does not matter), down
     columns as wide as the console.  A PATTERN may have * or = (any characters)
-    and ? (any one character); with VOL: or #n: before it the disk is that one,
-    otherwise the prefix volume (CD sets it).  No PATTERN is every file.  With
-    more than one PATTERN each is listed under a line with the name of its disk.
+    and ? (any one character); with VOL:, #n: or a path (A/, #5:/A/B/) before
+    it the files are there, otherwise on the shell's path or the prefix volume
+    (CD sets them).  No PATTERN is every file; a sub-volume's name (LC A) is
+    every file in it.  With more than one PATTERN each is listed under a line
+    with the name of its disk or sub-volume.
     When the output goes to a file or a pipe the names come one on a line (for
     WC, GREP, SED), unless -C is there.  Exit status 1: a PATTERN matched
     nothing, 2: a disk is not on line or a bad option.

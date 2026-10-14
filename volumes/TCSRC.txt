@@ -1,4 +1,4 @@
-TCSRC:  40 files  (a UCSD directory holds 77)
+TCSRC:  41 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
@@ -39,6 +39,7 @@ TCSRC:  40 files  (a UCSD directory holds 77)
   STDLIB.C            14  library: <stdlib.h>
   STRING.C             8  library: <string.h>
   STRTOLD.C            4  library: strtold, atold (<stdlib.h>, P-Code mode)
+  SUBVOL.C            26  library: svcanon, dirfree, dirkrunch, svresize: KRUNCH, GROW, SHRINK (<dirs.h>)
   TCRT.C              18  library: runtime helpers: C division, shifts, unsigned, longs
   LIBINT.H             6  library: the library modules' shared declarations
   FILES.TEXT           8  this list

@@ -58,6 +58,7 @@ full regression test is asked for (it takes a long time).
 | wc (`ports/wc/`) | `tools/wctest.py` (against the host's wc; needs cat) |
 | lc (`ports/lc/`) | `tools/lctest.py` (needs wc) |
 | krunch (`ports/krunch/`), the shell's DIR /E | `tools/krunchtest.py` (both modes: it krunches the boot disk while SYSTEM.PASCAL and the shell run) |
+| grow, shrink (`ports/grow/`, `ports/shrink/`), `tinyc/lib/subvol.c` (dirkrunch, svresize) | `tools/growtest.py` (both modes), `tools/krunchtest.py` |
 | patch (`ports/patch/`) | `tools/patchtest.py` (against the host's diff) |
 | shell redirection / pipes (`examples/shell.c`, `tinyc/lib/redirect.c`) | `tools/redirtest.py`, `tools/pexectest.py`, `tools/greptest.py` |
 | emulator keys / break / ^S ^Q (`tools/mkbiggy.py` MISCINFO, psys.h handshakes) | `tools/keytest.py` |
