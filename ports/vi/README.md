@@ -35,12 +35,13 @@ UCSD text files); from X(ecute) it asks for the file.
 
 ## What was changed in vi
 
-* A `#ifdef __UCSD__` configuration ahead of the Linux one: no signals, no window
-  resizing, no locale or 8-bit characters, no `:!` shell escape; the line buffers
-  sized for the P-System screen (132 columns); `viucsd.c`.
+* A `#ifdef __UCSD__` configuration ahead of the Linux one; the line buffers sized
+  for the P-System screen (132 columns); `viucsd.c`.
+* Taken out, with all the code they switched (on Linux too, so the tests' reference
+  is the same vi): signals, window resizing, locale and 8-bit characters, the `:!`
+  shell escape, read-only mode (`-R`, `ENABLE_FEATURE_VI_READONLY`), the options
+  (`-c`, EXINIT, getopt), `:e`, `:f` and `^G`.  Vi takes only file names.
 * The CRASHME test code removed.
-* Tiny-C has no variadic macros: the five `USE_FEATURE_VI_READONLY(, x)` uses are
-  written out.
 * `do_cmd()` and `colon()` were too big for one P-code procedure (at most 60 long
   jumps; Tiny-C's 3000-byte code buffer): the second half of `do_cmd()`'s switch is
   `do_cmd2()`, and `colon()`'s `:s` and `:set` are `colon_s()` and `colon_set()`.
