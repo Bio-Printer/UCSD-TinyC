@@ -18,11 +18,6 @@ static const char Ceol[] ALIGN1 = "\033[0K";
 static const char Ceos[] ALIGN1 = "\033[0J";
 /* Cursor motion arbitrary destination ESC sequence */
 static const char CMrc[] ALIGN1 = "\033[%d;%dH";
-#ifdef ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
-/* Cursor motion up and down ESC sequence */
-static const char CMup[] ALIGN1 = "\033[A";
-static const char CMdown[] ALIGN1 = "\n";
-#endif
 
 
 int scr_gen;		// +1 whenever the text or the screen image changes
@@ -196,51 +191,6 @@ void place_cursor(int row, int col, int optimize)
 	sprintf(cm1, CMrc, row + 1, col + 1);
 	cm = cm1;
 
-#if ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
-	if (optimize && col < 16) {
-		enum {
-			SZ_UP = sizeof(CMup),
-			SZ_DN = sizeof(CMdown),
-			SEQ_SIZE = SZ_UP > SZ_DN ? SZ_UP : SZ_DN,
-		};
-		char cm2[SEQ_SIZE * 5 + 32]; // bigger than worst case size
-		char *screenp;
-		int Rrow = last_row;
-		int diff = Rrow - row;
-
-		if (diff < -5 || diff > 5)
-			goto skip;
-
-		//----- find the minimum # of chars to move cursor -------------
-		//----- 2.  Try moving with discreet chars (Newline, [back]space, ...)
-		cm2[0] = '\0';
-
-		// move to the correct row
-		while (row < Rrow) {
-			// the cursor has to move up
-			strcat(cm2, CMup);
-			Rrow--;
-		}
-		while (row > Rrow) {
-			// the cursor has to move down
-			strcat(cm2, CMdown);
-			Rrow++;
-		}
-
-		// now move to the correct column
-		strcat(cm2, "\r");			// start at col 0
-		// just send out orignal source char to get to correct place
-		screenp = &screen[row * columns];	// start of screen line
-		strncat(cm2, screenp, col);
-
-		// pick the shortest cursor motion to send out
-		if (strlen(cm2) < strlen(cm)) {
-			cm = cm2;
-		}
- skip: ;
-	}
-	last_row = row;
-#endif /* FEATURE_VI_OPTIMIZE_CURSOR */
 	write1(cm);
 }
 #endif
@@ -298,11 +248,7 @@ void Indicate_Error(void)
 void screen_erase(void)
 {
 	scr_gen++;		// every row is drawn again
-#ifdef VI_ROW_SUMS
 	memset(screen, 1, screensize);	// odd: no row's sum (they are even)
-#else
-	memset(screen, ' ', screensize);	// clear new screen
-#endif
 }
 
 static const char *scompare(const char *s, const char *ref)
@@ -625,7 +571,6 @@ void refresh(void)
 	scr_key[3] = pg_nb + pg_na * 7 + pg_lb * 31;
 	same = scr_top && !scr_soft_p && offset == old_offset && !memcmp(scr_key, scr_keyed_for, sizeof(scr_key));
 
-#ifdef VI_ROW_SUMS
 	// Besides its sum each row has the number of the line it shows (-1: not
 	// known, or no line).  Rows still showing the line that belongs to them
 	// are not formatted at all; when the top line has moved, the console
@@ -692,26 +637,22 @@ void refresh(void)
 			}
 		}
 	}
-#endif
 
 	// compare text[] to screen[] and mark screen[] lines that need updating
 	for (li = same ? hi : 0; li < hi && ((li & 7) || !awaitInput(0)); li++) {
 		int cs, ce;				// column start & end
 		char *out_buf;
-#ifdef VI_ROW_SUMS
 		if (((int *)screen)[rows + li] == scr_top0 + li) {
 			tp = skip_line(tp);	// this row is right
 			continue;
 		}
 		((int *)screen)[rows + li] = tp < end ? scr_top0 + li : -1;
-#endif
 		// format current text line
 		out_buf = format_line(tp /*, li*/);
 
 		// skip to the end of the current text[] line
 		tp = skip_line(tp);
 
-#ifdef VI_ROW_SUMS
 		// Memory is small: the screen is kept as a sum per row, and a row
 		// whose sum changed is written again, up to its last non-blank
 		{
@@ -733,7 +674,6 @@ void refresh(void)
 			}
 			continue;
 		}
-#endif
 		// see if there are any changes between vitual screen and out_buf
 		changed = FALSE;	// assume no change
 		cs = 0;

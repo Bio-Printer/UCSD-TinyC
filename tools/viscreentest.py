@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """viscreentest.py [REF_DIR] -- the screen vi shows after every key, compared
 with a reference vi (REF_DIR: the ports/vi sources of an earlier version;
-default: the committed ones, git HEAD) on Linux (gcc -DSTANDALONE
--DVI_ROW_SUMS: the checksum-per-row screen and refresh's skipping of an
-unchanged screen; in a pseudo-terminal, a small terminal emulator reads what
+default: the committed ones, git HEAD) on Linux (gcc -DSTANDALONE: the
+checksum-per-row screen and refresh's skipping of an unchanged screen, as on
+the P-System; in a pseudo-terminal, a small terminal emulator reads what
 vi writes).  Edits, motions, scrolling, ^L, :s, undo, a long line with
 horizontal scrolling: every screen after every key must be the same.
 """
@@ -23,7 +23,7 @@ KEYS = ['j'] * 5 + ['l'] * 10 + ['\x06', '\x06', '\x02', 'G', 'gg', '30G', 'x', 
 
 
 def build(srcdir, exe):
-    subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-DVI_ROW_SUMS', '-o', exe] +
+    subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-o', exe] +
                           [os.path.join(srcdir, m + '.c') for m in MODS if os.path.exists(os.path.join(srcdir, m + '.c'))])
 
 

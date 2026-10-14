@@ -92,49 +92,7 @@ static int do_cmd2(char *cp)
 		break;
 	case ':':			// :- the colon mode commands
 		p = get_input_line(":");	// get input line- use "status line"
-#if ENABLE_FEATURE_VI_COLON
 		colon(p);		// execute the command
-#else
-		if (*p == ':')
-			p++;				// move past the ':'
-		cnt = strlen(p);
-		if (cnt <= 0)
-			break;
-		if (strncasecmp(p, "quit", cnt) == 0
-		 || strncasecmp(p, "q!", cnt) == 0   // delete lines
-		) {
-			if (file_modified && p[1] != '!') {
-				status_line_bold("No write since last change (:quit! overrides)");
-			} else {
-				editing = 0;
-			}
-		} else if (strncasecmp(p, "write", cnt) == 0
-		        || strncasecmp(p, "wq", cnt) == 0
-		        || strncasecmp(p, "wn", cnt) == 0
-		        || strncasecmp(p, "x", cnt) == 0
-		) {
-			cnt = file_write(current_filename, text, end - 1);
-			if (cnt < 0) {
-				if (cnt == -1)
-					status_line_bold("Write error: %s", strerror(errno));
-			} else {
-				(file_modified = 0, scr_gen++);
-				last_file_modified = -1;
-				status_line("\"%s\" %dL, %dC", current_filename, count_lines(text, end - 1), cnt);
-				if (p[0] == 'x' || p[1] == 'q' || p[1] == 'n'
-				 || p[0] == 'X' || p[1] == 'Q' || p[1] == 'N'
-				) {
-					editing = 0;
-				}
-			}
-		} else if (strncasecmp(p, "file", cnt))
-		  if (sscanf(p, "%d", &j) > 0) {
-			dot = find_line(j);		// go to line # j
-			dot_skip_over_ws();
-		} else {		// unrecognised cmd
-			not_implemented(p);
-		}
-#endif /* !FEATURE_VI_COLON */
 		break;
 	case '<':			// <- Left  shift something
 	case '>':			// >- Right shift something
@@ -169,10 +127,8 @@ static int do_cmd2(char *cp)
 		dot = yank_delete(save_dot, dot, 0, YANKDEL);	// delete to e-o-l
 		if (c == 'C')
 			goto dc_i;	// start inserting
-#if ENABLE_FEATURE_VI_DOT_CMD
 		if (c == 'D')
 			end_cmd_q();	// stop adding to q
-#endif
 		break;
 	case 'g':                       // 'gg' goto a line number (from vim)
 					// (default to first line in file)
@@ -324,17 +280,13 @@ dc5:
 		return 1;
 	case 'c':			// c- change something
 	case 'd':			// d- delete something
-#if ENABLE_FEATURE_VI_YANKMARK
 	case 'y':			// y- yank   something
 	case 'Y':			// Y- Yank a line
-#endif
 		{
 		int yf, ml, whole = 0;
 		yf = YANKDEL;	// assume either "c" or "d"
-#if ENABLE_FEATURE_VI_YANKMARK
 		if (c == 'y' || c == 'Y')
 			yf = YANKONLY;
-#endif
 		c1 = 'y';
 		if (c != 'Y')
 			c1 = get_one_char();	// get the type of thing to delete
@@ -391,7 +343,6 @@ dc5:
 			if (c == 'd') {
 				strcpy(buf, "Delete");
 			}
-#if ENABLE_FEATURE_VI_YANKMARK
 			if (c == 'y' || c == 'Y') {
 				strcpy(buf, "Yank");
 			}
@@ -403,7 +354,6 @@ dc5:
 			}
 			status_line("%s %d lines (%d chars) using [%c]",
 				buf, cnt, reg[YDreg] ? (int)strlen(reg[YDreg]) : 0, what_reg());
-#endif
 			end_cmd_q();	// stop adding to q
 		}
 		}
@@ -650,7 +600,6 @@ repeat:
 	case VI_K_RIGHT:	// Cursor Key Right
 		dot_right();
 		goto repeat;
-#if ENABLE_FEATURE_VI_YANKMARK
 	case '"':			// "- name a register to use for Delete/Yank
 		c1 = get_one_char();
 		c1 = tolower(c1);
@@ -732,7 +681,6 @@ repeat:
 			dot_skip_over_ws();
 		}
 		break;
-#endif /* FEATURE_VI_YANKMARK */
 	case '$':			// $- goto end of line
 	case VI_K_END:		// Cursor Key End
 		dot = end_line(dot);
@@ -784,7 +732,6 @@ repeat:
 		dot_prev();
 		dot_skip_over_ws();
 		goto repeat;
-#if ENABLE_FEATURE_VI_DOT_CMD
 	case '.':			// .- repeat the last modifying command
 		// Stuff the last_modifying_cmd back into stdin
 		// and let it be re-executed.
@@ -801,8 +748,6 @@ repeat:
 			ioq = ioq_start = xstrdup(last_modifying_cmd);
 		}
 		break;
-#endif
-#if ENABLE_FEATURE_VI_SEARCH
 	case '?':			// /- search for a pattern
 	case '/':			// /- search for a pattern
 		buf[0] = c;
@@ -878,7 +823,6 @@ dc2:
 			dot = next_line(q);	// move to next blank line
 		}
 		break;
-#endif /* FEATURE_VI_SEARCH */
 	}
 
 dc1:
@@ -891,9 +835,7 @@ dc1:
 	if (dot != end) {
 		dot = bound_dot(dot);	// make sure "dot" is valid
 	}
-#if ENABLE_FEATURE_VI_YANKMARK
 	check_context(c);	// update the current context
-#endif
 
 	if (!isdigit(c))
 		cmdcnt = 0;		// cmd was not a number, reset cmdcnt

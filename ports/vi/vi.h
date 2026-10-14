@@ -54,7 +54,6 @@
 
 #define CONFIG_FEATURE_VI_MAX_LEN 132
 #define TEXT_SLACK 1024	// free room in the text buffer: memory is small
-#define VI_ROW_SUMS 1	// the screen as a checksum per row, not a copy
 #define PG_RESERVE 1024	// memory left out of the window: yanks, and so on
 #include <limits.h>
 /* The P-System opens an include file with a 2K buffer on the stack, so the
@@ -62,9 +61,6 @@
    free memory there (every macro takes about 40 bytes). */
 #include "vipage.h"	// a window into big files
 
-#define USE_FEATURE_VI_COLON(x) x
-#define USE_FEATURE_VI_YANKMARK(x) x
-#define USE_FEATURE_VI_SEARCH(x) x
 #define ATTRIBUTE_UNUSED
 
 #else	// Linux: gcc -DSTANDALONE (the tests' reference; VI_PAGECAP=N: the window's size)
@@ -91,11 +87,7 @@
 
 #define CONFIG_FEATURE_VI_MAX_LEN 4096
 #define TEXT_SLACK 10240	// free room in the text buffer
-#undef ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
 
-#define USE_FEATURE_VI_COLON(...) __VA_ARGS__
-#define	USE_FEATURE_VI_YANKMARK(...) __VA_ARGS__
-#define	USE_FEATURE_VI_SEARCH(...) __VA_ARGS__
 #define ATTRIBUTE_UNUSED __attribute__ ((__unused__))
 
 #ifdef __clang__
@@ -126,12 +118,6 @@ void *memrchr(const void *s, int c_in, size_t n)
 /* the same in both */
 #define BB_BT "brent@mbari.org"
 #define vi_main			main
-#define ENABLE_FEATURE_VI_COLON 1
-#define ENABLE_FEATURE_VI_YANKMARK 1
-#define ENABLE_FEATURE_VI_SEARCH 1
-#define ENABLE_FEATURE_VI_DOT_CMD 1
-#define ENABLE_FEATURE_VI_SETOPTS 1
-#define ENABLE_FEATURE_VI_SET 1
 
 #define ALIGN1
 #define FALSE 0
@@ -252,37 +238,24 @@ struct globals {
 	char last_input_char;    // last char read from user
 	char last_forward_char;  // last char searched for with 'f'
 
-#if ENABLE_FEATURE_VI_DOT_CMD
 	smallint adding2q;	 // are we currently adding user input to q
 	int lmc_len;             // length of last_modifying_cmd
 	char *ioq, *ioq_start;   // pointer to string for get_one_char to "read"
-#endif
-#if ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
-	int last_row;		 // where the cursor was last moved to
-#endif
-#if ENABLE_FEATURE_VI_DOT_CMD || ENABLE_FEATURE_VI_YANKMARK
 	char *modifying_cmds;    // cmds that modify text[]
-#endif
-#if ENABLE_FEATURE_VI_SEARCH
 	char *last_search_pattern; // last pattern from a '/' or '?' search
-#endif
 	int chars_to_parse;
 	/* former statics */
-#if ENABLE_FEATURE_VI_YANKMARK
 	char *edit_file__cur_line;
-#endif
 	int refresh__old_offset;
 	int format_edit_status__tot;
 
 	/* a few references only */
-#if ENABLE_FEATURE_VI_YANKMARK
 	int YDreg, Ureg;        // default delete register and orig line for "U"
 	char *reg[28];          // named register a-z, "D", and "U" 0-25,26,27
 	char *mark[28];         // user marks points somewhere in text[]-  a-z and previous context ''
 	char *context_start, *context_end;
 	int markl[28];          // marks as line numbers: the window moves
 	int ctx_s, ctx_e;       // the context, as line numbers
-#endif
 #ifndef __UCSD__
 	struct termios term_orig, term_vi; // remember what the cooked mode was
 #endif
@@ -293,9 +266,7 @@ struct globals {
 #define STATUS_BUFFER_LEN  148
 	char status_buffer[STATUS_BUFFER_LEN]; // messages to the user
 	char displayed_buffer[STATUS_BUFFER_LEN];  //  displayed status
-#if ENABLE_FEATURE_VI_DOT_CMD
 	char last_modifying_cmd[MAX_INPUT_LEN];	// last modifying cmd for "."
-#endif
 	char get_input_line__buf[MAX_INPUT_LEN]; /* former static */
 
 	char scr_out_buf[MAX_SCR_COLS + MAX_TABSTOP * 2];
@@ -366,13 +337,8 @@ extern struct globals G;
 #define errno (SYSCOM->iorslt)
 #endif
 
-#if !ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
 #define place_cursor(a, b, optimize) place_cursor(a, b)
-#endif
 #define indicate_error(c) Indicate_Error()
-#if !ENABLE_FEATURE_VI_DOT_CMD
-#define end_cmd_q() ((void)0)
-#endif
 
 #define ABSLINE(p) (pg_lb + count_lines(text, p))	// p's line in the file
 #define TOTLINES() (pg_total())			// the file's lines (all of the file loaded)

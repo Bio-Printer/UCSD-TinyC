@@ -9,13 +9,12 @@ static void colon_set(char *args);
 static int colon_s(char *orig_buf, char *q, int b, int e);
 
 //----- The Colon commands -------------------------------------
-#if ENABLE_FEATURE_VI_COLON
 static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 {
 	int st;
 	char *q;
-	USE_FEATURE_VI_YANKMARK(char c;)
-	USE_FEATURE_VI_SEARCH(char *pat;)
+	char c;
+	char *pat;
 
 	*addr = -1;			// assume no addr
 	if (*p == '.') {	// the current line
@@ -23,7 +22,6 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 		q = begin_line(dot);
 		*addr = ABSLINE(q);
 	}
-#if ENABLE_FEATURE_VI_YANKMARK
 	else if (*p == '\'') {	// is this a mark addr
 		p++;
 		c = tolower(*p);
@@ -35,8 +33,6 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 				*addr = markl[(unsigned char) c];
 		}
 	}
-#endif
-#if ENABLE_FEATURE_VI_SEARCH
 	else if (*p == '/') {	// a search pattern
 		q = strchrnul(++p, '/');
 		pat = xstrndup(p, q - p); // save copy of pattern
@@ -51,7 +47,6 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 			*addr = pg_find_line(pat);
 		free(pat);
 	}
-#endif
 	else if (*p == '$') {	// the last line in file
 		p++;
 		*addr = TOTLINES();
@@ -94,7 +89,6 @@ static char *get_address(char *p, int *b, int *e)	// get two colon addrs, if pre
 	return p;
 }
 
-#if ENABLE_FEATURE_VI_SET && ENABLE_FEATURE_VI_SETOPTS
 static void setops(const char *args, const char *opname, int flg_no,
 			const char *short_opname, int opt)
 {
@@ -110,9 +104,7 @@ static void setops(const char *args, const char *opname, int flg_no,
 			vi_setops |= opt;
 	}
 }
-#endif
 
-#if ENABLE_FEATURE_VI_SETOPTS
 // show the matching char of a pair,  ()  []  {}
 void showmatching(char *p)
 {
@@ -139,10 +131,8 @@ static char *stpcopy(char *dest, const char *src)
 	*dest = 0;
 	return dest;
 }
-#endif /* FEATURE_VI_SETOPTS */
 
 // buf must be no longer than MAX_INPUT_LEN!
-#if ENABLE_FEATURE_VI_SETOPTS
 // colon()'s :set, on its own to keep colon() within one P-code
 // procedure's limits
 static void colon_set(char *args)
@@ -191,7 +181,6 @@ static void colon_set(char *args)
 		cursor += snprintf(cursor, 16, "tabstop=%d ", tabstop);
 	}
 }
-#endif
 
 // colon()'s :s/find/replace/, on its own to keep colon() within one
 // P-code procedure's limits; returns 1 when colon() must return at once
@@ -476,17 +465,11 @@ void colon1(char *buf)
 			fn_next = 0;	// (the loop's ++: the first file name)
 			editing = 0;
 		}
-#if ENABLE_FEATURE_VI_SET
 	} else if (strncasecmp(cmd, "set", i) == 0) {	// set or clear features
-#if ENABLE_FEATURE_VI_SETOPTS
 		colon_set(args);
-#endif /* FEATURE_VI_SETOPTS */
-#endif /* FEATURE_VI_SET */
-#if ENABLE_FEATURE_VI_SEARCH
 	} else if (strncasecmp(cmd, "s", 1) == 0) {	// substitute a pattern with a replacement pattern
 		if (colon_s(orig_buf, q, b, e))
 			return;
-#endif /* FEATURE_VI_SEARCH */
 	} else if (strncasecmp(cmd, "version", i) == 0) {  // show software version
 		status_line(BB_VER " " BB_BT);
 	} else if (strncasecmp(cmd, "write", i) == 0  // write text to file
@@ -535,7 +518,6 @@ void colon1(char *buf)
 				editing = 0;
 			}
 		}
-#if ENABLE_FEATURE_VI_YANKMARK
 	} else if (strncasecmp(cmd, "yank", i) == 0) {	// yank lines
 		if (b < 0) {	// no addr given- use defaults
 			q = begin_line(dot);	// assume .,. for the range
@@ -545,7 +527,6 @@ void colon1(char *buf)
 		li = count_lines(q, r);
 		status_line("Yank %d lines (%d chars) into [%c]",
 				li, reg[YDreg] ? (int)strlen(reg[YDreg]) : 0, what_reg());
-#endif
 	} else {
 		// cmd unknown
 		not_implemented(cmd);
@@ -553,13 +534,10 @@ void colon1(char *buf)
  vc1:
 	dot = bound_dot(dot);	// make sure "dot" is valid
 	return;
-#if ENABLE_FEATURE_VI_SEARCH
 colon_s_fail:
 	status_line_bold(":s expression missing delimiters");
 	return;
 colon_no_regex:
 	status_line_bold ("No previous regular expression");
-#endif
 }
 
-#endif /* FEATURE_VI_COLON */

@@ -41,6 +41,9 @@ UCSD text files); from X(ecute) it asks for the file.
   is the same vi): signals, window resizing, locale and 8-bit characters, the `:!`
   shell escape, read-only mode (`-R`, `ENABLE_FEATURE_VI_READONLY`), the options
   (`-c`, EXINIT, getopt), `:e`, `:f` and `^G`.  Vi takes only file names.
+* No feature switches: paging, the screen as row checksums, the : commands, yank and
+  marks, search, `.`, `:set` are always there (BusyBox's `ENABLE_FEATURE_VI_*` and
+  `USE_FEATURE_VI_*` are gone, and the cursor-motion optimisation that was off).
 * The CRASHME test code removed.
 * `do_cmd()` and `colon()` were too big for one P-code procedure (at most 60 long
   jumps; Tiny-C's 3000-byte code buffer): the second half of `do_cmd()`'s switch is
@@ -78,7 +81,7 @@ UCSD text files); from X(ecute) it asks for the file.
   set aside at the start and given back only around opening a file, so a file whose
   text has taken all other memory can still be saved.
 * The screen is kept as one checksum per row (90 bytes) instead of a copy (132 x 45 =
-  6 KB, `VI_ROW_SUMS`): a row whose checksum changed is written again whole.
+  6 KB), on Linux too: a row whose checksum changed is written again whole.
 * Line numbers in addresses are parsed by hand: `sscanf` would bring the library's
   whole `scanf`.
 * `strncasecmp`, `strchrnul`, `memrchr`, `snprintf`, `getopt`, ... that the library

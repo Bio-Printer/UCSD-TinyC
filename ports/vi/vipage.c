@@ -155,9 +155,7 @@ static void pg_shift(int d)
 		dot = text;
 	if (screenbegin < text)
 		screenbegin = text;
-#if ENABLE_FEATURE_VI_YANKMARK
 	edit_file__cur_line = NULL;
-#endif
 }
 
 /* the window got shorter at the bottom */
@@ -167,9 +165,7 @@ static void pg_cut(void)
 		dot = end > text ? begin_line(end - 1) : text;
 	if (screenbegin >= end)
 		screenbegin = end > text ? begin_line(end - 1) : text;
-#if ENABLE_FEATURE_VI_YANKMARK
 	edit_file__cur_line = NULL;
-#endif
 }
 
 /* ---- moving the window: a chunk at a time ---- */

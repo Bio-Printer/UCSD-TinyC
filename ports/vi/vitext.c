@@ -221,23 +221,18 @@ char *bound_dot(char *p) // make sure  text[0] <= P < "end"
 char *new_screen(int ro, int co)
 {
 	free(screen);
-#ifdef VI_ROW_SUMS
 	screensize = ro * (sizeof(unsigned) + sizeof(int));
-#else
-	screensize = ro * co + 8;
-#endif
 	screen = xmalloc(screensize);
 	screen_erase();
 	return screen;
 }
 
-#if ENABLE_FEATURE_VI_SEARCH
 int mycmp(const char *s1, const char *s2, int len)
 {
 	int i;
 
 	i = strncmp(s1, s2, len);
-	if (ENABLE_FEATURE_VI_SETOPTS && ignorecase) {
+	if (ignorecase) {
 		i = strncasecmp(s1, s2, len);
 	}
 	return i;
@@ -335,7 +330,6 @@ char *char_search(char *p, const char *pat, int dir, int range)
 	return p;
 #endif /* REGEX_SEARCH */
 }
-#endif /* FEATURE_VI_SEARCH */
 
 char *char_insert(char *p, char c) // insert the char c at 'p'
 {
@@ -368,7 +362,6 @@ char *char_insert(char *p, char c) // insert the char c at 'p'
 			c = '\n';	// translate \r to \n
 		sp = p;			// remember addr of insert
 		p = stupid_insert(p, c);	// insert the char
-#if ENABLE_FEATURE_VI_SETOPTS
 		if (showmatch && strchr(")]}", *sp) != NULL) {
 			showmatching(sp);
 		}
@@ -380,7 +373,6 @@ char *char_insert(char *p, char c) // insert the char c at 'p'
 				p = stupid_insert(p, *q);	// insert the char
 			}
 		}
-#endif
 	}
 	return p;
 }
@@ -598,7 +590,6 @@ char *text_hole_make(char *p, int size)	// at "p", make a 'size' byte hole
 		dot         = new_text + (dot         - text);
 		end         = new_text + (end         - text);
 		p           = new_text + (p           - text);
-#if ENABLE_FEATURE_VI_YANKMARK
 		{
 			int k;
 			for (k = 0; k < 28; k++)
@@ -610,7 +601,6 @@ char *text_hole_make(char *p, int size)	// at "p", make a 'size' byte hole
 				context_end = new_text + (context_end - text);
 			edit_file__cur_line = NULL;
 		}
-#endif
 		text = new_text;
 	}
 	memmove(p + size, p, end - size - p);
@@ -690,9 +680,7 @@ char *yank_delete(char *start, char *stop, int dist, int yf)
 		}
 	}
 	p = start;
-#if ENABLE_FEATURE_VI_YANKMARK
 	text_yank(start, stop, YDreg);
-#endif
 	if (yf == YANKDEL) {
 		p = text_hole_delete(start, stop);
 		if (pg_atend)
@@ -701,7 +689,6 @@ char *yank_delete(char *start, char *stop, int dist, int yf)
 	return p;
 }
 
-#if ENABLE_FEATURE_VI_DOT_CMD
 void start_new_cmd_q(char c)
 {
 	// get buffer for new cmd
@@ -717,15 +704,10 @@ void start_new_cmd_q(char c)
 
 void end_cmd_q(void)
 {
-#if ENABLE_FEATURE_VI_YANKMARK
 	YDreg = 26;			// go back to default Yank/Delete reg
-#endif
 	adding2q = 0;
 }
-#endif /* FEATURE_VI_DOT_CMD */
 
-#if ENABLE_FEATURE_VI_YANKMARK \
- || (ENABLE_FEATURE_VI_COLON && ENABLE_FEATURE_VI_SEARCH)
 char *string_insert(char *p, char *s) // insert the string at 'p'
 {
 	int cnt, i;
@@ -741,14 +723,10 @@ char *string_insert(char *p, char *s) // insert the string at 'p'
 		if (*s == '\n')
 			cnt++;
 	}
-#if ENABLE_FEATURE_VI_YANKMARK
 	status_line("Put %d lines (%d chars) from [%c]", cnt, i, what_reg());
-#endif
 	return p;
 }
-#endif
 
-#if ENABLE_FEATURE_VI_YANKMARK
 char *text_yank(char *p, char *q, int dest)	// copy text into a register
 {
 	char *t;
@@ -842,4 +820,3 @@ char *swap_context(char *p) // goto new context for '' command make this the cur
 	}
 	return p;
 }
-#endif /* FEATURE_VI_YANKMARK */

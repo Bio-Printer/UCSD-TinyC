@@ -209,9 +209,7 @@ int vi_main(int argc, char **argv)
 	clampScreenSize();
 
 	vi_setops = VI_AUTOINDENT | VI_SHOWMATCH | VI_IGNORECASE;
-#if ENABLE_FEATURE_VI_DOT_CMD || ENABLE_FEATURE_VI_YANKMARK
 	modifying_cmds = "aAcCdDiIJoOpPrRsxX<>~";	// cmds modifying text[]
-#endif
 
 	// no options: the command line is the files to edit (:n, :rew go through it)
 	save_argc = argc;
@@ -263,20 +261,16 @@ int init_text_buffer(char *fn)
 	}
 	(file_modified = 0, scr_gen++);
 	last_file_modified = -1;
-#if ENABLE_FEATURE_VI_YANKMARK
 	/* init the marks. */
 	memset(mark, 0, sizeof(mark));
 	memset(markl, 0, sizeof(markl));
 	ctx_s = ctx_e = 0;
-#endif
 	return rc;
 }
 
 static void edit_file(char *fn)
 {
-#if ENABLE_FEATURE_VI_YANKMARK
 #define cur_line edit_file__cur_line
-#endif
 	char c;
 	editing = 1;	// 0 = exit, 1 = one file, 2 = multiple files
 	if (rawmode()) {
@@ -284,17 +278,15 @@ static void edit_file(char *fn)
 		exit(5);
 	}
 	createScreen();
-#if !defined(__UCSD__) && defined(VI_ROW_SUMS)
+#ifndef __UCSD__
 	scroll_ok = getenv("VI_NOSCROLL") == NULL;	// (the Linux build, to test the scrolling)
 #endif
 	init_text_buffer(fn);
 
-#if ENABLE_FEATURE_VI_YANKMARK
 	YDreg = 26;			// default Yank/Delete reg
 	Ureg = 27;			// hold orig line for "U" cmd
 	mark[26] = mark[27] = text;	// init "previous context"
 	markl[26] = markl[27] = 1;
-#endif
 
 	last_forward_char = last_input_char = '\0';
 	crow = 0;
@@ -306,12 +298,10 @@ static void edit_file(char *fn)
 	cmd_mode = CMODE_COMMAND;
 	cmdcnt = 0;
 	c = '\0';
-#if ENABLE_FEATURE_VI_DOT_CMD
 	free(ioq_start);
 	ioq = ioq_start = NULL;
 	lmc_len = 0;
 	adding2q = 0;
-#endif
 
 #ifdef __UCSD__
 	if (hdr_line > 0) {	// where the file was left: as if NG had been typed, and the column
@@ -335,14 +325,11 @@ static void edit_file(char *fn)
 		refresh();
 		last_input_char = c = get_one_char();	// get a cmd from user
 		*status_buffer=0;
-#if ENABLE_FEATURE_VI_YANKMARK
 		// save a copy of the current line- for the 'U" command
 		if (begin_line(dot) != cur_line) {
 			cur_line = begin_line(dot);
 			text_yank(begin_line(dot), end_line(dot), Ureg);
 		}
-#endif
-#if ENABLE_FEATURE_VI_DOT_CMD
 		// These are commands that change text[].
 		// Remember the input for the "." command
 		if (!adding2q && ioq_start == NULL
@@ -350,7 +337,6 @@ static void edit_file(char *fn)
 		) {
 			start_new_cmd_q(c);
 		}
-#endif
 		do_cmd(c);		// execute the user command
 	}
 	//-------------------------------------------------------------------
@@ -552,7 +538,6 @@ char get_one_char(void)
 {
 	char c;
 
-#if ENABLE_FEATURE_VI_DOT_CMD
 	if (!adding2q) {
 		// we are not adding to the q.
 		// but, we may be reading from a q
@@ -579,9 +564,6 @@ char get_one_char(void)
 			last_modifying_cmd[lmc_len++] = c;
 		}
 	}
-#else
-	c = readit();		// get the users input
-#endif /* FEATURE_VI_DOT_CMD */
 	return c;
 }
 
