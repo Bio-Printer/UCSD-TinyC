@@ -393,7 +393,7 @@ void gen_objuse(char *name);
 #pragma segment PP
 int preprocess(char *src, char *out);
 #ifdef __TINYC__
-#pragma segment FIND
+#pragma segment DIRS	/* (with the library's dirs.c: one segment) */
 int fileunit(char *path);
 int findfile(char *name, char *alt, int from, char *path, int *unit);
 #endif

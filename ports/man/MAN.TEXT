@@ -299,6 +299,8 @@ DESCRIPTION
     inserting and typing over, Delete and Backspace delete, ESC clears the line.
 COMMANDS (upper or lower case)
     CD [#n | n | VOL | *]      the prefix volume; CD alone shows it
+    CD PATH                    a sub-volume (CD WORK:/A/B, CD A, CD ..): names
+                               without a volume are in it, in programs too
     DIR [/E] [VOL: | #n:][PATTERN]  files (* or = any characters, ? any one);
                                /E: first block, bytes in the last, unused areas
     TYPE [VOL: | #n:]NAME      a text file on the console (wildcards: each one)
@@ -308,6 +310,8 @@ COMMANDS (upper or lower case)
     COPY SRC DEST              copy (DEST a volume or, for one file, a name)
     MOVE SRC DEST              copy, then SRC goes
     RENAME [VOL: | #n:]NAME NEW   one file's new name
+    MKDIR NAME [BLOCKS]        a sub-volume: a data file (100 blocks) that
+                               holds a volume of its own (77 files)
     MEM                        the shell's free memory
     BYE                        back to the Command: prompt
 REDIRECTION AND PIPES
@@ -319,11 +323,18 @@ REDIRECTION AND PIPES
     This works for the shell's own commands and for programs whose main takes
     arguments (every program on TOOLS:).  The files of a pipe are
     #4:PIPE1.TEXT and PIPE2.TEXT; they go when it ends.
+SUB-VOLUMES
+    A sub-volume is a data file whose blocks 2..5 are a directory.  Its files
+    are VOL:A/NAME or VOL:/A/NAME, and they nest (VOL:/A/B/NAME); a name
+    without a volume is on the path (CD).  Every program that opens files with
+    fopen takes such paths; DIR, TYPE, DELETE and WHEREIS take VOL:/A/PATTERN.
+    COPY, MOVE, RENAME and wildcards of GREP, LC, WC do not yet.
 KEYS WHILE A PROGRAM RUNS (emulator 2.06)
     `         the break key: stops a program that is not reading keys
     ^S  ^Q    stop and start the console output
 EXAMPLES
     DIR #5:= >LIST.TEXT        GREP int *.C | MORE        CAT A.C B.C >ALL.TEXT
+    MKDIR #5:WORK 300          CD #5:/WORK                CAT X.C >WORK/X.C
 SEE ALSO
     MAN GREP, CAT, LESS
 

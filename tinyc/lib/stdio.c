@@ -98,9 +98,43 @@ int __istext(char *name)
     return s[0] == '.' && (s[1] | 32) == 't' && (s[2] | 32) == 'e' && (s[3] | 32) == 'x' && (s[4] | 32) == 't';
 }
 
+/* the shell's path (CD into a sub-volume, dirs.c): "" none */
+char __svpath[64];
+#pragma segment DIRS
+int __svopen(FILE *f, char *name, char *mode);
+int __svclose(FILE *f);
+int __svremove(char *path);
+#pragma segment MAIN
+
+/* a path (a / in it), or a name on the shell's path: dirs.c's sub-volumes */
+static int svname(char *name)
+{
+    return strchr(name, '/') || (__svpath[0] && !strchr(name, ':') && name[0] != '#');
+}
+
 int __blockio(FILE *f, int nblocks, int block, int doread)
 {
     int n;
+    int *r;
+    if (f->flags & __F_SUB) {           /* in a sub-volume: the disk's blocks, within the file's */
+        r = (int *)f->fib;
+        n = (doread ? r[3] : r[2]) - block;
+        if (n > nblocks)
+            n = nblocks;
+        if (n <= 0)
+            return 0;
+        if (doread)
+            __cspv(5, r[0], f->buf, 0, n * 512, r[1] + block, 0);     /* UNITREAD */
+        else
+            __cspv(6, r[0], f->buf, 0, n * 512, r[1] + block, 0);     /* UNITWRITE */
+        if (__cspi(34) != 0) {
+            f->flags = f->flags | __F_ERR;
+            return 0;
+        }
+        if (!doread && block + n > r[3])
+            r[3] = block + n;
+        return n;
+    }
     n = __cxp0i(28, f->fib, f->buf, 0, nblocks, block, doread, 0, 0);
     if (__cspi(34) != 0)
         f->flags = f->flags | __F_ERR;
@@ -146,6 +180,7 @@ FILE *fopen(char *name, char *mode)
     char title[32];
     int i;
     int old;
+    int ok;
     int n;
     for (i = 3; i < FOPEN_MAX + 3; i++)
         if (__files[i].flags == 0)
@@ -177,11 +212,17 @@ FILE *fopen(char *name, char *mode)
         f->flags = 0;
         return NULL;
     }
-    __ptitle(name, title);
-    __cxp0v(3, f->fib, 0, -1);                  /* FINIT(fib, NIL, untyped) */
     old = mode[0] == 'r' || mode[0] == 'a';
-    __cxp0v(5, f->fib, title, old, 0);          /* FOPEN */
-    if (__cspi(34) != 0) {
+    if (svname(name)) {
+        f->flags = f->flags | __F_SUB;
+        ok = __svopen(f, name, mode);
+    } else {
+        __ptitle(name, title);
+        __cxp0v(3, f->fib, 0, -1);              /* FINIT(fib, NIL, untyped) */
+        __cxp0v(5, f->fib, title, old, 0);      /* FOPEN */
+        ok = __cspi(34) == 0;
+    }
+    if (!ok) {
         free(f->buf);
         free(f->fib);
         f->flags = 0;
@@ -418,9 +459,14 @@ int fclose(FILE *f)
         return 0;
     }
     r = __flushbuf(f);
-    __cxp0v(6, f->fib, (f->flags & __F_NEW) ? 1 : 0);   /* FCLOSE, LOCK new files */
-    if (__cspi(34) != 0)
-        r = EOF;
+    if (f->flags & __F_SUB) {
+        if (!(f->flags & __F_ERR) && !__svclose(f))     /* its directory entry */
+            r = EOF;
+    } else {
+        __cxp0v(6, f->fib, (f->flags & __F_NEW) ? 1 : 0);   /* FCLOSE, LOCK new files */
+        if (__cspi(34) != 0)
+            r = EOF;
+    }
     free(f->buf);
     free(f->fib);
     f->flags = 0;
@@ -431,6 +477,8 @@ int remove(char *name)
 {
     char fib[80];
     char title[32];
+    if (svname(name))
+        return __svremove(name);
     __ptitle(name, title);
     __cxp0v(3, fib, 0, -1);
     __cxp0v(5, fib, title, 1, 0);

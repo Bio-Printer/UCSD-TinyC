@@ -14,6 +14,7 @@
 #include <fcntl.h>
 
 extern char __conout[80];
+extern char __svpath[64];               /* the shell's path (stdio.c, dirs.c, pexec.c) */
 extern int __conlen;
 extern char __conin[130];
 extern int __coninlen;

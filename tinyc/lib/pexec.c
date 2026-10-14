@@ -42,6 +42,13 @@ int __callmain(void)
         exit(1);
     memcpy(line, pl + 1, n);
     line[n] = 0;
+    for (i = 0; i < n && line[i] != PX_PATHSEP; i++)
+        ;
+    if (i < n) {                        /* the shell's path after the arguments */
+        line[i] = 0;
+        strncpy(__svpath, line + i + 1, sizeof __svpath - 1);
+        n = i;
+    }
     argc = 0;
     if (n == 0)
         argv[argc++] = line;            /* not started by pexec: argv[0] is "" */
@@ -131,9 +138,16 @@ int pexec(char *cmd)
             self = buf[13 * i];
     if (self < 0)
         return -3;
+    i = __svpath[0] ? strlen(__svpath) + 1 : 0;   /* and the shell's path (dirs.c) */
+    if (len + i > 80)
+        return -4;
     pl = (unsigned char *)__osvaraddr(PX_PL);   /* the command line, for main's argv */
-    pl[0] = len;
+    pl[0] = len + i;
     memcpy(pl + 1, cmd, len);
+    if (i) {
+        pl[1 + len] = PX_PATHSEP;
+        memcpy(pl + 2 + len, __svpath, i - 1);
+    }
     e = SYSCOM->expansion;
     e[6] = PX_ARGS;
     e[7] = __pxsum(pl);

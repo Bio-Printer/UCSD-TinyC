@@ -85,7 +85,8 @@ struct syscomrec {
    argv[0] is ""). Nothing of this program stays in memory while NAME
    runs. Needs the operating system of BIGGY 1.10 or later. Returns only
    when NAME cannot be run: -1 no such code file, -2 not linked, -3 this
-   program's own code file not found, -4 cmd longer than 80 characters. */
+   program's own code file not found, -4 cmd longer than 80 characters
+   (with the shell's path, when it has one: dirs.h). */
 int pexec(char *cmd);
 
 /* SYSCOM->expansion[0]: the operating system's pexec state */
@@ -97,6 +98,7 @@ int pexec(char *cmd);
    two programs), [7] its checksum (__pxsum) */
 #define PX_ARGS  25604
 #define PX_PL    70
+#define PX_PATHSEP 30                   /* in PL after the arguments: the shell's path (CD) follows */
 int __pxsum(unsigned char *s);
 
 /* SYSCOM->expansion[1]: a program that wants the PC's Page Up, Page Down,

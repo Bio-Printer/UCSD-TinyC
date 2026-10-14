@@ -1394,14 +1394,15 @@ int preprocess(char *src, char *out)
 }
 
 #ifdef __TINYC__
-#pragma segment FIND
+#pragma segment DIRS
 /* ---- which disk a file is on (P-System) ----
    A file named without a volume: every disk unit's directory is read.
    On one disk only: that one.  On several: the one on the disk of the
    file that names it (the including file, the @batch file), else the one
    on the prefix volume (the Filer's Prefix, the shell's CD), else none:
-   the volumes are listed and the name must say which.  Code segment FIND:
-   in memory only while it looks. */
+   the volumes are listed and the name must say which.  Code segment DIRS
+   (with the library's directory functions, dirs.c: CC has as many
+   segments as II.0 allows): in memory only while it looks. */
 
 /* the disk units: 4, 5, 9..14 */
 #define FDUNIT(k) ((k) < 2 ? 4 + (k) : 7 + (k))

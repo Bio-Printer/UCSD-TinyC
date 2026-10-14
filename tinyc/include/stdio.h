@@ -34,6 +34,7 @@
 #define __F_ERR   32
 #define __F_DIRTY 64
 #define __F_NEW   128
+#define __F_SUB   256              /* a file in a sub-volume (dirs.c): fib is its record */
 
 typedef struct __file {
     int flags;

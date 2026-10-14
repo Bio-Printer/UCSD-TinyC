@@ -26,7 +26,7 @@ TCSRC:  40 files  (a UCSD directory holds 77)
   ASSERT.C             4  library: <assert.h>
   CONIO.C              4  library: <conio.h>
   CTYPE.C              4  library: <ctype.h>
-  DIRS.C               8  library: units[], dirread, dirwrite, volunit, wildmatch ...: disks and directories (<psys.h>)
+  DIRS.C              22  library: units[], dirread, dirwrite, volunit, wildmatch ...: disks and directories (<psys.h>)
   FLTFMT.C             8  library: printf's %f %e %g (linked only when floats are used)
   IO.C                 6  library: <io.h>
   MATH.C               6  library: <math.h>
@@ -34,7 +34,7 @@ TCSRC:  40 files  (a UCSD directory holds 77)
   PEXEC.C             12  library: pexec, main(argc, argv) (<psys.h>)
   REDIRECT.C           6  library: freopen; >NAME and <NAME on the command line
   SETJMP.C             8  library: <setjmp.h>
-  STDIO.C             46  library: <stdio.h>
+  STDIO.C             48  library: <stdio.h>
   STDIOBLK.C          10  library: <stdioblk.h>
   STDLIB.C            14  library: <stdlib.h>
   STRING.C             8  library: <string.h>

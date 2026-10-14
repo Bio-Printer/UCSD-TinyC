@@ -2,32 +2,32 @@ TCEXTRA:  29 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
-  README.TEXT         10  what is on this volume
+  README.TEXT         12  what is on this volume
   DEMOS.TEXT           4  X TINY-C:CC, @DEMOS: rebuilds every program here
   BOXES.C              4  conio.h: clear the screen, draw boxes with gotoxy ...
-  BOXES.CODE           4    (ready to run)
+  BOXES.CODE           7    (ready to run)
   CALC.C               6  a calculator: recursive descent over + - * / % ( ) ...
-  CALC.CODE           14    (ready to run)
+  CALC.CODE           17    (ready to run)
   DEMO.C               4  the smallest program: no stdio.h (much less to link)
-  DEMO.CODE            6    (ready to run)
+  DEMO.CODE            9    (ready to run)
   GUESS.C              4  guess the number: rand, scanf
-  GUESS.CODE          16    (ready to run)
+  GUESS.CODE          18    (ready to run)
   HANOI.C              4  Towers of Hanoi, recursion
-  HANOI.CODE          11    (ready to run)
+  HANOI.CODE          13    (ready to run)
   PI.C                 6  Archimedes' method with doubles (P-Code mode only)
-  PI.CODE             13    (ready to run)
+  PI.CODE             16    (ready to run)
   QUEENS.C             4  Eight queens: count all solutions, print the first
-  QUEENS.CODE         11    (ready to run)
+  QUEENS.CODE         13    (ready to run)
   SIEVE.C              4  Sieve of Eratosthenes: primes below 2000
-  SIEVE.CODE          11    (ready to run)
+  SIEVE.CODE          13    (ready to run)
   CMPCODE.C            6  compare two code files byte by byte (Tiny-C Verify)
-  CMPCODE.CODE        15    (ready to run)
+  CMPCODE.CODE        21    (ready to run)
   ARGS.C               6  main(argc, argv): does what its arguments say (run it ...
-  ARGS.CODE           16    (ready to run)
+  ARGS.CODE           22    (ready to run)
   MEMFREE.C            4  prints the memory free to it (stack to heap) and exits ...
-  MEMFREE.CODE        10    (ready to run)
+  MEMFREE.CODE        13    (ready to run)
   MEMMARK.C            6  the least free memory of another program
-  MEMMARK.CODE        14    (ready to run)
-  SHELL.C             68  a mini-shell: runs programs with pexec() and comes back
-  SHELL.CODE          43    (ready to run)
+  MEMMARK.CODE        20    (ready to run)
+  SHELL.C             80  a mini-shell: runs programs with pexec() and comes back
+  SHELL.CODE          51    (ready to run)
   FILES.TEXT           6  this list

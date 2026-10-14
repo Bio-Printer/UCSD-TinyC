@@ -158,6 +158,14 @@ and you choose with one key (no RETURN).  Its own commands:
   CD #5 (or CD 5, CD VOL, CD *)  the prefix becomes unit 5's volume, as
         the Filer's Prefix: later commands find their files there; CD
         alone shows it.
+  CD PATH   a sub-volume (CD #5:/A, CD A/B, CD .., CD VOL: leaves it):
+        names without a volume are in it, for the shell and its programs.
+  MKDIR NAME [BLOCKS]   a sub-volume: a data file NAME (100 blocks unless
+        BLOCKS) whose blocks 2..5 are a directory of its own (77 files).
+        Its files are VOL:NAME/FILE or VOL:/NAME/FILE, and sub-volumes
+        nest (VOL:/A/B/FILE).  Programs open such paths like any name;
+        DIR, TYPE, DELETE and WHEREIS take them too (DIR #5:/A/*.C), not
+        yet COPY, MOVE, RENAME, nor the wildcards of GREP, LC and WC.
   DIR [/E] [VOL: or #5:][PATTERN]   the files of the prefix volume (or
         VOL:, or unit 5) whose names match: * or = any characters, ? any
         one (DIR *.C, DIR #9:, DIR TOOLSRC:VI*.C); ESC stops a long list.

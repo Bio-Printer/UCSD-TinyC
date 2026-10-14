@@ -39,7 +39,7 @@ int openon(int u)
     int i;
     for (i = 0; i < FOPEN_MAX + 3; i++)
         if (__files[i].flags && !(__files[i].flags & __F_CON) && __files[i].fib
-         && ((int *)__files[i].fib)[7] == u)     /* FUNIT */
+         && ((int *)__files[i].fib)[__files[i].flags & __F_SUB ? 0 : 7] == u)  /* FUNIT (in a sub-volume: its record's unit) */
             return 1;
     return 0;
 }
