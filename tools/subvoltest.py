@@ -11,6 +11,8 @@ shell's MKDIR, CD PATH, DIR, TYPE, DELETE on paths), on the P-System.
   CD B, DIR, CD .., CD ..              down and up again: the prefix volume
   DELETE #5:/A/LIST.TEXT               a file in a sub-volume goes
   CD #5:/NONE, COPY on a path          refused
+  MKDIR #5:C, #5:C/D; DIR c, CD c, CD d (names on the prefix, on the path); RMDIR: refused for the
+  path the shell is in, a sub-volume with files and a file; RMDIR d, RMDIR c
 then on the host: A and B are data files whose blocks 2..5 hold their directories, and B's COPY.TEXT
 is the text of LIST.TEXT.
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
@@ -55,7 +57,12 @@ def main():
                       ('type b/copy.text', 'blocks used'), ('dir', 'blocks used'),
                       ('cd B', 'path is'), ('dir', 'blocks used'), ('cd ..', 'path is'), ('cd ..', 'prefix is'),
                       ('delete #5:/A/LIST.TEXT', 'deleted'), ('dir #5:A/', 'blocks used'),
-                      ('cd #5:/NONE', 'no sub-volume'), ('copy #5:A/B/COPY.TEXT #9:', 'not yet')):
+                      ('cd #5:/NONE', 'no sub-volume'), ('copy #5:A/B/COPY.TEXT #9:', 'not yet'),
+                      ('mkdir #5:C 30', 'a sub-volume'), ('mkdir #5:C/D 10', 'a sub-volume'),
+                      ('dir c', 'blocks used'), ('cd c', 'path is'), ('cd d', 'path is'),
+                      ('rmdir #5:/C/D', 'CD .. first'), ('cd ..', 'path is'), ('rmdir #5:C', 'not empty'),
+                      ('rmdir d', 'removed'), ('cd ..', 'prefix is'), ('rmdir #5:SHELL.CODE', 'not a sub-volume'),
+                      ('rmdir c', 'removed'), ('dir #5:C', 'blocks used')):
         s.append('TYPE "%s\\r"' % cmd)
         if wait:
             s.append('WAIT "%s"' % wait)
@@ -90,6 +97,17 @@ def main():
                ('CD B, CD .., CD ..: down, up, the volume again', 'path is WORK:/A/B (#5)' in tr and 'prefix is WORK: (#5)' in tr),
                ('DELETE #5:/A/LIST.TEXT: gone (A holds %s)' % ' '.join(names_a), 'WORK:/A/LIST.TEXT deleted' in tr and names_a == ['B']),
                ('CD to no sub-volume, COPY on a path: refused', 'cd: no sub-volume #5:/NONE' in tr and 'copy: not yet' in tr)]
+    names = sorted(e[3] for e in ucsdvol.Volume(img).entries)
+    dirc = seg('shell> dir c\n', 'shell> ')
+    checks += [('DIR c (a sub-volume on the prefix): what is in it, D marked Sub-volume',
+                'WORK:/C/ (#5)' in dirc and re.search(r'^D +10 .*Sub-volume', dirc, re.M) is not None),
+               ('DIR #5:A/: B marked Sub-volume', re.search(r'^B +60 .*Sub-volume', tr, re.M) is not None),
+               ('CD c, CD d: into sub-volumes by their names', 'path is WORK:/C/D (#5)' in tr),
+               ('RMDIR of the path the shell is in: refused', "rmdir: the shell's path is in #5:/C/D" in tr),
+               ('RMDIR of a sub-volume with files: refused', 'rmdir: #5:C is not empty: 1 file' in tr),
+               ('RMDIR of a file: refused', 'rmdir: #5:SHELL.CODE is not a sub-volume' in tr),
+               ('RMDIR d, RMDIR c: gone (#5: holds %s)' % ' '.join(names),
+                'd removed' in tr and 'c removed' in tr and 'C' not in names and 'A' in names)]
     bad = 0
     for what, good in checks:
         print('%-4s  %s' % ('ok' if good else 'BAD', what))

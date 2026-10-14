@@ -8,13 +8,14 @@
                              the system volume), as the Filer's Prefix: the
                              files of later commands are there when they
                              name no volume.  CD alone: what it is.
-     CD PATH                 the path: a sub-volume (CD WORK:/A/B, CD A,
+     CD PATH                 the path: a sub-volume (CD WORK:/A/B, CD A
+                             -- a sub-volume A here, else the volume A --,
                              CD .., CD VOL: leaves it): names without a
                              volume (in the shell and in the programs it
                              runs) are in it, and the prefix is its volume
      DIR [/E] [VOL: | #n:][PAT]   the files of the prefix volume (or the
                              path), or of VOL, unit n or a sub-volume
-                             (DIR A/, DIR #5:/A/B/*.C), whose names match PAT: * or =
+                             (DIR A, DIR #5:/A/B/*.C), whose names match PAT: * or =
                              any characters, ? any one (DIR #5, DIR *.C,
                              DIR TOOLSRC:VI*.C, DIR #9:?.TEXT); /E adds
                              each file's first block and the bytes in its
@@ -40,7 +41,8 @@
                              (77 files); its files are VOL:NAME/FILE or
                              VOL:/NAME/FILE, and sub-volumes nest
                              (VOL:/A/B/FILE).  Programs open such paths
-                             like any file name
+                             like any file name; DIR marks them Sub-volume
+     RMDIR NAME              an empty sub-volume goes
      MEM                     the shell's free memory
      BYE                     back to the Command: prompt
    Redirection and pipes: COMMAND >FILE puts what the command writes into FILE
@@ -356,14 +358,15 @@ void cd(char *arg)
     int u, n;
     if (*arg) {
         n = 0;
-        if (ispath(arg) || (arg[0] == '.' && arg[1] == '.')) {
+        if (ispath(arg) || (arg[0] == '.' && arg[1] == '.')
+         || (!strchr(arg, ':') && arg[0] != '#' && arg[0] != '*' && !isdigit(arg[0]))) {   /* (CD A: a sub-volume A, else the volume A) */
             n = canon(arg, path);
             if (!n && (strchr(arg, '/') || arg[0] == '.')) {
                 printf("cd: no sub-volume %s\n", arg);
                 return;
             }
         }
-        if (n) {                                /* (no sub-volume NAME on the path: the volume NAME) */
+        if (n) {
             n = strlen(path);
             strcpy(sub, path[n - 1] == ':' ? "" : path);        /* (VOL: again: no path) */
             *strchr(path, ':') = 0;
@@ -493,8 +496,27 @@ void space(int *dir, int *used, int *unused, int *largest)
     }
 }
 
-/* entry i: name, blocks, date, (ext: first block, bytes in the last block,) kind */
-void fileline(int *dir, int i, int ext)
+/* entry i of the directory at block base of unit u: a sub-volume (a data
+   file whose blocks 2..5 are a directory, as pathdir takes them) */
+int issub(int u, int base, int *dir, int i)
+{
+    int blk[256];
+    unsigned char *d;
+    int *e;
+    e = dir + 13 * i;
+    if ((e[2] & 15) != 5 && (e[2] & 15) != 0)
+        return 0;
+    __cspv(5, u, blk, 0, 512, base + e[0] + 2, 0);    /* UNITREAD: its first directory block */
+    if (__cspi(34) != 0)
+        return 0;
+    d = (unsigned char *)blk;
+    return d[6] >= 1 && d[6] <= 7 && blk[0] == 0 && blk[1] == 6 && blk[7] >= 6
+        && blk[7] <= e[1] - e[0] && blk[8] >= 0 && blk[8] <= MAXDIR;
+}
+
+/* entry i: name, blocks, date, (ext: first block, bytes in the last block,) kind
+   (sub: "Sub-volume") */
+void fileline(int *dir, int i, int ext, int sub)
 {
     char name[16];
     int *e;
@@ -509,7 +531,7 @@ void fileline(int *dir, int i, int ext)
         printf("%2d-%s-%02d", (e[12] >> 4) & 31, months[m <= 12 ? m : 0], (e[12] >> 9) & 127);
     if (ext)
         printf("  %5d  %4d", e[0], e[11]);
-    printf("  %s\n", kinds[e[2] & 7]);
+    printf("  %s\n", sub ? "Sub-volume" : kinds[e[2] & 7]);
 }
 
 /* /E among a command's words (before or after the others): 1, and it is
@@ -538,6 +560,7 @@ void dir(char *arg)
 {
     int dir[1024];
     char vol[80];
+    char sub[96];
     char name[16];
     char *pat;
     int u, i, nf, shown, used, largest, unused, lines, ext, last, next;
@@ -545,6 +568,14 @@ void dir(char *arg)
     u = target("dir", arg, dir, vol, &pat);
     if (!u)
         return;
+    if (*pat && !wild(pat) && (i = findname(dir, pat)) != 0 && issub(u, tbase, dir, i)
+     && strlen(arg) < sizeof sub - 2) {
+        strcpy(sub, arg);                       /* DIR A, A a sub-volume: what is in it */
+        strcat(sub, "/");
+        u = target("dir", sub, dir, vol, &pat);
+        if (!u)
+            return;
+    }
     nf = dir[8];
     printf("%s (#%d)\n", vol, u);
     lines = 1;
@@ -567,7 +598,7 @@ void dir(char *arg)
         direntname(dir, i, name);
         if (*pat && !wildmatch(pat, name))
             continue;
-        fileline(dir, i, ext);
+        fileline(dir, i, ext, issub(u, tbase, dir, i));
         shown++;
         if (!more(&lines))
             return;
@@ -612,7 +643,7 @@ void whereis(char *arg)
             if (*pat && !wildmatch(pat, name))
                 continue;
             printf("#%-2d %-8s ", u, vol);
-            fileline(dir, i, 0);
+            fileline(dir, i, 0, 0);
             here++;
             if (!more(&lines))
                 return;
@@ -1092,6 +1123,41 @@ void mkdir(char *arg)
     printf("%s: a sub-volume of %d blocks\n", arg, n);
 }
 
+/* RMDIR NAME: an empty sub-volume goes (not the path the shell is in) */
+void rmdir(char *arg)
+{
+    int dir[1024];
+    int sub[1024];
+    char leaf[16];
+    char full[80];
+    int u, base, i, n;
+    if (!*arg) {
+        printf("rmdir: which sub-volume? (RMDIR WORK, RMDIR #5:/A/B)\n");
+        return;
+    }
+    if (!pathdir(arg, dir, &u, &base, leaf) || !leaf[0] || (i = findname(dir, leaf)) == 0) {
+        printf("rmdir: no %s\n", arg);
+        return;
+    }
+    if (!issub(u, base, dir, i) || !dirreadat(u, base + dir[13 * i], sub)) {
+        printf("rmdir: %s is not a sub-volume (DELETE takes a file)\n", arg);
+        return;
+    }
+    if (sub[8] > 0) {
+        printf("rmdir: %s is not empty: %d file%s (DELETE %s/* first)\n", arg, sub[8], sub[8] == 1 ? "" : "s", arg);
+        return;
+    }
+    n = canon(arg, full) ? strlen(full) : 0;
+    if (n > 0 && strncmp(__svpath, full, n) == 0 && (__svpath[n] == 0 || __svpath[n] == '/')) {
+        printf("rmdir: the shell's path is in %s (CD .. first)\n", arg);
+        return;
+    }
+    if (remove(arg) == 0)
+        printf("%s removed\n", arg);
+    else
+        printf("rmdir: cannot remove %s\n", arg);
+}
+
 /* run NAME (with its arguments ARGS); returns only when it cannot */
 void run(char *name, char *args)
 {
@@ -1139,7 +1205,7 @@ void run(char *name, char *args)
 
 /* the shell's own commands */
 char *builtins[] = { "cd", "dir", "type", "delete", "del", "whereis", "volumes", "vols", "copy", "move",
-                     "rename", "ren", "mkdir", "mem", 0 };
+                     "rename", "ren", "mkdir", "rmdir", "mem", 0 };
 
 int isbuiltin(char *name)
 {
@@ -1201,6 +1267,10 @@ void builtin(char *name, char *args)
     }
     if (namesame(name, "mkdir")) {
         mkdir(args);
+        return;
+    }
+    if (namesame(name, "rmdir")) {
+        rmdir(args);
         return;
     }
     if (namesame(name, "mem")) {

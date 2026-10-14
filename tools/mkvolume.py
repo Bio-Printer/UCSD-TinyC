@@ -160,12 +160,15 @@ and you choose with one key (no RETURN).  Its own commands:
         alone shows it.
   CD PATH   a sub-volume (CD #5:/A, CD A/B, CD .., CD VOL: leaves it):
         names without a volume are in it, for the shell and its programs.
+        CD A: the sub-volume A where you are, else the volume A.
   MKDIR NAME [BLOCKS]   a sub-volume: a data file NAME (100 blocks unless
         BLOCKS) whose blocks 2..5 are a directory of its own (77 files).
         Its files are VOL:NAME/FILE or VOL:/NAME/FILE, and sub-volumes
         nest (VOL:/A/B/FILE).  Programs open such paths like any name;
         DIR, TYPE, DELETE and WHEREIS take them too (DIR #5:/A/*.C), not
         yet COPY, MOVE, RENAME, nor the wildcards of GREP, LC and WC.
+        DIR A lists what is in A; DIR marks sub-volumes "Sub-volume".
+  RMDIR NAME   an empty sub-volume goes (not one the shell's path is in).
   DIR [/E] [VOL: or #5:][PATTERN]   the files of the prefix volume (or
         VOL:, or unit 5) whose names match: * or = any characters, ? any
         one (DIR *.C, DIR #9:, DIR TOOLSRC:VI*.C); ESC stops a long list.

@@ -301,6 +301,7 @@ COMMANDS (upper or lower case)
     CD [#n | n | VOL | *]      the prefix volume; CD alone shows it
     CD PATH                    a sub-volume (CD WORK:/A/B, CD A, CD ..): names
                                without a volume are in it, in programs too
+                               (CD A: the sub-volume A here, else volume A)
     DIR [/E] [VOL: | #n:][PATTERN]  files (* or = any characters, ? any one);
                                /E: first block, bytes in the last, unused areas
     TYPE [VOL: | #n:]NAME      a text file on the console (wildcards: each one)
@@ -312,6 +313,7 @@ COMMANDS (upper or lower case)
     RENAME [VOL: | #n:]NAME NEW   one file's new name
     MKDIR NAME [BLOCKS]        a sub-volume: a data file (100 blocks) that
                                holds a volume of its own (77 files)
+    RMDIR NAME                 an empty sub-volume goes (not the shell's path)
     MEM                        the shell's free memory
     BYE                        back to the Command: prompt
 REDIRECTION AND PIPES
@@ -328,6 +330,7 @@ SUB-VOLUMES
     are VOL:A/NAME or VOL:/A/NAME, and they nest (VOL:/A/B/NAME); a name
     without a volume is on the path (CD).  Every program that opens files with
     fopen takes such paths; DIR, TYPE, DELETE and WHEREIS take VOL:/A/PATTERN.
+    DIR A lists what is in sub-volume A; DIR marks sub-volumes "Sub-volume".
     COPY, MOVE, RENAME and wildcards of GREP, LC, WC do not yet.
 KEYS WHILE A PROGRAM RUNS (emulator 2.06)
     `         the break key: stops a program that is not reading keys
