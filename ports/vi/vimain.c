@@ -40,14 +40,6 @@ void *xstrdup(const char *s)
 	exit(66);
 }
 
-void *xstrndup(const char *s, size_t n)
-{
-	void *ptr = strndup(s, n);
-	if (ptr) return ptr;
-	perror("strndup");
-	exit(67);
-}
-
 void *xrealloc(void *old, size_t size)
 {
 	void *ptr = realloc(old, size);

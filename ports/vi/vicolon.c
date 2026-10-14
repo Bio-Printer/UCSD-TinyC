@@ -13,8 +13,8 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 {
 	int st;
 	char *q;
+	char *f;
 	char c;
-	char *pat;
 
 	*addr = -1;			// assume no addr
 	if (*p == '.') {	// the current line
@@ -33,19 +33,19 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 				*addr = markl[(unsigned char) c];
 		}
 	}
-	else if (*p == '/') {	// a search pattern
+	else if (*p == '/') {	// a search pattern: ended where it is, for the search (no copy)
 		q = strchrnul(++p, '/');
-		pat = xstrndup(p, q - p); // save copy of pattern
+		c = *q;
+		*q = '\0';
+		f = char_search(dot, p, FORWARD, FULL);
+		st = f ? ABSLINE(f) : pg_find_line(p);	// (in the window, else further on)
+		if (st)
+			*addr = st;
+		if (!*q)
+			*q = c;	// (the command line again, unless a message took its buffer)
 		p = q;
 		if (*p == '/')
 			p++;
-		q = char_search(dot, pat, FORWARD, FULL);
-		if (q != NULL) {
-			*addr = ABSLINE(q);
-		}
-		else if (pg_find_line(pat))
-			*addr = pg_find_line(pat);
-		free(pat);
 	}
 	else if (*p == '$') {	// the last line in file
 		p++;

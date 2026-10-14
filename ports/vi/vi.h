@@ -349,7 +349,6 @@ extern struct globals G;
 void *xmalloc(size_t size);
 void *xzalloc(size_t size);
 void *xstrdup(const char *s);
-void *xstrndup(const char *s, size_t n);
 void *xrealloc(void *old, size_t size);
 char* last_char_is(const char *s, int c);
 int bb_putchar(int ch);

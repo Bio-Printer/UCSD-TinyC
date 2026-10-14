@@ -27,18 +27,6 @@ void *xstrdup(const char *s)
 	return strcpy(xmalloc(strlen(s) + 1), s);
 }
 
-void *xstrndup(const char *s, size_t n)
-{
-	char *p;
-	size_t l;
-	for (l = 0; l < n && s[l]; l++)
-		;
-	p = xmalloc(l + 1);
-	memcpy(p, s, l);
-	p[l] = 0;
-	return p;
-}
-
 void *xrealloc(void *old, size_t size)
 {
 	void *ptr = realloc(old, size);
