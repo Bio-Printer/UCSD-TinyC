@@ -39,8 +39,7 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 		*q = '\0';
 		f = char_search(dot, p, FORWARD, FULL);
 		st = f ? ABSLINE(f) : pg_find_line(p);	// (in the window, else further on)
-		if (st)
-			*addr = st;
+		*addr = st ? st : -2;	// (-2: not found, the command is refused)
 		if (!*q)
 			*q = c;	// (the command line again, unless a message took its buffer)
 		p = q;
@@ -308,6 +307,10 @@ void colon1(char *buf)
 
 	// look for optional address(es)  :.  :1  :1,9   :'q,'a   :%
 	buf = get_address(buf, &b, &e);
+	if (b == -2 || e == -2) {
+		status_line_bold("Pattern not found");
+		return;
+	}
 	if (b >= 0 && !pg_hold(b, e >= 0 ? e : b)) {
 		status_line_bold("Lines %d to %d do not fit in memory", b, e >= 0 ? e : b);
 		return;
