@@ -8,10 +8,12 @@
                              the system volume), as the Filer's Prefix: the
                              files of later commands are there when they
                              name no volume.  CD alone: what it is.
-     DIR [VOL: | #n:][PAT]   the files of the prefix volume, or of VOL or
-                             unit n, whose names match PAT: * or = any
-                             characters, ? any one (DIR #5, DIR *.C,
-                             DIR TOOLSRC:VI*.C, DIR #9:?.TEXT)
+     DIR [/E] [VOL: | #n:][PAT]   the files of the prefix volume, or of
+                             VOL or unit n, whose names match PAT: * or =
+                             any characters, ? any one (DIR #5, DIR *.C,
+                             DIR TOOLSRC:VI*.C, DIR #9:?.TEXT); /E adds
+                             each file's first block and the bytes in its
+                             last block, and the unused areas
      TYPE [VOL: | #n:]NAME   a text file on the console (with wildcards:
                              each file that matches, under its name)
      DELETE [VOL: | #n:]PAT  the files that match (with wildcards it lists
@@ -440,8 +442,8 @@ void space(int *dir, int *used, int *unused, int *largest)
     }
 }
 
-/* entry i: name, blocks, date, kind */
-void fileline(int *dir, int i)
+/* entry i: name, blocks, date, (ext: first block, bytes in the last block,) kind */
+void fileline(int *dir, int i, int ext)
 {
     char name[16];
     int *e;
@@ -449,33 +451,72 @@ void fileline(int *dir, int i)
     e = dir + 13 * i;
     dirname(dir, i, name);
     m = e[12] & 15;
+    printf("%-15s %5d  ", name, e[1] - e[0]);
     if (m == 0)                         /* no date */
-        printf("%-15s %5d             %s\n", name, e[1] - e[0], kinds[e[2] & 7]);
+        printf("         ");
     else
-        printf("%-15s %5d  %2d-%s-%02d  %s\n", name, e[1] - e[0], (e[12] >> 4) & 31,
-               months[m <= 12 ? m : 0], (e[12] >> 9) & 127, kinds[e[2] & 7]);
+        printf("%2d-%s-%02d", (e[12] >> 4) & 31, months[m <= 12 ? m : 0], (e[12] >> 9) & 127);
+    if (ext)
+        printf("  %5d  %4d", e[0], e[11]);
+    printf("  %s\n", kinds[e[2] & 7]);
 }
 
-/* DIR [VOL: | #n:][PAT] */
+/* /E among a command's words (before or after the others): 1, and it is
+   taken out of arg */
+int optext(char *arg)
+{
+    char *p;
+    int n;
+    for (p = arg; (p = strchr(p, '/')) != NULL; p++)
+        if ((p == arg || p[-1] == ' ') && toupper(p[1]) == 'E' && (p[2] == 0 || p[2] == ' ')) {
+            memmove(p, p + 2, strlen(p + 2) + 1);
+            while (*arg == ' ')
+                memmove(arg, arg + 1, strlen(arg));
+            n = strlen(arg);
+            while (n > 0 && arg[n - 1] == ' ')
+                arg[--n] = 0;
+            return 1;
+        }
+    return 0;
+}
+
+/* DIR [/E] [VOL: | #n:][PAT]: /E (extended) adds each file's first block
+   and the bytes in its last block, and (no PAT) the unused areas between
+   the files, where they are */
 void dir(char *arg)
 {
     int dir[1024];
     char vol[20];
     char name[16];
     char *pat;
-    int u, i, nf, shown, used, largest, unused, lines;
+    int u, i, nf, shown, used, largest, unused, lines, ext, last, next;
+    ext = optext(arg);
     u = target("dir", arg, dir, vol, &pat);
     if (!u)
         return;
     nf = dir[8];
     printf("%s: (#%d)\n", vol, u);
     lines = 1;
+    if (ext) {
+        printf("File            Blocks  Date       Start  Last  Kind\n");
+        lines++;
+    }
     shown = 0;
-    for (i = 1; i <= nf; i++) {
+    last = dir[1];                      /* the directory's end */
+    for (i = 1; i <= nf + 1; i++) {
+        next = i <= nf ? dir[13 * i] : dir[7];
+        if (ext && !*pat && next > last) {          /* an unused area */
+            printf("< unused >      %5d             %5d\n", next - last, last);
+            if (!more(&lines))
+                return;
+        }
+        if (i > nf)
+            break;
+        last = dir[13 * i + 1];
         dirname(dir, i, name);
         if (*pat && !match(pat, name))
             continue;
-        fileline(dir, i);
+        fileline(dir, i, ext);
         shown++;
         if (!more(&lines))
             return;
@@ -518,7 +559,7 @@ void whereis(char *arg)
             if (*pat && !match(pat, name))
                 continue;
             printf("#%-2d %-8s ", u, vol);
-            fileline(dir, i);
+            fileline(dir, i, 0);
             here++;
             if (!more(&lines))
                 return;

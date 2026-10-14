@@ -158,9 +158,11 @@ and you choose with one key (no RETURN).  Its own commands:
   CD #5 (or CD 5, CD VOL, CD *)  the prefix becomes unit 5's volume, as
         the Filer's Prefix: later commands find their files there; CD
         alone shows it.
-  DIR [VOL: or #5:][PATTERN]     the files of the prefix volume (or VOL:,
-        or unit 5) whose names match: * or = any characters, ? any one
-        (DIR *.C, DIR #9:, DIR TOOLSRC:VI*.C); ESC stops a long list.
+  DIR [/E] [VOL: or #5:][PATTERN]   the files of the prefix volume (or
+        VOL:, or unit 5) whose names match: * or = any characters, ? any
+        one (DIR *.C, DIR #9:, DIR TOOLSRC:VI*.C); ESC stops a long list.
+        /E: each file's first block and bytes in its last block too, and
+        the unused areas between the files.
   TYPE [VOL: or #5:]NAME         a text file on the console; with
         wildcards each file that matches, under its name.
   DELETE (or DEL) [VOL: or #5:]PATTERN   deletes the files that match;
@@ -233,6 +235,7 @@ TOOLS = [
     ('DIFF', ['ports/diff/diff.c'], [], 'diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2'),
     ('WC', ['ports/wc/wc.c'], [], 'wc: WC [-clmwL] [FILE ...] lines, words and bytes'),
     ('LC', ['ports/lc/lc.c'], [], 'lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns'),
+    ('KRUNCH', ['ports/krunch/krunch.c'], [], 'krunch: KRUNCH [-y] [VOL: | #n] the files moved down, the free blocks in one area'),
     ('PATCH', ['ports/patch/patch.c'], [], 'patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]'),
     ('MAN', ['ports/man/man.c'], [], 'man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
@@ -341,6 +344,11 @@ LC      LC [-1xFsrSC] [VOL: | #n:][PATTERN ...]  from the shell: the file names
         across), -F marks CODE files, -s shows the sizes; one name to a line
         when the output goes to a file or a pipe.
 
+KRUNCH  KRUNCH [-y] [VOL: | #n]  from the shell: moves the files of a disk
+        down so that its unused blocks become one area at its end (the
+        Filer's K(runch); asks first unless -y).  Running code files
+        (SYSTEM.PASCAL, the shell) may move: KRUNCH tells the OS.
+
 PATCH   PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]  from the
         shell: applies a normal, unified or context diff (DIFF's, or the
         host's) to a file, finds hunks that moved and with 2 lines of fuzz,
@@ -395,6 +403,8 @@ DIFF.C  diff (two files compared, three output forms).
 WC.C    wc (lines, words, bytes).
 
 LC.C    lc (the file names of a disk in columns).
+
+KRUNCH.C  krunch (the files of a disk moved down, the free blocks in one area).
 
 PATCH.C patch (a diff applied to a file).
 

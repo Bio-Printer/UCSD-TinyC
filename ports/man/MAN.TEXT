@@ -299,7 +299,8 @@ DESCRIPTION
     inserting and typing over, Delete and Backspace delete, ESC clears the line.
 COMMANDS (upper or lower case)
     CD [#n | n | VOL | *]      the prefix volume; CD alone shows it
-    DIR [VOL: | #n:][PATTERN]  files (* or = any characters, ? any one)
+    DIR [/E] [VOL: | #n:][PATTERN]  files (* or = any characters, ? any one);
+                               /E: first block, bytes in the last, unused areas
     TYPE [VOL: | #n:]NAME      a text file on the console (wildcards: each one)
     DELETE [VOL: | #n:]PAT     delete (with wildcards it lists them and asks, Y)
     WHEREIS [VOL: | #n:]PAT    which disks have the file
@@ -454,6 +455,33 @@ EXAMPLES
     WC -L README.TEXT
 SEE ALSO
     LC, CAT, GREP
+%% KRUNCH
+NAME
+    KRUNCH - move a disk's files down: its free blocks in one area
+SYNOPSIS
+    KRUNCH [-y] [VOL: | #n]
+DESCRIPTION
+    The unused blocks between the files of a disk (left by files deleted,
+    or shorter than the room they had) become one area at the end of the
+    disk, so that a big new file finds room: each file with unused blocks
+    before it is copied down, and the directory is written again after each
+    one.  The disk is the prefix volume (CD sets it), or VOL:, unit #n, or
+    * (the system volume).  KRUNCH says what it will do and asks first, one
+    key: Y goes on.  A code file that is running (SYSTEM.PASCAL, the shell,
+    KRUNCH itself) may move: KRUNCH tells the operating system where it
+    went.  It will not krunch the disk its own output goes to (KRUNCH >F).
+    DIR /E shows the unused areas.  Exit status 0: done (or nothing to
+    move), 1: not Y, 2: no such disk or a bad option, 3: a disk error (the
+    files moved so far stay moved, the others where they were).
+OPTIONS
+    -y   no question: krunch at once
+EXAMPLES
+    KRUNCH                  the prefix volume, after Y
+    KRUNCH -y #5            unit 5, at once
+    DIR /E #5:              the unused areas, before and after
+SEE ALSO
+    SHELL (DIR /E), LC
+
 %% LC
 NAME
     LC - list the file names of a disk in columns
