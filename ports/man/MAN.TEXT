@@ -336,7 +336,8 @@ SUB-VOLUMES
     are VOL:A/NAME or VOL:/A/NAME, and they nest (VOL:/A/B/NAME); a \ is a /
     in a path (VOL:\A\NAME, as Windows writes it); a name
     without a volume is on the path (CD).  Every program that opens files with
-    fopen takes such paths; DIR, TYPE, DELETE, WHEREIS, COPY, MOVE and RENAME
+    fopen takes such paths, and so does X(ecute at the Command: prompt (BIGGY
+    1.26); DIR, TYPE, DELETE, WHEREIS, COPY, MOVE and RENAME
     take VOL:/A/PATTERN (COPY X.C A: into sub-volume A).  DIR A lists what is
     in sub-volume A; DIR marks sub-volumes "Sub-volume".  The wildcards of
     GREP, LC, WC do not reach into sub-volumes yet.

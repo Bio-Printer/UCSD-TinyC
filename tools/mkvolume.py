@@ -162,7 +162,8 @@ status.  A name without a volume (ARGS rather than TCEXTRA:ARGS) is
 looked for on the path (CD into a sub-volume) first, then on every disk
 on line; when several have it, SHELL lists them and you choose with one
 key (no RETURN).  A path (A/PROG, #5:/A/PROG) runs the code file in that
-sub-volume, where it is (no copy: the OS loads its segments from there).
+sub-volume, where it is (no copy: the OS loads its segments from there);
+X(ecute at the Command: prompt takes such paths too (BIGGY 1.26).
 Its own commands:
   CD #5 (or CD 5, CD VOL, CD *)  the prefix becomes unit 5's volume, as
         the Filer's Prefix: later commands find their files there; CD

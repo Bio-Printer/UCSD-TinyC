@@ -218,3 +218,16 @@ bytes.
 
 BIGGY 1.22 (U134.4_OS_SOURCE_v1.12) uses `S`, not `$`, for it (the `?` prompt says
 `S(hell`); GETCMD's segment is 3118 bytes, the case table being smaller.
+
+BIGGY 1.26 (U134.4_OS_SOURCE_v1.13): X(ecute takes a path into sub-volumes
+(`VOL:A/B/NAME`, `VOL:/A/NAME`, `A/NAME` on the prefix volume; `\` as `/`).
+GETCMD's EXECUTE gives such a name to SUBEXEC: it opens the first part with
+FOPEN (so `#5:`, `*` and the prefix work as for any file), walks the inner
+directories with UNITREAD (each checked as Tiny-C's `pathdir` does), and
+starts the code file with LOADSEGS at its block on the disk -- as pexec
+does.  GETCMD's segment is 3882 bytes (was 3118); segment 0, the resident
+system, is byte-identical, so programs have the same memory.  Build: on the
+P-System compile `#5:SYSTEM` to a short name (`#5:OS`: the compiler stops with
+String overflow when the code file is named SYSTEM.PASCAL), then that code
+file is SYSTEM.PASCAL; compiled from v1.12 this way it is BIGGY 1.23's
+SYSTEM.PASCAL byte for byte.  Test: `tools/xsubvoltest.py`.

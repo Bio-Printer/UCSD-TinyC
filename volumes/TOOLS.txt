@@ -20,5 +20,5 @@ TOOLS:  20 files  (a UCSD directory holds 77)
   PATCH.CODE          37  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
   MAN.CODE            25  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
   BINDERC.CODE        28  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
-  MAN.TEXT            64  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
+  MAN.TEXT            66  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
   FILES.TEXT           6  this list

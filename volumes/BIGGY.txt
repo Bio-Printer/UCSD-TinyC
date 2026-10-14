@@ -8,7 +8,7 @@ BIGGY:  36 files  (the boot volume, with the Tiny-C shell)
   SYSORIG.EDITOR      45
   SYSTEM.LINKER       22
   SYSOLD.PASCAL       33
-  SYSTEM.PASCAL       34
+  SYSTEM.PASCAL       35
   SYSTEM.LIBRARY       8
   SYSTEM.SYNTAX       14
   SETUP.CODE          25
