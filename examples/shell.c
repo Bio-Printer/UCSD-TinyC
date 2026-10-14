@@ -54,12 +54,6 @@
 
 int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
 
-/* the operating system's prefix (DKVID, the Filer's Prefix) and system
-   volume (SYVID): STRING[7] globals, OS words 59..62 and 63..66 (II.0
-   lays out "SYVID,DKVID: VID" last first) */
-#define OS_DKVID 59
-#define OS_SYVID 63
-
 /* ---- the command line: history and editing ---- */
 
 #define NHIST 10

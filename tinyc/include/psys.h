@@ -9,6 +9,14 @@
    with reclaimed memory), so ask the OS rather than use a constant. */
 #define SYSCOM ((struct syscomrec *)__osvar(1))
 
+/* the operating system's prefix (DKVID, the Filer's Prefix) and system
+   volume (SYVID): STRING[7] globals, OS words 59..62 and 63..66 (II.0
+   lays out "SYVID,DKVID: VID" last first), for __osvaraddr; and the files
+   a directory holds (the OS's MAXDIR) */
+#define OS_DKVID 59
+#define OS_SYVID 63
+#define MAXDIR 77
+
 /* SYSCOMREC of U134.4 OS source 1.07, GLOBALS.TEXT. The II.0 compiler lays
    out each list of names declared together ("A,B,C: T") last first, so
    e.g. LOWTIME comes before HIGHTIME and BOMBP before LASTMP. Packed

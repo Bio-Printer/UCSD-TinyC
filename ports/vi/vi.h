@@ -42,7 +42,6 @@
  * CRTCTRL, and FGOTOXY for the cursor).  Files are UCSD text files read
  * and written through stdio. */
 #define BB_VER "version 2.63 (UCSD)"
-#define BB_BT "brent@mbari.org"
 #pragma segment MAIN	// (so that the compiler knows calls are within the segment: 2-byte CGP, no NOP)
 #include <stdarg.h>
 #include <string.h>
@@ -54,51 +53,25 @@
 #define printf vi_printf	// (the library's printf family is 2.8 KB: viucsd.c has what vi needs)
 #include <psys.h>
 
-#define vi_main			main
 #define CONFIG_FEATURE_VI_MAX_LEN 132
 #define TEXT_SLACK 1024	// free room in the text buffer: memory is small
 #define ENABLE_FEATURE_VI_PAGING 1	// a window into big files (vipage.h)
 #define VI_ROW_SUMS 1	// the screen as a checksum per row, not a copy
 #define PG_RESERVE 1024	// memory left out of the window: yanks, and so on
-#define PG_MAXCH 192	// chunks in VI.SWAP: files up to about 185 KB
 #include <limits.h>
 /* The P-System opens an include file with a 2K buffer on the stack, so the
    includes come before the macros below: Tiny-C's preprocessor has the least
    free memory there (every macro takes about 40 bytes). */
 #include "vipage.h"
 #define VI_PAGE_INCLUDED 1
-#define ENABLE_FEATURE_VI_COLON 1
-#define ENABLE_FEATURE_VI_YANKMARK 1
-#define ENABLE_FEATURE_VI_SEARCH 1
-#define ENABLE_FEATURE_VI_DOT_CMD 1
-#define ENABLE_FEATURE_VI_SETOPTS 1
-#define ENABLE_FEATURE_VI_SET 1
 
 #define USE_FEATURE_VI_COLON(x) x
 #define USE_FEATURE_VI_YANKMARK(x) x
 #define USE_FEATURE_VI_SEARCH(x) x
-
-#define ALIGN1
-#define FALSE 0
-#define TRUE 1
-#define MAIN_EXTERNALLY_VISIBLE
 #define ATTRIBUTE_UNUSED
 
-#undef isdigit
-#define isdigit(a) ((unsigned)((a) - '0') <= 9)
-
-#define ARRAY_SIZE(x) ((unsigned)(sizeof(x) / sizeof((x)[0])))
-
-#define INIT_G()
-
-typedef signed char smallint;
-
-#define bb_show_usage()
-#define bb_perror_msg(msg)  perror(msg)
-
-#elif defined(STANDALONE)
+#else	// Linux: gcc -DSTANDALONE (the tests' reference; -DENABLE_FEATURE_VI_PAGING=1 for the paged build)
 #define BB_VER "version 2.63"
-#define BB_BT "brent@mbari.org"
 
 #define _GNU_SOURCE
 #include <stdarg.h>
@@ -116,41 +89,19 @@ typedef signed char smallint;
 #include <ctype.h>
 #include <termios.h>
 #include <poll.h>
+#include <limits.h>
 
-#define vi_main			main
 #define CONFIG_FEATURE_VI_MAX_LEN 4096
-#define ENABLE_FEATURE_VI_COLON 1
-#define ENABLE_FEATURE_VI_YANKMARK 1
-#define ENABLE_FEATURE_VI_SEARCH 1
-#define ENABLE_FEATURE_VI_DOT_CMD 1
-#define ENABLE_FEATURE_VI_SETOPTS 1
-#define ENABLE_FEATURE_VI_SET 1
-#define ENABLE_FEATURE_VI_YANKMARK 1
-#define ENABLE_FEATURE_VI_SEARCH 1
+#define TEXT_SLACK 10240	// free room in the text buffer
+#ifndef ENABLE_FEATURE_VI_PAGING
+#define ENABLE_FEATURE_VI_PAGING 0
+#endif
 #undef ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
 
 #define USE_FEATURE_VI_COLON(...) __VA_ARGS__
 #define	USE_FEATURE_VI_YANKMARK(...) __VA_ARGS__
 #define	USE_FEATURE_VI_SEARCH(...) __VA_ARGS__
-
-#define ALIGN1
-#define FALSE 0
-#define TRUE 1
-#define MAIN_EXTERNALLY_VISIBLE
 #define ATTRIBUTE_UNUSED __attribute__ ((__unused__))
-
-#undef isdigit
-#define isdigit(a) ((unsigned)((a) - '0') <= 9)
-
-#define ARRAY_SIZE(x) ((unsigned)(sizeof(x) / sizeof((x)[0])))
-
-#define INIT_G()
-
-typedef signed char smallint;
-
-#define bb_show_usage()
-#define bb_perror_msg(msg)  perror(msg)
-
 
 #ifdef __clang__
 char *strchrnul(const char *s, int c_in)
@@ -175,26 +126,34 @@ void *memrchr(const void *s, int c_in, size_t n)
 }
 #endif
 
-#else  //in busybox
-
-#include "libbb.h"
-#define G (*ptr_to_globals)
-#define INIT_G() do { \
-	SET_PTR_TO_GLOBALS(xzalloc(sizeof(G))); \
-	last_file_modified = -1; \
-} while (0)
-
 #endif
 
-#include <limits.h>
+/* the same in both */
+#define BB_BT "brent@mbari.org"
+#define vi_main			main
+#define ENABLE_FEATURE_VI_COLON 1
+#define ENABLE_FEATURE_VI_YANKMARK 1
+#define ENABLE_FEATURE_VI_SEARCH 1
+#define ENABLE_FEATURE_VI_DOT_CMD 1
+#define ENABLE_FEATURE_VI_SETOPTS 1
+#define ENABLE_FEATURE_VI_SET 1
 
-#ifndef ENABLE_FEATURE_VI_PAGING
-#define ENABLE_FEATURE_VI_PAGING 0
-#endif
+#define ALIGN1
+#define FALSE 0
+#define TRUE 1
+#define MAIN_EXTERNALLY_VISIBLE
 
-#ifndef TEXT_SLACK
-#define TEXT_SLACK 10240	// free room in the text buffer
-#endif
+#undef isdigit
+#define isdigit(a) ((unsigned)((a) - '0') <= 9)
+
+#define ARRAY_SIZE(x) ((unsigned)(sizeof(x) / sizeof((x)[0])))
+
+#define INIT_G()
+
+typedef signed char smallint;
+
+#define bb_show_usage()
+#define bb_perror_msg(msg)  perror(msg)
 
 #define Isprint(c) ((unsigned char)(c) >= ' ' && (unsigned char)(c) < 0x7f)
 

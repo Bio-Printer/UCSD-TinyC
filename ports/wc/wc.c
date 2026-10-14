@@ -26,14 +26,12 @@
 
 int optl, optw, optc, optm, optL;
 char ibuf[512];
-#define MAXF 78                 /* a directory holds 77 files */
-#define OS_DKVID 59
 
 int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
 int dir[1024];
-char fname[MAXF][32];                   /* the names the wild cards gave */
-long cl[MAXF + 1], cw[MAXF + 1], cb[MAXF + 1], cL[MAXF + 1];
-char *names[MAXF + 1];
+char fname[MAXDIR + 1][32];             /* the names the wild cards gave */
+long cl[MAXDIR + 2], cw[MAXDIR + 2], cb[MAXDIR + 2], cL[MAXDIR + 2];
+char *names[MAXDIR + 2];
 
 int same(char *a, char *b)
 {
@@ -228,7 +226,7 @@ int expand(char *arg, char **files, int nf, int *status)
     char *colon, *pat;
     int u, i, n, before;
     if (strpbrk(arg, "*=?") == NULL) {
-        if (nf >= MAXF)
+        if (nf >= MAXDIR + 1)
             return -1;
         files[nf] = arg;
         return nf + 1;
@@ -256,7 +254,7 @@ int expand(char *arg, char **files, int nf, int *status)
         dirname(i, name);
         if (!match(pat, name))
             continue;
-        if (nf >= MAXF)
+        if (nf >= MAXDIR + 1)
             return -1;
         if (colon) {
             strncpy(fname[nf], arg, colon - arg + 1);
@@ -279,7 +277,7 @@ int main(int argc, char **argv)
     int i, j, endopt, nf, k, w, status;
     long mx;
     char *a;
-    char *files[MAXF + 1];
+    char *files[MAXDIR + 2];
     endopt = 0;
     nf = 0;
     status = 0;
@@ -305,7 +303,7 @@ int main(int argc, char **argv)
         } else {
             nf = expand(a, files, nf, &status);
             if (nf < 0) {
-                fprintf(stderr, "wc: more than %d files\n", MAXF);
+                fprintf(stderr, "wc: more than %d files\n", MAXDIR + 1);
                 return 1;
             }
         }

@@ -22,15 +22,12 @@
 #include <ctype.h>
 #include <psys.h>
 
-#define OS_DKVID 59
-#define MAXF 78
-
 int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
 int opt1, optx, optF, opts, optr, optS, optC;
 int dir[1024];
-char names[MAXF][20];                   /* the name, then * perhaps */
-int size[MAXF];
-int ord[MAXF];
+char names[MAXDIR + 1][20];             /* the name, then * perhaps */
+int size[MAXDIR + 1];
+int ord[MAXDIR + 1];
 
 int same(char *a, char *b)
 {
@@ -185,7 +182,7 @@ void put(char *s, int blank)
 void show(int n, int width)
 {
     char item[40];
-    int len[MAXF];
+    int len[MAXDIR + 1];
     int i, k, cw, cols, rows, r, c, maxlen, last;
     maxlen = 0;
     for (i = 0; i < n; i++) {
@@ -235,7 +232,7 @@ int list(char *pat, int header, char *vol)
     char name[16];
     nf = dir[8];
     n = 0;
-    for (i = 1; i <= nf && n < MAXF; i++) {
+    for (i = 1; i <= nf && n < MAXDIR + 1; i++) {
         dirname(i, name);
         if (*pat && !match(pat, name))
             continue;

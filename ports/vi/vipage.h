@@ -22,9 +22,7 @@
    Searches go on into the stores, and G, :N, 'a move the window. */
 
 #define PG_SLOT    1024         /* bytes per slot: a chunk, and the longest line */
-#ifndef PG_MAXCH
-#define PG_MAXCH   256          /* chunks in the stores (6 bytes each) */
-#endif
+#define PG_MAXCH   192          /* chunks in the stores, 6 bytes each (VI.SWAP: files up to about 185 KB) */
 #define PG_MAXSLOT (PG_MAXCH + 8)  /* slots in VI.SWAP: one a chunk, and some to spare */
 #define PG_ROOM    512          /* free bytes kept in the window for typing */
 #define PG_SWAP    "VI.SWAP"
