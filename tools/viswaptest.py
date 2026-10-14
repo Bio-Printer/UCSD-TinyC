@@ -22,9 +22,12 @@ whose free space is one area at its end), then from the shell:
                                                      of the screen (native mode: row 22; Z80 mode: the
                                                      window holds not much more than a screen of this
                                                      file, a few rows higher)
+  every screen that shows the top of C.LIST     -> 4 "~" rows at most (in Z80 mode the window holds not much
+                                                     more than a screen of it: vi code that takes memory from
+                                                     the window shows here first, as half a screen of "~")
   no VI.SWAP left on the volume afterwards
 Uses the mode of PSYS_MODE (native or z80) like the other tools."""
-import os, sys
+import os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
@@ -63,6 +66,8 @@ def main():
               'TYPE "HddZZ"', 'WAIT "shell> "',
               'TYPE "vi C.LIST\\r"', 'WAIT "C.LIST"', 'WAIT "2485 0%"', 'TYPE "687GHddZZ"', 'WAIT "shell> "',
               'TYPE "bye\\r"', 'WAIT "Command:"']
+    scr = os.path.join(ps.dir, 'screens.txt')
+    os.environ['VERIFY_SCREEN'] = scr
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 1800 if z else 300)
     tr = tr.replace('\r', '\n')
     img = ucsdvol.Volume(os.path.join(ps.out, 'VERIFY_SOURCE.BLK'))
@@ -90,6 +95,14 @@ def main():
     checks.append(('C.LIST: 687G and 60 k reach line 627 (the dd there)', j >= 0 and got == ec[:d] + ec[d + 1:e + 1] + ec[e + 2:]))
     checks.append(('C.LIST: 687G and 5 ^B reach about 5 screens up (the dd at line %d)' % (d + 1), 440 <= d <= 520))   # (Z80: 687G is not centred, the screen starts lower)
     checks.append(('C.LIST: 687G puts 687 in the middle half of the screen (H, dd took line %d)' % (e + 2), 654 <= e + 2 <= 676))
+    tops = (c.split(b'\r')[0].decode('latin1'), c.split(b'\r')[1].decode('latin1'))   # (its first line, and after the 1Gdd)
+    tildes = []
+    for blk in re.split(r'^== key ', open(scr, encoding='latin1').read() if os.path.exists(scr) else '', flags=re.M)[1:]:
+        rows = blk.split('\n')[1:]
+        if rows and rows[0].rstrip() in tops:
+            tildes.append(sum(r.startswith('~') for r in rows))
+    checks.append(('C.LIST opens with a full screen: %d screens of its top, at most %d "~" rows' % (len(tildes), max(tildes or [99])),
+                   tildes and max(tildes) <= 4))
     checks.append(('no VI.SWAP left', img.find('VI.SWAP') is None))
     bad = 0
     for what, good in checks:
