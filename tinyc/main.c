@@ -19,6 +19,10 @@
  *            or give the commands as arguments (from the shell, pexec):
  *              CC @BUILD @LIBS, CC /Z HANOI SIEVE: options and the word after
  *              them make one command; they run in turn, no prompt
+ *            A NAME may be a path into sub-volumes (A/X, #5:/A/B/X); after the
+ *            shell's CD into one, names are looked for there first (pp.c
+ *            findfile).  NAME.OBJ goes next to its source; NAME.CODE and the
+ *            temporary files on the volume that holds the sub-volume.
  *
  * Calls through function pointers: by default they use CSP 138 (CALLI), which
  * the native P-Code engine implements and the Z80 interpreter does not. -z (/Z)
@@ -163,6 +167,46 @@ static void upper(char *s)
 }
 
 #ifdef __TINYC__
+/* name on the volume the shell's path is on (VOL: of VOL:/A/B; without a
+   path: name as it is, the prefix): CC's own files (TCTEMP, NAME.CODE) go
+   there, not into the sub-volume -- the OS runs no code file from one, and
+   it may be small */
+static void onpathvol(char *out, char *name)
+{
+    char *c;
+    int n;
+    out[0] = 0;
+    c = strchr(__svpath, ':');
+    if (c) {
+        n = c - __svpath + 1;
+        memcpy(out, __svpath, n);
+        out[n] = 0;
+    }
+    strcat(out, name);
+}
+
+/* NAME.CODE for the word s: on s's volume (VOL:X: VOL:X.CODE), a path's on
+   the volume that holds its sub-volume (#5:/A/X: #5:X.CODE), else on the
+   prefix (or on the volume of the shell's path) */
+static void codename(char *s, char *out)
+{
+    char *c;
+    char *l;
+    int n;
+    c = strchr(s, ':');
+    l = strrchr(s, '/');
+    if (s[0] == '*')
+        strcpy(out, s);
+    else if (c) {
+        n = c - s + 1;
+        memcpy(out, s, n);
+        out[n] = 0;
+        strcat(out, l ? l + 1 : c + 1);
+    } else
+        onpathvol(out, l ? l + 1 : s);
+    strcat(out, ".CODE");
+}
+
 /* one command (see the top of this file); 0 = it failed */
 /* /L OUT=A,B,... or /J LIB=A,B,...: its own function, so that the objects'
    names (on the stack: gone with the command -- on the heap they outlived
@@ -172,9 +216,9 @@ static int linkcmd(char *s, char *lib, int from)
 {
     char *objs[MAXFILES];
     char names[360];
-    char src[25];
-    char obj[25];
-    char out[25];
+    char src[64];
+    char obj[64];
+    char out[64];
     char *t;
     int used;
     int nobjs;
@@ -193,8 +237,15 @@ static int linkcmd(char *s, char *lib, int from)
         return 0;
     }
     *t++ = 0;
-    strcpy(out, s);
-    strcat(out, joining ? ".OBJ" : ".CODE");
+    if (strlen(s) > 56) {
+        say("name too long\n");
+        return 0;
+    }
+    if (joining) {
+        strcpy(out, s);
+        strcat(out, ".OBJ");
+    } else
+        codename(s, out);
     while (*t) {
         s = t;
         while (*t && *t != ',')
@@ -207,11 +258,14 @@ static int linkcmd(char *s, char *lib, int from)
             continue;
         if (nobjs >= MAXFILES - 1)
             break;
-        /* NAME.OBJ: with a volume there, else where findfile says (the
-           batch file's disk, where /C put it, or the prefix) */
+        /* NAME.OBJ: with a volume or path there, else where findfile says
+           (the shell's path, the batch file's disk, where /C put it, or
+           the prefix) */
+        if (strlen(s) > 56)
+            continue;
         strcpy(src, s);
         strcat(src, ".OBJ");
-        if (!strchr(s, ':') && s[0] != '*' && strlen(src) <= 15) {
+        if (!strchr(s, ':') && !strchr(s, '/') && s[0] != '*' && strlen(src) <= 15) {
             n = findfile(src, "", from, obj, &n);
             if (n < 0)
                 return 0;           /* on several disks: findfile said so */
@@ -252,10 +306,12 @@ static int linkcmd(char *s, char *lib, int from)
 static int command(char *s, char *lib, int from)
 {
     char *objs[2];                      /* the object and the library */
-    char src[25];                       /* UCSD file names are short */
+    char src[64];                       /* a name, or a path into sub-volumes */
     char alt[16];
-    char obj[25];
-    char out[25];
+    char obj[64];
+    char out[30];
+    char ti[24];
+    char tr[24];
     char *t;
     int nobjs;
     int n;
@@ -281,17 +337,22 @@ static int command(char *s, char *lib, int from)
                 s++;
         }
         /* NAME or NAME.C: the source is NAME.C, or NAME.TEXT when there
-           is no NAME.C.  With a volume (VOL:, #n:, *): there.  Without:
-           on whichever disk findfile says (pp.c) -- the batch file's or
-           the prefix volume when several have it. */
+           is no NAME.C.  With a volume or a path (VOL:, #n:, *, A/X):
+           there.  Without: where findfile says (pp.c) -- the shell's path
+           first, then the batch file's disk or the prefix volume when
+           several have it. */
         n = strlen(s);
+        if (n > 56) {
+            say("name too long\n");
+            return 0;
+        }
         if (n > 5 && strcmp(s + n - 5, ".TEXT") == 0)
             s[n = n - 5] = 0;
         if (n > 2 && strcmp(s + n - 2, ".C") == 0)
             s[n - 2] = 0;
         strcpy(src, s);
         strcat(src, ".C");
-        if (strchr(s, ':') || s[0] == '*') {
+        if (strchr(s, ':') || strchr(s, '/') || s[0] == '*') {
             if (!exists(src)) {
                 strcpy(src, s);
                 strcat(src, ".TEXT");
@@ -307,19 +368,20 @@ static int command(char *s, char *lib, int from)
             if (n < 0)
                 return 0;               /* on several disks: findfile said so */
         }
-        /* NAME.OBJ goes on its source's volume; NAME.CODE on the prefix */
+        /* NAME.OBJ goes next to its source; NAME.CODE as codename says */
         obj[0] = 0;
         t = strchr(src, ':');
-        if (t && !strchr(s, ':') && s[0] != '*') {
+        if (t && !strchr(s, ':') && !strchr(s, '/') && s[0] != '*') {
             n = t - src + 1;
             memcpy(obj, src, n);
             obj[n] = 0;
         }
         strcat(obj, s);
         strcat(obj, ".OBJ");
-        strcpy(out, s);
-        strcat(out, ".CODE");
-        if (!compileone(src, "TCTEMP.TEXT", "TCTEMP.IR", obj))
+        codename(s, out);
+        onpathvol(ti, "TCTEMP.TEXT");
+        onpathvol(tr, "TCTEMP.IR");
+        if (!compileone(src, ti, tr, obj))
             return 0;
         if (conly)
             return 1;
@@ -343,19 +405,23 @@ static int command(char *s, char *lib, int from)
 static int batch(char *name, char *lib, char *line)
 {
     FILE *f;
-    char path[25];
+    char path[64];
     int done;
     int k;
     int n;
-    char found[25];
+    char found[64];
     int from;
+    if (strlen(name) > 56) {
+        say("name too long\n");
+        return 0;
+    }
     strcpy(path, name);
     n = strlen(path);
     if (n <= 5 || strcmp(path + n - 5, ".TEXT") != 0)
         strcat(path, ".TEXT");
     /* FILE.TEXT: on its volume if it names one, else as findfile says;
        the sources its commands name are looked for on its disk first */
-    if (strchr(path, ':') || path[0] == '*')
+    if (strchr(path, ':') || strchr(path, '/') || path[0] == '*')
         from = fileunit(path);
     else {
         from = 0;
@@ -430,6 +496,7 @@ int main(int argc, char **argv)
     out[0] = 0;
     lib[0] = 0;
 #ifdef __TINYC__
+    svwhere();                          /* the shell's path, if any (pp.c) */
     strcpy(lib, "TCLIB.OBJ");
     if (!exists(lib))
         strcpy(lib, "*TCLIB.OBJ");

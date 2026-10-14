@@ -133,7 +133,7 @@ static char *skiplit(char *s)
 /* ---- reading source lines ---- */
 
 #ifdef __TINYC__
-#define INCPATH 30          /* VOLNAME:NAME.TEXT -- see openinc */
+#define INCPATH 64          /* VOLNAME:NAME.TEXT, or a path into sub-volumes -- see openinc */
 #else
 #define INCPATH 200
 #endif
@@ -147,28 +147,45 @@ static FILE *openinc(char *name, int sys, int *unit, int *many)
     char *p;
 #ifdef __TINYC__
     /* P-System: file names are upper case; "x.h" is X.H (or X.H.TEXT).
-       A name with its own volume (VOL:, #n:, *) is opened there and only
-       there.  Without one, findfile looks on every disk (see it): "x.h"
-       and <x.h> alike.  A UCSD file name has at most 15 characters, a
-       volume name 7, so the longest path is VOLNAME: + 15 + .TEXT (28);
-       a longer name is no file at all. */
+       A name with its own volume or path (VOL:, #n:, *, A/X.H) is opened
+       there and only there.  Without one: in the sub-volume of the file
+       that names it (when that is in one), else findfile looks (the
+       shell's path, then every disk: see it): "x.h" and <x.h> alike.  A
+       UCSD file name has at most 15 characters; a longer name (without a
+       volume or path) is no file at all. */
     int i;
     int vol;
     int n;
-    char u[24];
+    char u[INCPATH];
     char alt[24];
     vol = 0;
-    for (i = 0; name[i] && i < 23; i++) {
+    for (i = 0; name[i] && i < INCPATH - 6; i++) {
         u[i] = name[i];
         if (u[i] >= 'a' && u[i] <= 'z')
             u[i] = u[i] - 32;
-        if (u[i] == ':' || u[i] == '*')
+        if (u[i] == ':' || u[i] == '*' || u[i] == '/')
             vol = 1;
     }
     u[i] = 0;
     fp = 0;
     if (name[i] || (!vol && i > 15))
         return 0;                   /* cannot be a file name */
+    if (!vol && idepth > 0 && (p = strrchr(istack[idepth - 1].name, '/')) != 0
+        && p - istack[idepth - 1].name + 1 + i + 5 < INCPATH) {
+        n = p - istack[idepth - 1].name + 1;    /* the including file's sub-volume */
+        memcpy(path, istack[idepth - 1].name, n);
+        strcpy(path + n, u);
+        fp = fopen(path, "r");
+        if (!fp) {
+            strcat(path, ".TEXT");
+            fp = fopen(path, "r");
+        }
+        if (fp) {
+            *unit = istack[idepth - 1].unit;
+            strcpy(openedpath, path);
+            return fp;
+        }
+    }
     if (vol) {
         strcpy(path, u);
         fp = fopen(path, "r");
@@ -189,8 +206,8 @@ static FILE *openinc(char *name, int sys, int *unit, int *many)
             fp = fopen(path, "r");
             /* its name in messages as written, without the volume: the
                compiler keeps the names, and memory is short */
-            p = strchr(path, ':') + 1;
-            strcpy(openedpath, p);
+            p = strchr(path, ':');
+            strcpy(openedpath, p ? p + 1 : path);
             return fp;
         }
     }
@@ -1400,7 +1417,9 @@ int preprocess(char *src, char *out)
    On one disk only: that one.  On several: the one on the disk of the
    file that names it (the including file, the @batch file), else the one
    on the prefix volume (the Filer's Prefix, the shell's CD), else none:
-   the volumes are listed and the name must say which.  Code segment DIRS
+   the volumes are listed and the name must say which.  After a CD into a
+   sub-volume (the shell's path, __svpath) that sub-volume comes first: a
+   file there is the one.  Code segment DIRS
    (with the library's directory functions, dirs.c: CC has as many
    segments as II.0 allows): in memory only while it looks. */
 
@@ -1413,6 +1432,7 @@ int preprocess(char *src, char *out)
    header with many macros), and no entry is more than two blocks. */
 struct FDWin {
     int unit;
+    int base;                   /* a sub-volume's first block (0: the volume) */
     int blk;                    /* the directory block in buf, -1 none */
     unsigned char buf[512];
 };
@@ -1421,7 +1441,7 @@ static int fdblock(struct FDWin *w, int b)
 {
     if (w->blk != b) {
         w->blk = -1;
-        __cspv(5, w->unit, w->buf, 0, 512, 2 + b, 0);   /* UNITREAD */
+        __cspv(5, w->unit, w->buf, 0, 512, w->base + 2 + b, 0);   /* UNITREAD */
         if (__cspi(34) != 0)
             return 0;
         w->blk = b;
@@ -1449,11 +1469,13 @@ static int fdent(struct FDWin *w, int i, unsigned char *e)
     return 1;
 }
 
-/* unit u's volume entry into h[26] and the number of files there; -1 if no disk is there */
-static int fdopen(struct FDWin *w, int u, unsigned char *h)
+/* unit u's volume entry into h[26] (of the sub-volume at block base, 0
+   the volume's) and the number of files there; -1 if no disk is there */
+static int fdopen(struct FDWin *w, int u, int base, unsigned char *h)
 {
     int n;
     w->unit = u;
+    w->base = base;
     w->blk = -1;
     if (!fdent(w, 0, h))
         return -1;
@@ -1514,14 +1536,37 @@ int fileunit(char *path)
         vol[n] = 0;
     }
     for (k = 0; k < 8; k++)
-        if (fdopen(&w, FDUNIT(k), h) >= 0 && fdname(h, vol))
+        if (fdopen(&w, FDUNIT(k), 0, h) >= 0 && fdname(h, vol))
             return FDUNIT(k);
     return 0;
 }
 
+/* the shell's path: its unit (0: no path, or not there) and first block,
+   found once (pathdir's directory on the stack: before the passes) */
+static int svunit;
+static int svbase;
+static int svdone;
+
+void svwhere(void)
+{
+    int d[1024];
+    char p[66];
+    char leaf[16];
+    svdone = 1;
+    svunit = 0;
+    if (__svpath[0] && strlen(__svpath) < 64) {
+        strcpy(p, __svpath);
+        strcat(p, "/");
+        if (!pathdir(p, d, &svunit, &svbase, leaf))
+            svunit = 0;
+    }
+}
+
 /* name (or, on a disk without it, alt): which disk's; into path VOL:NAME,
    into *unit its unit.  from: the unit of the file that names it (0:
-   none).  1 found, 0 on no disk, -1 on several and none chosen (said so) */
+   none).  In the shell's path (a sub-volume) path is the name itself
+   (fopen finds it there).  1 found, 0 on no disk, -1 on several and none
+   chosen (said so) */
 int findfile(char *name, char *alt, int from, char *path, int *unit)
 {
     struct FDWin w;
@@ -1536,9 +1581,20 @@ int findfile(char *name, char *alt, int from, char *path, int *unit)
     int i;
     int j;
     int files;
+    if (!svdone)
+        svwhere();
+    if (svunit && (files = fdopen(&w, svunit, svbase, h)) >= 0) {
+        for (k = 0; k < 2; k++)                 /* name, then alt */
+            for (i = 1; i <= files && (k == 0 || alt[0]); i++)
+                if (fdent(&w, i, e) && fdname(e, k ? alt : name)) {
+                    strcpy(path, k ? alt : name);
+                    *unit = svunit;
+                    return 1;
+                }
+    }
     n = 0;
     for (k = 0; k < 8; k++) {
-        files = fdopen(&w, FDUNIT(k), h);
+        files = fdopen(&w, FDUNIT(k), 0, h);
         if (files < 0)
             continue;
         fn[n] = 0;

@@ -60,10 +60,15 @@ an @FILE named with a volume (TOOLSRC:VI.H, #5:X.C) is taken from there
 only.  Named without one, CC looks on every disk: on one disk only, that
 one; on several, the one on the disk of the file that names it (the
 including file, the @FILE), else the one on the prefix volume, else it
-lists the volumes and stops (name one).  An object (NAME.OBJ) goes on
-its source's volume, and /L and /J find objects the same way as
-sources; code and temporary files (TCTEMP.TEXT, TCTEMP.IR) go to the
-prefix volume unless named with a volume; TCLIB.OBJ and
+lists the volumes and stops (name one).  SUB-VOLUMES: a path (CC
+A/X, CC #5:/A/B/X, #include "A/X.H", /L OUT=A/X,A/Y) is taken from
+there; after the shell's CD into a sub-volume CC looks in it first; and
+a file included from a sub-volume finds its "x.h" there first.  An
+object (NAME.OBJ) goes next to its source, and /L and /J find objects
+the same way as sources; code and temporary files (TCTEMP.TEXT,
+TCTEMP.IR) go to the prefix volume unless named with a volume -- from a
+sub-volume (a path, or the shell's), to the volume that holds it, where
+X(ecute and the shell can run the code file; TCLIB.OBJ and
 TCMSGS.TEXT are found on TINY-C: when they are not on the prefix volume
 or the boot volume.
 

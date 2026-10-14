@@ -45,7 +45,7 @@ full regression test is asked for (it takes a long time).
 | sub-volumes (`tinyc/lib/dirs.c` pathdir, `__sv*`; the shell's MKDIR, CD PATH) | `tools/subvoltest.py` (both modes) |
 | the emulator's Import / Export (sub-volumes) | `tools/subvolxfertest.py` (needs `build/run_verify_new`, 2.07) |
 | memory (segments, pools, parser or linker stack): the least free memory of `cc @all` from the shell | `tools/shellalltest.py` (add `PSYS_MODE=z80` before a commit: about 25 minutes), `tools/voltest.py` |
-| where CC finds files (`findfile`, pp.c / main.c) | `tools/findtest.py`, `tools/selfcompile.py` |
+| where CC finds files (`findfile`, pp.c / main.c) | `tools/findtest.py`, `tools/ccsubvoltest.py` (sub-volumes), `tools/selfcompile.py` |
 | CC's batch files (`@`, main.c), where objects go | `tools/alltest.py` (TOOLSRC:ALL: BUILD, LIBS, TOOLS in one run), `tools/findtest.py` |
 | grep (`ports/grep/`) | `tools/greptest.py` (both modes) |
 | cat (`ports/cat/`) | `tools/cattest.py` |

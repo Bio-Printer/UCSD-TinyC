@@ -396,6 +396,9 @@ int preprocess(char *src, char *out);
 #pragma segment DIRS	/* (with the library's dirs.c: one segment) */
 int fileunit(char *path);
 int findfile(char *name, char *alt, int from, char *path, int *unit);
+void svwhere(void);                     /* where the shell's path is (main: before the passes) */
+int pathdir(char *path, int *dir, int *up, int *bp, char *leaf);    /* the library's (dirs.h) */
+extern char __svpath[64];               /* the shell's path: VOL:/A/B after a CD into a sub-volume */
 #endif
 #pragma segment REALLIT
 int realtoken(char *s, char *out);

@@ -2,10 +2,10 @@ TINY-C:  22 files  (a UCSD directory holds 77)
 
   FILE            BLOCKS  WHAT
 
-  CC.CODE            127  the Tiny-C compiler: X(ecute CC
+  CC.CODE            129  the Tiny-C compiler: X(ecute CC
   TCLIB.OBJ           76  the C library (built with /Z), linked into every program
   TCMSGS.TEXT          8  the compiler's messages (line n = message n)
-  README.TEXT         10  how to use Tiny-C
+  README.TEXT         12  how to use Tiny-C
   ASSERT.H             4  header: assert()
   CONIO.H              4  header: console: getch, putch, cputs, kbhit, gotoxy, clrscr
   CTYPE.H              4  header: isdigit, isalpha, toupper, ...

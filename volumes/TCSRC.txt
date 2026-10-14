@@ -6,10 +6,10 @@ TCSRC:  41 files  (a UCSD directory holds 77)
   BUILD.TEXT           4  X TINY-C:CC, @BUILD: rebuilds the compiler -> TINY-C:CC2.CODE
   LIBS.TEXT            4  X TINY-C:CC, @LIBS: rebuilds the library -> TINY-C:TCLIB2.OBJ
   OBJFORMAT.TEXT      24  the .OBJ file format: what CC writes, how the linker reads it
-  MAIN.C              32  compiler: the driver: commands, @FILE, the passes
+  MAIN.C              36  compiler: the driver: commands, @FILE, the passes
   UTIL.C              16  compiler: messages, output helpers, memory pools
   TYPES.C              6  compiler: type predicates
-  PP.C                66  compiler: pass 1: the preprocessor
+  PP.C                70  compiler: pass 1: the preprocessor
   LEX.C               36  compiler: pass 2: the tokenizer
   PSYM.C              20  compiler: parser: types and symbols
   EXPR.C              64  compiler: parser: expressions
@@ -20,7 +20,7 @@ TCSRC:  41 files  (a UCSD directory holds 77)
   GEN.C               24  compiler: pass 3: P-code generation: emitter, object files
   GENX.C              48  compiler: pass 3: P-code for expressions, calls, switch
   LINK.C              46  compiler: the linker: object files -> code file
-  TC.H                28  compiler: shared declarations (every module)
+  TC.H                30  compiler: shared declarations (every module)
   PARSE.H             14  compiler: the parser modules' shared declarations
   GEN.H                8  compiler: gen.c and genx.c's shared declarations
   ASSERT.C             4  library: <assert.h>
