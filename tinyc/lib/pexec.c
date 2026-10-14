@@ -2,6 +2,7 @@
    again; main(argc, argv) gets the command line it passed */
 #include "libint.h"
 #include <psys.h>
+#include <dirs.h>
 
 int main(int argc, char **argv);
 void __redirect(int *argcp, char **argv);
@@ -73,16 +74,21 @@ int __callmain(void)
    program has ended: it starts the code file at SYSCOM->expansion[1],[2]
    (unit, first block), and when that one ends, the one at [3],[4] -- this
    program, from the beginning. Nothing of this program stays in memory
-   while the other one runs. */
+   while the other one runs.  The OS loads a code file's segments by their
+   blocks on the disk, so one in a sub-volume runs where it is: NAME a path
+   (A/PROG, #5:/A/PROG) or, after the shell's CD into a sub-volume, a name
+   there. */
 int pexec(char *cmd)
 {
-    char name[32];
+    char name[64];
     char title[40];
+    char path[70];
+    char leaf[16];
     unsigned char *pl;
     int fib[40];                        /* the OS's file information block */
     int buf[1024];
     int *e;
-    int u, first, kind, old, linked, i, n, a, self, len;
+    int u, first, kind, old, linked, i, n, a, self, len, base, k, found;
     while (*cmd == ' ')
         cmd++;
     len = strlen(cmd);
@@ -90,27 +96,45 @@ int pexec(char *cmd)
         len--;
     if (len > 80)                       /* PL is a STRING[80] */
         return -4;
-    for (i = 0; i < len && cmd[i] != ' ' && i < 31; i++)
+    for (i = 0; i < len && cmd[i] != ' ' && i < 63; i++)
         name[i] = cmd[i];
-    if (i < len && cmd[i] != ' ')       /* a name longer than 31 */
+    if (i < len && cmd[i] != ' ')       /* a name longer than 63 */
         return -1;
     name[i] = 0;
-    __ptitle(name, title);              /* as X(ecute: NAME.CODE, or NAME. as it is */
-    n = title[0];
-    if (n && title[n] == '.')
-        title[0] = n - 1;
-    else {
-        memcpy(title + n + 1, ".CODE", 5);
-        title[0] = n + 5;
+    found = 0;
+    if (strchr(name, '/') || strchr(name, '\\')
+     || (__svpath[0] && !strchr(name, ':') && name[0] != '#' && name[0] != '*')) {
+        strcpy(path, name);             /* in a sub-volume: NAME.CODE, or NAME. as it is */
+        n = strlen(path);
+        if (n > 0 && path[n - 1] == '.')
+            path[n - 1] = 0;
+        else
+            strcat(path, ".CODE");
+        if (pathdir(path, buf, &u, &base, leaf) && leaf[0] && (i = findname(buf, leaf)) != 0) {
+            first = base + buf[13 * i];         /* its blocks on the disk */
+            kind = buf[13 * i + 2] & 15;
+            found = 1;
+        } else if (strchr(name, '/') || strchr(name, '\\'))
+            return -1;
     }
-    __cxp0v(3, fib, 0, -1);             /* FINIT */
-    __cxp0v(5, fib, title, 1, 0);       /* FOPEN, old file */
-    if (__cspi(34) != 0)
-        return -1;
-    u = fib[7];                         /* FUNIT */
-    first = fib[16];                    /* FHEADER.DFIRSTBLK */
-    kind = fib[18] & 15;                /* FHEADER.DFKIND */
-    __cxp0v(6, fib, 0);                 /* FCLOSE */
+    if (!found) {
+        __ptitle(name, title);          /* as X(ecute: NAME.CODE, or NAME. as it is */
+        n = title[0];
+        if (n && title[n] == '.')
+            title[0] = n - 1;
+        else {
+            memcpy(title + n + 1, ".CODE", 5);
+            title[0] = n + 5;
+        }
+        __cxp0v(3, fib, 0, -1);         /* FINIT */
+        __cxp0v(5, fib, title, 1, 0);   /* FOPEN, old file */
+        if (__cspi(34) != 0)
+            return -1;
+        u = fib[7];                     /* FUNIT */
+        first = fib[16];                /* FHEADER.DFIRSTBLK */
+        kind = fib[18] & 15;            /* FHEADER.DFKIND */
+        __cxp0v(6, fib, 0);             /* FCLOSE */
+    }
     if (kind != 2)                      /* not a code file */
         return -1;
     __cspv(5, u, buf, 0, 512, first, 0);    /* block 0: SEGKIND at word 96 */
@@ -127,17 +151,26 @@ int pexec(char *cmd)
     if (!linked && !old)
         return -2;
     /* this program's own code file: the directory entry that holds its
-       segment 1 (directory: blocks 2..5, 13-word entries, DNUMFILES at 8) */
+       segment 1 (directory: blocks 2..5, 13-word entries, DNUMFILES at 8);
+       an entry that is a sub-volume holding it: the entry in there */
     a = SYSCOM->segtable[1].diskaddr;
-    __cspv(5, SYSCOM->segtable[1].codeunit, buf, 0, 2048, 2, 0);
-    if (__cspi(34) != 0)
-        return -3;
-    self = -1;
-    for (i = 1; i <= buf[8] && i < 78; i++)
-        if (buf[13 * i] <= a && a < buf[13 * i + 1])
-            self = buf[13 * i];
-    if (self < 0)
-        return -3;
+    base = 0;
+    for (k = 0; k < 8; k++) {
+        __cspv(5, SYSCOM->segtable[1].codeunit, buf, 0, 2048, base + 2, 0);
+        if (__cspi(34) != 0)
+            return -3;
+        self = -1;
+        for (i = 1; i <= buf[8] && i < 78; i++)
+            if (base + buf[13 * i] <= a && a < base + buf[13 * i + 1]) {
+                self = base + buf[13 * i];
+                kind = buf[13 * i + 2] & 15;
+            }
+        if (self < 0)
+            return -3;
+        if (kind == 2)
+            break;
+        base = self;
+    }
     i = __svpath[0] ? strlen(__svpath) + 1 : 0;   /* and the shell's path (dirs.c) */
     if (len + i > 80)
         return -4;

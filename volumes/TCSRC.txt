@@ -31,7 +31,7 @@ TCSRC:  41 files  (a UCSD directory holds 77)
   IO.C                 6  library: <io.h>
   MATH.C               6  library: <math.h>
   MEMSCAN.C            6  library: memfill, memgap (<psys.h>)
-  PEXEC.C             12  library: pexec, main(argc, argv) (<psys.h>)
+  PEXEC.C             14  library: pexec, main(argc, argv) (<psys.h>)
   REDIRECT.C           6  library: freopen; >NAME and <NAME on the command line
   SETJMP.C             8  library: <setjmp.h>
   STDIO.C             48  library: <stdio.h>

@@ -83,7 +83,10 @@ struct syscomrec {
    main(int argc, char **argv) gets argv[0] = NAME, argv[1] = ARG1, ...
    (words separated by blanks; started any other way, argc is 1 and
    argv[0] is ""). Nothing of this program stays in memory while NAME
-   runs. Needs the operating system of BIGGY 1.10 or later. Returns only
+   runs. NAME may be a path into sub-volumes (A/PROG, #5:/A/PROG) or, after
+   the shell's CD into one, a name there: the code file runs where it is
+   (the OS loads its segments by their blocks on the disk). Needs the
+   operating system of BIGGY 1.10 or later. Returns only
    when NAME cannot be run: -1 no such code file, -2 not linked, -3 this
    program's own code file not found, -4 cmd longer than 80 characters
    (with the shell's path, when it has one: dirs.h). */

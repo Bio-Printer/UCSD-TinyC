@@ -1,8 +1,10 @@
 /* shell.c -- a mini-shell: runs programs with pexec() and comes back;
    NAME ARG1 ARG2 ... passes the arguments to NAME's main(argc, argv).
-   A NAME without a volume (no ':', no '*') is looked for on every disk
-   on line: found once it runs, found on several disks (up to 8) you
-   choose with one key, no RETURN.
+   A NAME without a volume (no ':', no '*') is looked for on the path
+   (CD into a sub-volume) first, then on every disk on line: found once
+   it runs, found on several disks (up to 8) you choose with one key, no
+   RETURN.  A path (A/PROG, #5:/A/PROG) runs that code file; one in a
+   sub-volume runs where it is.
    Its own commands (upper or lower case):
      CD [#n | n | VOL | *]   the prefix: the volume of unit n (or VOL, or
                              the system volume), as the Filer's Prefix: the
@@ -1136,13 +1138,28 @@ void rmdir(char *arg)
         printf("rmdir: cannot remove %s\n", arg);
 }
 
+/* NAME.CODE on the shell's path (a sub-volume, CD) */
+int onpath(char *name)
+{
+    int dir[1024];
+    char code[24];
+    char leaf[16];
+    int u, base, i;
+    if (!__svpath[0] || strlen(name) > 10)
+        return 0;
+    sprintf(code, "%s.CODE", name);
+    if (!pathdir(code, dir, &u, &base, leaf) || (i = findname(dir, leaf)) == 0)
+        return 0;
+    return (dir[13 * i + 2] & 15) == 2;
+}
+
 /* run NAME (with its arguments ARGS); returns only when it cannot */
 void run(char *name, char *args)
 {
     char cmd[130];
     int n, k, c;
-    if (strchr(name, ':') || name[0] == '*')
-        strcpy(cmd, name);              /* a volume given: just that one */
+    if (strchr(name, ':') || strchr(name, '/') || strchr(name, '\\') || name[0] == '*' || onpath(name))
+        strcpy(cmd, name);              /* a volume or a path given (or on the shell's path): pexec runs it there */
     else {
         n = search(name);
         if (n == 0) {

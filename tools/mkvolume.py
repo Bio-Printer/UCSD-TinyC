@@ -65,10 +65,11 @@ A/X, CC #5:/A/B/X, #include "A/X.H", /L OUT=A/X,A/Y) is taken from
 there; after the shell's CD into a sub-volume CC looks in it first; and
 a file included from a sub-volume finds its "x.h" there first.  An
 object (NAME.OBJ) goes next to its source, and /L and /J find objects
-the same way as sources; code and temporary files (TCTEMP.TEXT,
-TCTEMP.IR) go to the prefix volume unless named with a volume -- from a
-sub-volume (a path, or the shell's), to the volume that holds it, where
-X(ecute and the shell can run the code file; TCLIB.OBJ and
+the same way as sources; the code file goes where NAME says (its volume
+or path, else the shell's path or the prefix volume) -- the shell runs a
+code file in a sub-volume where it is; the temporary files (TCTEMP.TEXT,
+TCTEMP.IR) go to the prefix volume, or to the volume that holds the
+shell's path; TCLIB.OBJ and
 TCMSGS.TEXT are found on TINY-C: when they are not on the prefix volume
 or the boot volume.
 
@@ -158,8 +159,11 @@ leaves a NAME.OBJ as well; remove those with the Filer if you like).
 SHELL is a small shell: type a program's name (as for X(ecute), with
 arguments if you like, and it runs it, then comes back with its exit
 status.  A name without a volume (ARGS rather than TCEXTRA:ARGS) is
-looked for on every disk on line; when several have it, SHELL lists them
-and you choose with one key (no RETURN).  Its own commands:
+looked for on the path (CD into a sub-volume) first, then on every disk
+on line; when several have it, SHELL lists them and you choose with one
+key (no RETURN).  A path (A/PROG, #5:/A/PROG) runs the code file in that
+sub-volume, where it is (no copy: the OS loads its segments from there).
+Its own commands:
   CD #5 (or CD 5, CD VOL, CD *)  the prefix becomes unit 5's volume, as
         the Filer's Prefix: later commands find their files there; CD
         alone shows it.

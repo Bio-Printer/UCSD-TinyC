@@ -21,7 +21,8 @@
  *              them make one command; they run in turn, no prompt
  *            A NAME may be a path into sub-volumes (A/X, #5:/A/B/X); after the
  *            shell's CD into one, names are looked for there first (pp.c
- *            findfile).  NAME.OBJ goes next to its source; NAME.CODE and the
+ *            findfile).  NAME.OBJ goes next to its source and NAME.CODE where
+ *            NAME says (a code file in a sub-volume runs there: pexec); the
  *            temporary files on the volume that holds the sub-volume.
  *
  * Calls through function pointers: by default they use CSP 138 (CALLI), which
@@ -173,9 +174,8 @@ static void upper(char *s)
 
 #ifdef __TINYC__
 /* name on the volume the shell's path is on (VOL: of VOL:/A/B; without a
-   path: name as it is, the prefix): CC's own files (TCTEMP, NAME.CODE) go
-   there, not into the sub-volume -- the OS runs no code file from one, and
-   it may be small */
+   path: name as it is, the prefix): CC's temporary files go there, not
+   into the sub-volume, which may be small */
 static void onpathvol(char *out, char *name)
 {
     char *c;
@@ -188,28 +188,6 @@ static void onpathvol(char *out, char *name)
         out[n] = 0;
     }
     strcat(out, name);
-}
-
-/* NAME.CODE for the word s: on s's volume (VOL:X: VOL:X.CODE), a path's on
-   the volume that holds its sub-volume (#5:/A/X: #5:X.CODE), else on the
-   prefix (or on the volume of the shell's path) */
-static void codename(char *s, char *out)
-{
-    char *c;
-    char *l;
-    int n;
-    c = strchr(s, ':');
-    l = strrchr(s, '/');
-    if (s[0] == '*')
-        strcpy(out, s);
-    else if (c) {
-        n = c - s + 1;
-        memcpy(out, s, n);
-        out[n] = 0;
-        strcat(out, l ? l + 1 : c + 1);
-    } else
-        onpathvol(out, l ? l + 1 : s);
-    strcat(out, ".CODE");
 }
 
 /* one command (see the top of this file); 0 = it failed */
@@ -246,11 +224,8 @@ static int linkcmd(char *s, char *lib, int from)
         say("name too long\n");
         return 0;
     }
-    if (joining) {
-        strcpy(out, s);
-        strcat(out, ".OBJ");
-    } else
-        codename(s, out);
+    strcpy(out, s);
+    strcat(out, joining ? ".OBJ" : ".CODE");
     while (*t) {
         s = t;
         while (*t && *t != ',')
@@ -373,7 +348,8 @@ static int command(char *s, char *lib, int from)
             if (n < 0)
                 return 0;               /* on several disks: findfile said so */
         }
-        /* NAME.OBJ goes next to its source; NAME.CODE as codename says */
+        /* NAME.OBJ goes next to its source; NAME.CODE where NAME says (a
+           volume or path in it, else the shell's path or the prefix) */
         obj[0] = 0;
         t = strchr(src, ':');
         if (t && !strchr(s, ':') && !strchr(s, '/') && s[0] != '*') {
@@ -383,7 +359,8 @@ static int command(char *s, char *lib, int from)
         }
         strcat(obj, s);
         strcat(obj, ".OBJ");
-        codename(s, out);
+        strcpy(out, s);
+        strcat(out, ".CODE");
         onpathvol(ti, "TCTEMP.TEXT");
         onpathvol(tr, "TCTEMP.IR");
         if (!compileone(src, ti, tr, obj))

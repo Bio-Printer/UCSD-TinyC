@@ -294,8 +294,10 @@ NAME
 SYNOPSIS
     COMMAND [ARGS] [<FILE] [>FILE | >>FILE]    A | B | C
 DESCRIPTION
-    Runs programs (a name without a volume is looked for on every disk, and
-    when several have it you pick one with a key) and its own commands below.
+    Runs programs (a name without a volume is looked for on the path, CD,
+    then on every disk, and when several have it you pick one with a key; a
+    path such as A/PROG runs the code file in that sub-volume, where it is)
+    and its own commands below.
     The command line keeps the last 10 commands (#4:SYSTEM.CMDS): Up and Down
     bring them back; Left, Right, Home, End move, Insert switches between
     inserting and typing over, Delete and Backspace delete, ESC clears the line.
