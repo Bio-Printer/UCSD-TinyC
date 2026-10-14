@@ -30,7 +30,8 @@
                              (WHEREIS STDIO.H, WHEREIS *.C), or on one
      VOLUMES                 every disk on line: unit, volume, files,
                              blocks used of its size
-     COPY SRC DEST           SRC: [VOL: | #n: | PATH]PAT; DEST: a volume
+     COPY SRC [DEST]         SRC: [VOL: | #n: | PATH]PAT; DEST (none:
+                             here, the path or the prefix): a volume
                              or sub-volume (VOL:, #n:, A/, VOL:/A/B/, or
                              A when A is a sub-volume: the same names) or,
                              for one file, a name (on the path or the
@@ -44,12 +45,17 @@
                              unless BLOCKS) that holds a volume of its own
                              (77 files); its files are VOL:NAME/FILE or
                              VOL:/NAME/FILE, and sub-volumes nest
-                             (VOL:/A/B/FILE; a \ is a /: VOL:\A\FILE).
+                             (VOL:/A/B/FILE; a \ is a /: VOL:\A\FILE;
+                             . is here, .. the sub-volume that holds it:
+                             COPY X.C .., DIR ..).
                              Programs open such paths
                              like any file name; DIR marks them Sub-volume
      RMDIR NAME              a sub-volume goes (one with files in it
                              after a Y; not one the path is in); DELETE
                              leaves sub-volumes alone
+     PWD                     where names without a volume are: the path
+                             (VOL:/A/B) or the prefix volume (VOL:); the
+                             prompt shows it too (BIGGY:/A/B> )
      MEM                     the shell's free memory
      BYE                     back to the Command: prompt
    Redirection and pipes: COMMAND >FILE puts what the command writes into FILE
@@ -296,6 +302,18 @@ int ispath(char *s)
     return strchr(s, '/') || (__svpath[0] && !strchr(s, ':') && s[0] != '#');
 }
 
+/* where names without a volume are: the path (VOL:/A/B) or the prefix
+   volume (VOL:): PWD, and the prompt */
+void where(char *s)
+{
+    if (__svpath[0])
+        strcpy(s, __svpath);
+    else {
+        prefixvol(s);
+        strcat(s, ":");
+    }
+}
+
 void cd(char *arg)
 {
     int dir[1024];
@@ -369,6 +387,8 @@ int tbase;
 /* [VOL: | #n:][PAT], or a path [VOL:][/]A/B/[PAT]: the unit (the directory
    read into dir; into vol what goes before a file's name: "VOL:" or
    "VOL:/A/B/") and *pat; 0 (and a message for cmd) when there is none */
+char dotarg[84];                        /* (target's arg ending in . or ..: a directory) */
+
 int target(char *cmd, char *arg, int *dir, char *vol, char **pat)
 {
     char path[80];
@@ -376,6 +396,15 @@ int target(char *cmd, char *arg, int *dir, char *vol, char **pat)
     char *colon;
     int u, i;
     tbase = 0;
+    colon = strrchr(arg, '/');                  /* the last name . or ..: the directory, every file */
+    if (!colon)
+        colon = strchr(arg, ':');
+    colon = colon ? colon + 1 : arg;
+    if (strlen(arg) < 80 && (strcmp(colon, ".") == 0 || strcmp(colon, "..") == 0)) {
+        strcpy(dotarg, arg);
+        strcat(dotarg, "/");
+        arg = dotarg;
+    }
     if (ispath(arg)) {
         colon = strrchr(arg, '/');
         *pat = colon ? colon + 1 : arg;         /* the last name: the pattern */
@@ -921,10 +950,12 @@ void copy(char *arg, int move)
         *dst++ = 0;
     while (*dst == ' ')
         dst++;
-    if (!*arg || !*dst) {
-        printf("%s: from where to where? (%s X.C #9:, %s X.C Y.C, %s X.C A/)\n", cmd, cmd, cmd, cmd);
+    if (!*arg) {
+        printf("%s: from where to where? (%s X.C #9:, %s X.C Y.C, %s X.C A/; no DEST: here)\n", cmd, cmd, cmd, cmd);
         return;
     }
+    if (!*dst)
+        dst = ".";                      /* where the path (or the prefix) is */
     su = target(cmd, arg, dir, svol, &pat);
     if (!su)
         return;
@@ -950,7 +981,8 @@ void copy(char *arg, int move)
         return;
     }
     if (dname[0] && n > 1) {
-        printf("%s: %d files: to a volume, not to one name (%s %s #9:)\n", cmd, n, cmd, pat);
+        printf("%s: %d files: to a volume or sub-volume, not to one name (%s here: no sub-volume of that name)\n",
+               cmd, n, dname);
         return;
     }
     for (k = 0; k < n; k++) {
@@ -1200,7 +1232,7 @@ void run(char *name, char *args)
 
 /* the shell's own commands */
 char *builtins[] = { "cd", "dir", "type", "delete", "del", "whereis", "volumes", "vols", "copy", "move",
-                     "rename", "ren", "mkdir", "rmdir", "mem", 0 };
+                     "rename", "ren", "mkdir", "rmdir", "pwd", "mem", 0 };
 
 int isbuiltin(char *name)
 {
@@ -1222,6 +1254,7 @@ int isbye(char *name)
 
 void builtin(char *name, char *args)
 {
+    char buf[80];
     char here;
     char *heaptop;
     if (namesame(name, "cd")) {
@@ -1266,6 +1299,11 @@ void builtin(char *name, char *args)
     }
     if (namesame(name, "rmdir")) {
         rmdir(args);
+        return;
+    }
+    if (namesame(name, "pwd")) {
+        where(buf);
+        printf("%s\n", buf);
         return;
     }
     if (namesame(name, "mem")) {
@@ -1548,7 +1586,8 @@ int main(void)
             runline(line);
             continue;
         }
-        printf("shell> ");
+        where(line);
+        printf("%s> ", line);           /* the prompt: where names without a volume are */
         editline(line);
         n = strlen(line);
         while (n > 0 && line[n - 1] == ' ')

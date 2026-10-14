@@ -22,7 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import ucsdvol
-from psys import ensure_setup, BUILD
+from psys import ensure_setup, BUILD, shell_script, shell_transcript
 from voltest import cmpcode
 from difftest import make_text
 
@@ -69,13 +69,13 @@ def main():
     L += ['TYPE "vi V.TEXT\\r"', 'WAIT "V.TEXT"', 'TYPE "dd:w\\rZZ"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
     L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
     sp = os.path.join(d, 'quick.script')
-    open(sp, 'w').write('\n'.join(L) + '\n')
+    open(sp, 'w').write(shell_script('\n'.join(L) + '\n'))
     env = dict(os.environ, VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'), VERIFY_UNIT12=os.path.join(d, 'TCEXTRA.BLK'),
                VERIFY_UNIT13=work)
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), data, os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'),
                         sp, mode, os.path.join(d, 'out'), '', '3000'], capture_output=True, text=True, env=env)
     tp = os.path.join(d, 'out', 'transcript.txt')
-    tr = open(tp, encoding='latin1').read().replace('\r', '\n') if os.path.exists(tp) else ''
+    tr = shell_transcript(open(tp, encoding='latin1').read()).replace('\r', '\n') if os.path.exists(tp) else ''
     tr = re.sub(r'\n+', '\n', tr)
 
     def part(cmd):

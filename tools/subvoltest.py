@@ -81,7 +81,11 @@ def main():
                       ('dir #5:\\\\t\\\\', 'blocks used'), ('cd #5:\\\\t', 'path is'), ('cd #5:', 'prefix is'),
                       ('#5:wc #5:\\\\a\\\\b\\\\*.TEXT', 'exit status'), ('#5:grep -n blocks #5:\\\\a\\\\b\\\\*.text', 'exit status'),
                       ('copy #5:WC.CODE #5:X\\\\Y', 'no volume'), ('rmdir #5:\\\\t', '(Y/N)', 'Y'),
-                      ('delete #5:?TMP', '(Y/N)', 'Y')):
+                      ('delete #5:?TMP', '(Y/N)', 'Y'),
+                      ('cd #5:/A', 'path is'), ('pwd', 'WORK:/A'), ('dir .', 'blocks used'), ('dir ..', 'blocks used'),
+                      ('copy ../WC.CODE', 'WC.CODE'), ('copy wc.code ../W2.CODE', 'W2.CODE'), ('delete ../w2.code', 'deleted'),
+                      ('delete wc.code', 'deleted'), ('cd b', 'path is'), ('#5:wc ../b/*.text', 'exit status'),
+                      ('#5:grep -n blocks ../B/C3.TEXT', 'exit status'), ('cd ../..', 'prefix is'), ('pwd', 'WORK:')):
         cmd, wait = step[:2]
         s.append('TYPE "%s\\r"' % cmd)
         if wait:
@@ -152,6 +156,19 @@ def main():
                ('no file named with a backslash (COPY to #5:X\\Y: no such sub-volume; the old \\TMP: DELETE ?TMP), T removed (%s)'
                 % ' '.join(names), not any('\\' in n for n in names) and 'no volume or sub-volume' in bs and 'T' not in names
                 and 'WORK:\\TMP deleted' in bs)]
+    raw = open(os.path.join(ps.out, 'transcript.txt'), encoding='latin1').read().replace('\r', '\n')
+    pw = tr[tr.find('shell> cd #5:/A\n', tr.find('?TMP')):]
+    checks += [('the prompt is where names are: WORK:> , WORK:/A> , WORK:/A/B> ', 'WORK:> dir' in raw
+                and 'WORK:/A> pwd' in raw and 'WORK:/A/B> ' in raw),
+               ('PWD: WORK:/A, and WORK: after CD ../..', re.search(r'shell> pwd\s+WORK:/A\s', pw) is not None
+                and re.search(r'shell> pwd\s+WORK:\s', pw) is not None),
+               ('DIR . and DIR ..: A and WORK:', re.search(r'shell> dir \.\s+WORK:/A/ \(#5\)', pw) is not None
+                and re.search(r'shell> dir \.\.\s+WORK: \(#5\)', pw) is not None),
+               ('COPY ../WC.CODE (no DEST: here), COPY wc.code ../W2.CODE, DELETE ../w2.code',
+                'WORK:WC.CODE -> WORK:/A/WC.CODE' in pw and 'WORK:/A/WC.CODE -> WORK:W2.CODE' in pw
+                and 'WORK:W2.CODE deleted' in pw),
+               ('programs take .. too: WC ../b/*.text, GREP ../B/C3.TEXT', re.search(r'125 \.\./b/C3\.TEXT', pw) is not None
+                and 'WORK:/A/B/C3.TEXT:' in pw)]
     bad = 0
     for what, good in checks:
         print('%-4s  %s' % ('ok' if good else 'BAD', what))

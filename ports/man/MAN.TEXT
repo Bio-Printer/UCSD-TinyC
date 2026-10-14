@@ -294,6 +294,8 @@ NAME
 SYNOPSIS
     COMMAND [ARGS] [<FILE] [>FILE | >>FILE]    A | B | C
 DESCRIPTION
+    The prompt is where names without a volume are: the path (BIGGY:/A/B> )
+    or the prefix volume (BIGGY:> ).
     Runs programs (a name without a volume is looked for on the path, CD,
     then on every disk, and when several have it you pick one with a key; a
     path such as A/PROG runs the code file in that sub-volume, where it is)
@@ -312,14 +314,16 @@ COMMANDS (upper or lower case)
     DELETE [VOL: | #n:]PAT     delete (with wildcards it lists them and asks, Y)
     WHEREIS [VOL: | #n:]PAT    which disks have the file
     VOLUMES                    every disk on line: unit, volume, files, blocks
-    COPY SRC DEST              copy (DEST a volume, a sub-volume or, for one
-                               file, a name; a sub-volume copies whole)
+    COPY SRC [DEST]            copy (DEST a volume, a sub-volume or, for one
+                               file, a name; no DEST: here; a sub-volume
+                               copies whole)
     MOVE SRC DEST              copy, then SRC goes
     RENAME [VOL: | #n: | PATH]NAME NEW   one file's new name
     MKDIR NAME [BLOCKS]        a sub-volume: a data file (100 blocks) that
                                holds a volume of its own (77 files)
     RMDIR NAME                 a sub-volume goes (with files: after a Y; not
                                the shell's path); DELETE leaves them alone
+    PWD                        where names without a volume are (the prompt)
     MEM                        the shell's free memory
     BYE                        back to the Command: prompt
 REDIRECTION AND PIPES
@@ -334,7 +338,8 @@ REDIRECTION AND PIPES
 SUB-VOLUMES
     A sub-volume is a data file whose blocks 2..5 are a directory.  Its files
     are VOL:A/NAME or VOL:/A/NAME, and they nest (VOL:/A/B/NAME); a \ is a /
-    in a path (VOL:\A\NAME, as Windows writes it); a name
+    in a path (VOL:\A\NAME, as Windows writes it); . is here and .. the
+    sub-volume that holds it (COPY X.C .., DIR .., CC ../X); a name
     without a volume is on the path (CD).  Every program that opens files with
     fopen takes such paths, and so does X(ecute at the Command: prompt (BIGGY
     1.26); DIR, TYPE, DELETE, WHEREIS, COPY, MOVE and RENAME

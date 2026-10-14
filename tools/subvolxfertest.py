@@ -15,7 +15,7 @@ import os, re, sys, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from psys import PSystem, BUILD
+from psys import PSystem, BUILD, shell_script, shell_transcript
 from tcrun import compile_c
 
 TEXT = 'Imported from Windows\r\n  into a sub-volume,\r\n\tthird line\r\n'
@@ -39,12 +39,12 @@ def main():
           'TYPE "dir #5:A/B/ >#5:A/OUT.TEXT\\r"', 'WAIT "shell> "',
           'TYPE "bye\\r"', 'WAIT "Command:"']
     sp = os.path.join(ps.dir, 'run.script')
-    open(sp, 'w').write('\n'.join(s) + '\n')
+    open(sp, 'w').write(shell_script('\n'.join(s) + '\n'))
     env = dict(ps.env(), VERIFY_IMPORT='5/A/B:' + src, VERIFY_IMPORT_STEP=str(step),
                VERIFY_EXPORT='5/A:OUT.TEXT:' + out, VERIFY_SUBVOLS='1')
     r = subprocess.run([new, os.path.join(BUILD, 'data'), ps.src, ps.spare, sp, os.environ.get('PSYS_MODE', 'native'),
                         ps.out, '', '2400' if z else '400'], capture_output=True, text=True, env=env)
-    tr = open(os.path.join(ps.out, 'transcript.txt'), encoding='latin1').read().replace('\r', '\n') \
+    tr = shell_transcript(open(os.path.join(ps.out, 'transcript.txt'), encoding='latin1').read()).replace('\r', '\n') \
         if os.path.exists(os.path.join(ps.out, 'transcript.txt')) else ''
     subs = re.findall(r'subvolume #5:(\S*) at block (\d+)', r.stderr)
     got = open(out, 'rb').read().decode('latin1') if os.path.exists(out) else ''

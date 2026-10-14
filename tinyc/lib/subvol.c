@@ -55,7 +55,7 @@ int svcanon(char *path, char *out)
             c = strrchr(out, '/');
             if (c)
                 *c = 0;                         /* (VOL:/A: VOL:) */
-        } else if (n > 0) {
+        } else if (n > 0 && !(n == 1 && p[0] == '.')) {     /* (. is here) */
             if (strlen(out) + n + 2 > sizeof __svpath - 1)
                 return 0;
             strcat(out, "/");

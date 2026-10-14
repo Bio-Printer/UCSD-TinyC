@@ -21,7 +21,7 @@ import os, sys, re, shutil, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from psys import ensure_setup, BUILD
+from psys import ensure_setup, BUILD, shell_script, shell_transcript
 
 # the first line LONGS prints (tests/longs.expect)
 LONGS1 = open(os.path.join(ROOT, 'tests', 'longs.expect')).readline().strip()
@@ -67,7 +67,7 @@ def main():
     for v in ('TINY-C', 'TCSRC', 'TCEXTRA', 'TCTESTS'):
         shutil.copy(os.path.join(ROOT, 'build', v + '.BLK'), d)
     sp = os.path.join(d, 'voltest.script')
-    open(sp, 'w').write(script())
+    open(sp, 'w').write(shell_script(script()))
     mode = os.environ.get('PSYS_MODE', 'native')
     env = dict(os.environ, VERIFY_UNIT10=os.path.join(d, 'TCEXTRA.BLK'),
                VERIFY_UNIT11=os.path.join(d, 'TCTESTS.BLK'), VERIFY_LOWWATER='1')
@@ -77,7 +77,7 @@ def main():
                         os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), sp, mode,
                         os.path.join(d, 'out'), '', '600' if mode == 'native' else '1800'], capture_output=True, text=True, env=env)
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout
-    tr = open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read()
+    tr = shell_transcript(open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read())
     least, where, cmd, step = None, '', '', ''
     for l in tr.split('\n'):
         if l.startswith('> '):

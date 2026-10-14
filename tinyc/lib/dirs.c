@@ -9,7 +9,8 @@
    block numbers counted from the file's first block.  A path names a file
    inside sub-volumes: VOL:A/B/NAME or VOL:/A/B/NAME (A a sub-volume on VOL:,
    B one inside A); without VOL: it is on the shell's path (CD) or the
-   prefix volume.  A \ is a / (VOL:\A\NAME, as Windows writes paths).
+   prefix volume.  A \ is a / (VOL:\A\NAME, as Windows writes paths); .
+   is where the path is, .. the sub-volume that holds it (../X.C, ..).
 
    The module is a code segment of its own (DIRS): it is in memory only
    while one of its functions runs, so a program that never names a path
@@ -163,6 +164,42 @@ int findname(int *dir, char *name)
     return 0;
 }
 
+/* . and .. in s (a path after its volume): .. takes back the name before
+   it; when the last name is . or .. the path is a directory (it ends with
+   a /) */
+static void dots(char *s)
+{
+    char out[100];
+    char *p;
+    int n, k, dir;
+    n = 0;
+    dir = 0;
+    for (p = s; *p; p = p + k) {
+        while (*p == '/')
+            p++;
+        for (k = 0; p[k] && p[k] != '/'; k++)
+            ;
+        dir = k == 0 || (p[0] == '.' && (k == 1 || (k == 2 && p[1] == '.')));
+        if (k == 2 && p[0] == '.' && p[1] == '.') {
+            while (n > 0 && out[n - 1] != '/')
+                n--;
+            if (n > 0)
+                n--;                            /* (and its /) */
+        } else if (k > 0 && !(k == 1 && p[0] == '.')) {
+            if (n > 0)
+                out[n++] = '/';
+            memcpy(out + n, p, k);
+            n = n + k;
+        }
+    }
+    if (dir && n > 0)
+        out[n++] = '/';
+    out[n] = 0;
+    if (*s == '/')
+        s++;                                    /* (VOL:/A: the / stays) */
+    strcpy(s, out);
+}
+
 /* Where path's file is: its directory in dir (unit *up, the sub-volume's
    first block *bp, 0 for a volume's own) and its name in leaf (16 bytes;
    "" when path ends with /).  0 when a volume or a sub-volume on the way
@@ -188,6 +225,7 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf)
     slashes(full);                              /* (A\B: A/B) */
     path = full;
     p = strchr(path, ':');
+    dots(p ? p + 1 : path);                     /* (A/../B: B) */
     if (p) {
         n = p - path;
         if (n > 19)

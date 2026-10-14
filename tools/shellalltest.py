@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import ucsdvol
-from psys import ensure_setup, BUILD
+from psys import ensure_setup, BUILD, shell_script, shell_transcript
 from voltest import cmpcode
 from mkvolume import TOOLS, MODULES, LIBMODS_
 
@@ -63,7 +63,7 @@ def main():
     L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')
     L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
     sp = os.path.join(d, 'shellall.script')
-    open(sp, 'w').write('\n'.join(L) + '\n')
+    open(sp, 'w').write(shell_script('\n'.join(L) + '\n'))
     mode = os.environ.get('PSYS_MODE', 'native')
     env = dict(os.environ, VERIFY_UNIT10=os.path.join(d, 'TOOLSRC.BLK'), VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'),
                VERIFY_UNIT12=os.path.join(d, 'TCEXTRA.BLK'), VERIFY_LOWWATER='1')
@@ -80,7 +80,7 @@ def main():
                 vols.setdefault(v.volname, v)
     shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))
     tools = vols.get('TOOLS')
-    tr = open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read()
+    tr = shell_transcript(open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read())
     objs = [m.upper() + '.OBJ' for m in MODULES + LIBMODS_]
     tcsrc, toolsrc = vols.get('TCSRC'), vols.get('TOOLSRC')
     checks = [

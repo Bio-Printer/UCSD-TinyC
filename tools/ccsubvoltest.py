@@ -22,7 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import ucsdvol
-from psys import ensure_setup, BUILD
+from psys import ensure_setup, BUILD, shell_script, shell_transcript
 from tcrun import compile_c
 
 WRONG = 'this is the wrong copy\n'
@@ -73,12 +73,12 @@ def main():
         s += ['TYPE "%s\\r"' % cmd, 'WAIT "%s"' % wait] + (['WAIT "shell> "'] if wait != 'shell> ' else [])
     s += ['TYPE "bye\\r"', 'WAIT "Command:"']
     sp = os.path.join(d, 'run.script')
-    open(sp, 'w').write('\n'.join(s) + '\n')
+    open(sp, 'w').write(shell_script('\n'.join(s) + '\n'))
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
                         os.path.join(d, 'TINY-C.BLK'), work, sp, os.environ.get('PSYS_MODE', 'native'),
                         os.path.join(d, 'out'), '', '3600' if z else '600'], capture_output=True, text=True)
     tp = os.path.join(d, 'out', 'transcript.txt')
-    tr = open(tp, encoding='latin1').read().replace('\r', '\n') if os.path.exists(tp) else ''
+    tr = shell_transcript(open(tp, encoding='latin1').read()).replace('\r', '\n') if os.path.exists(tp) else ''
     tr = re.sub(r'\n+', '\n', tr)
 
     def part(cmd):

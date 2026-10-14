@@ -26,7 +26,7 @@ import os, sys, pty, time, select, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from psys import PSystem
+from psys import PSystem, shell_script, shell_transcript
 from tcrun import compile_c, compile_modules
 from mkvolume import VI_MODULES
 import ucsdvol
@@ -136,7 +136,7 @@ def build_on_psystem(harvard):
         'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINY-C:CC\\r"',
         'WAIT "Compile what file?"', 'TYPE "@TOOLS\\r"', 'WAIT "Done."', 'WAIT "Command:"']
     sp = os.path.join(work, 'script')
-    open(sp, 'w').write('\n'.join(script) + '\n')
+    open(sp, 'w').write(shell_script('\n'.join(script) + '\n'))
     out = os.path.join(work, 'out')
     from mkvolume import TOOLS
     tv = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK'))     # @TOOLS links onto TOOLS: (unit 10):
@@ -148,7 +148,7 @@ def build_on_psystem(harvard):
         env.update(VERIFY_RECLAIM='1', VERIFY_HARVARD='1')
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'), os.path.join(work, 'TINY-C.BLK'),
                         os.path.join(work, 'TOOLSRC.BLK'), sp, mode, out, '', '1800'], capture_output=True, text=True, env=env)
-    tr = open(os.path.join(out, 'transcript.txt'), encoding='latin1').read()
+    tr = shell_transcript(open(os.path.join(out, 'transcript.txt'), encoding='latin1').read())
     names = [name + '.CODE' for name, mods, hdrs, desc in TOOLS]
     built = {}
     for f in [os.path.join(out, f) for f in os.listdir(out)] + [os.path.join(work, 'TOOLS.BLK')]:

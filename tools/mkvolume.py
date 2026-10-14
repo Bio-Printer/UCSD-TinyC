@@ -156,7 +156,9 @@ REBUILDING THEM ALL:  set the prefix to TCEXTRA:, X(ecute TINY-C:CC,
 answer  @DEMOS.  DEMOS.TEXT compiles and links every program here (each
 leaves a NAME.OBJ as well; remove those with the Filer if you like).
 
-SHELL is a small shell: type a program's name (as for X(ecute), with
+SHELL is a small shell (its prompt is where names without a volume are:
+BIGGY:> , or BIGGY:/A/B>  after a CD into a sub-volume; PWD says it too):
+type a program's name (as for X(ecute), with
 arguments if you like, and it runs it, then comes back with its exit
 status.  A name without a volume (ARGS rather than TCEXTRA:ARGS) is
 looked for on the path (CD into a sub-volume) first, then on every disk
@@ -175,7 +177,8 @@ Its own commands:
         BLOCKS) whose blocks 2..5 are a directory of its own (77 files).
         Its files are VOL:NAME/FILE or VOL:/NAME/FILE, and sub-volumes
         nest (VOL:/A/B/FILE); a \\ is a / (VOL:\\A\\FILE, as Windows
-        writes paths).  Programs open such paths like any name;
+        writes paths); . is here, .. the sub-volume that holds it (COPY
+        X.C .., DIR .., COPY #9:*.C with no DEST: here).  Programs open such paths like any name;
         DIR, TYPE, DELETE, WHEREIS, COPY, MOVE and RENAME take them too
         (DIR #5:/A/*.C, COPY X.C A, MOVE A/*.C #9:); not yet the
         wildcards of GREP, LC and WC.

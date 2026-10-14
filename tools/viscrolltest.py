@@ -14,7 +14,7 @@ import os, sys, subprocess, tempfile, shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from psys import PSystem, BUILD
+from psys import PSystem, BUILD, shell_script, shell_transcript
 from tcrun import compile_c, compile_modules
 from mkvolume import VI_MODULES
 import vitest
@@ -50,7 +50,7 @@ def run(binary, work, text, noscroll):
     script += ['TYPE "%s"' % esc(k) for k in KEYS]
     script += ['WAIT "shell> "']
     sp = os.path.join(ps.dir, 'run.script')
-    open(sp, 'w').write('\n'.join(script) + '\n')
+    open(sp, 'w').write(shell_script('\n'.join(script) + '\n'))
     scr = os.path.join(ps.dir, 'screens.txt')
     shutil.rmtree(ps.out, ignore_errors=True)
     import time

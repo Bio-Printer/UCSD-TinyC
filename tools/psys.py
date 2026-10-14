@@ -14,13 +14,29 @@ Command line:
 Disks: #4 = boot disk (Big_Disk.BLK copy), #5 = WORK: (scratch, receives
 output), #9 = spare empty volume.
 """
-import os, sys, subprocess, shutil, tempfile, atexit
+import os, re, sys, subprocess, shutil, tempfile, atexit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 BUILD = os.path.join(ROOT, 'build')
 sys.path.insert(0, HERE)
 import ucsdvol
+
+
+# The shell's prompt is where names without a volume are (examples/shell.c: BIGGY:> , BIGGY:/A/B> ).
+# The test scripts wait for "shell> " and read transcripts as if every prompt said that: shell_script
+# waits for "> " instead (the runner types only when the system waits for a key, so a "> " in a
+# command's output cannot make it type early), shell_transcript turns each prompt -- at a line's
+# start, no blank in it -- back into "shell> ".
+PROMPT_RE = re.compile(r'(?:(?<=[\r\n])|^)[^\s>]+> ')
+
+
+def shell_script(text):
+    return text.replace('WAIT "shell> "', 'WAIT "> "')
+
+
+def shell_transcript(tr):
+    return PROMPT_RE.sub('shell> ', tr)
 
 
 def ensure_setup():
@@ -65,7 +81,7 @@ class PSystem:
 
     def run_script(self, script_text, timeout=600):
         sp = os.path.join(self.dir, 'run.script')
-        open(sp, 'w').write(script_text)
+        open(sp, 'w').write(shell_script(script_text))
         shutil.rmtree(self.out, ignore_errors=True)
         r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
                             self.src, self.spare, sp, os.environ.get('PSYS_MODE', 'native'), self.out, '', str(timeout)],
@@ -74,7 +90,7 @@ class PSystem:
         tr = ''
         tp = os.path.join(self.out, 'transcript.txt')
         if os.path.exists(tp):
-            tr = open(tp, encoding='latin1').read()
+            tr = shell_transcript(open(tp, encoding='latin1').read())
         ok = 'VERIFY SCRIPT COMPLETED' in r.stdout
         return ok, tr, r.stdout
 
