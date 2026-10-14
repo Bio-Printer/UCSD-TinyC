@@ -29,91 +29,9 @@
 #include <ctype.h>
 #include <conio.h>
 #include <psys.h>
+#include <dirs.h>
 
 int dir[1024];
-
-int same(char *a, char *b)
-{
-    while (*a && toupper(*a) == toupper(*b)) {
-        a++;
-        b++;
-    }
-    return *a == 0 && *b == 0;
-}
-
-/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
-int readdir(int u)
-{
-    unsigned char *d;
-    d = (unsigned char *)dir;
-    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
-    if (__cspi(34) != 0)
-        return 0;
-    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
-}
-
-/* the directory back on unit u; the OS's copy of a directory (GDIRP) is
-   then forgotten, so that it reads this one again */
-int writedir(int u)
-{
-    unsigned char *g;
-    __cspv(6, u, dir, 0, 2048, 2, 0);   /* UNITWRITE */
-    g = (unsigned char *)SYSCOM->gdirp;
-    if (g)
-        g[6] = 0;                       /* its volume name: no volume */
-    return __cspi(34) == 0;
-}
-
-/* a directory's volume name, or entry i's file name */
-void dirname(int i, char *s)
-{
-    unsigned char *e;
-    int n;
-    e = (unsigned char *)dir + 26 * i + 6;
-    for (n = 0; n < e[0] && n < 15; n++)
-        s[n] = e[1 + n];
-    s[n] = 0;
-}
-
-/* the unit of a volume: "#n", "n", "*" (the system volume) or a name
-   (":" after it or not); 0 when no disk on line has it */
-int unitof(char *vol)
-{
-    char name[20];
-    char got[16];
-    int n, k, u;
-    strncpy(name, vol, 19);
-    name[19] = 0;
-    n = strlen(name);
-    if (n > 0 && name[n - 1] == ':')
-        name[--n] = 0;
-    if (n == 0)
-        return 0;
-    if (strcmp(name, "*") == 0)
-        return SYSCOM->sysunit;
-    if (name[0] == '#' || isdigit(name[0])) {
-        u = atoi(name[0] == '#' ? name + 1 : name);
-        return u > 0 && u <= 14 && readdir(u) ? u : 0;
-    }
-    for (k = 0; k < 8; k++)
-        if (readdir(units[k])) {
-            dirname(0, got);
-            if (same(got, name))
-                return units[k];
-        }
-    return 0;
-}
-
-/* the prefix volume's name (the OS's DKVID) */
-void prefix(char *s)
-{
-    unsigned char *v;
-    int n;
-    v = (unsigned char *)__osvaraddr(OS_DKVID);
-    for (n = 0; n < v[0] && n < 7; n++)
-        s[n] = v[1 + n];
-    s[n] = 0;
-}
 
 /* a file of this program open on unit u (a redirection to that disk) */
 int openon(int u)
@@ -151,7 +69,7 @@ int main(int argc, char **argv)
     yes = 0;
     vol[0] = 0;
     for (i = 1; i < argc; i++) {
-        if (same(argv[i], "-y"))
+        if (namesame(argv[i], "-y"))
             yes = 1;
         else if (argv[i][0] == '-') {
             fprintf(stderr, "usage: KRUNCH [-y] [VOL: | #n]\n");
@@ -162,13 +80,13 @@ int main(int argc, char **argv)
         }
     }
     if (!vol[0])
-        prefix(vol);
-    u = unitof(vol);
-    if (u == 0 || !readdir(u)) {
+        prefixvol(vol);
+    u = volunit(vol, dir);
+    if (u == 0 || !dirread(u, dir)) {
         fprintf(stderr, "krunch: no disk %s on line\n", vol);
         return 2;
     }
-    dirname(0, vol);
+    direntname(dir, 0, vol);
     if (openon(u)) {
         fprintf(stderr, "krunch: a file of KRUNCH is open on %s: (its output?)\n", vol);
         return 2;
@@ -214,7 +132,7 @@ int main(int argc, char **argv)
         from = e[0];
         len = e[1] - e[0];
         if (from > next) {
-            dirname(i, name);
+            direntname(dir, i, name);
             d = from - next;
             for (k = 0; k < len; k = k + n) {           /* down: the first blocks first */
                 n = len - k < nb ? len - k : nb;
@@ -223,14 +141,14 @@ int main(int argc, char **argv)
                     __cspv(6, u, buf, 0, n * 512, next + k, 0);    /* UNITWRITE */
                 if (__cspi(34) != 0) {
                     fprintf(stderr, "krunch: disk error %d moving %s (block %d)\n", __cspi(34), name, from + k);
-                    writedir(u);
+                    dirwrite(u, dir);
                     return 3;
                 }
             }
             e[0] = next;
             e[1] = next + len;
             follow(u, from, from + len, d);
-            if (!writedir(u)) {
+            if (!dirwrite(u, dir)) {
                 fprintf(stderr, "krunch: disk error %d writing the directory\n", __cspi(34));
                 return 3;
             }

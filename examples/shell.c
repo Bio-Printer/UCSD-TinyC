@@ -51,6 +51,7 @@
 #include <ctype.h>
 #include <conio.h>
 #include <psys.h>
+#include <dirs.h>
 
 #define MAXFOUND 8
 
@@ -250,78 +251,6 @@ int search(char *name)
     return n;
 }
 
-/* same, ignoring case */
-int same(char *a, char *b)
-{
-    while (*a && toupper(*a) == toupper(*b)) {
-        a++;
-        b++;
-    }
-    return *a == 0 && *b == 0;
-}
-
-/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
-int readdir(int u, int *dir)
-{
-    unsigned char *d;
-    d = (unsigned char *)dir;
-    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
-    if (__cspi(34) != 0)
-        return 0;
-    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
-}
-
-/* a directory's volume name, or entry i's file name */
-void dirname(int *dir, int i, char *s)
-{
-    unsigned char *e;
-    int n;
-    e = (unsigned char *)dir + 26 * i + 6;
-    for (n = 0; n < e[0] && n < 15; n++)
-        s[n] = e[1 + n];
-    s[n] = 0;
-}
-
-/* the unit of a volume: "#n", "n", "*" (the system volume) or a name
-   (":" after it or not); 0 when no disk on line has it */
-int unitof(char *vol, int *dir)
-{
-    char name[20];
-    char got[16];
-    int n, k, u;
-    strncpy(name, vol, 19);
-    name[19] = 0;
-    n = strlen(name);
-    if (n > 0 && name[n - 1] == ':')
-        name[--n] = 0;
-    if (n == 0)
-        return 0;
-    if (strcmp(name, "*") == 0)
-        return SYSCOM->sysunit;
-    if (name[0] == '#' || isdigit(name[0])) {
-        u = atoi(name[0] == '#' ? name + 1 : name);
-        return u > 0 && u <= 14 && readdir(u, dir) ? u : 0;
-    }
-    for (k = 0; k < 8; k++)
-        if (readdir(units[k], dir)) {
-            dirname(dir, 0, got);
-            if (same(got, name))
-                return units[k];
-        }
-    return 0;
-}
-
-/* the prefix volume's name (the OS's DKVID) */
-void prefix(char *s)
-{
-    unsigned char *v;
-    int n;
-    v = (unsigned char *)__osvaraddr(OS_DKVID);
-    for (n = 0; n < v[0] && n < 7; n++)
-        s[n] = v[1 + n];
-    s[n] = 0;
-}
-
 /* CD: the prefix becomes the volume in unit n (or VOL, or *) */
 void cd(char *arg)
 {
@@ -330,44 +259,23 @@ void cd(char *arg)
     unsigned char *v;
     int u, n;
     if (*arg) {
-        u = unitof(arg, dir);
-        if (u == 0 || !readdir(u, dir)) {
+        u = volunit(arg, dir);
+        if (u == 0 || !dirread(u, dir)) {
             printf("cd: no disk %s on line\n", arg);
             return;
         }
-        dirname(dir, 0, vol);
+        direntname(dir, 0, vol);
         v = (unsigned char *)__osvaraddr(OS_DKVID);
         n = strlen(vol);
         v[0] = n;
         memcpy(v + 1, vol, n);
     }
-    prefix(vol);
-    u = unitof(vol, dir);
+    prefixvol(vol);
+    u = volunit(vol, dir);
     if (u)
         printf("prefix is %s: (#%d)\n", vol, u);
     else
         printf("prefix is %s: (not on line)\n", vol);
-}
-
-/* does name match the pattern: * or = any characters, ? any one */
-int match(char *pat, char *name)
-{
-    if (*pat == 0)
-        return *name == 0;
-    if (*pat == '*' || *pat == '=') {
-        for (;;) {
-            if (match(pat + 1, name))
-                return 1;
-            if (*name == 0)
-                return 0;
-            name++;
-        }
-    }
-    if (*name == 0)
-        return 0;
-    if (*pat != '?' && toupper(*pat) != toupper(*name))
-        return 0;
-    return match(pat + 1, name + 1);
 }
 
 char *months[] = { "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -405,15 +313,15 @@ int target(char *cmd, char *arg, int *dir, char *vol, char **pat)
         strcpy(vol, arg);               /* #5: the unit, every file */
         *pat = "";
     } else {
-        prefix(vol);
+        prefixvol(vol);
         *pat = arg;
     }
-    u = unitof(vol, dir);
-    if (u == 0 || !readdir(u, dir)) {
+    u = volunit(vol, dir);
+    if (u == 0 || !dirread(u, dir)) {
         printf("%s: no disk %s on line\n", cmd, *vol ? vol : ":");
         return 0;
     }
-    dirname(dir, 0, vol);
+    direntname(dir, 0, vol);
     return u;
 }
 
@@ -449,7 +357,7 @@ void fileline(int *dir, int i, int ext)
     int *e;
     int m;
     e = dir + 13 * i;
-    dirname(dir, i, name);
+    direntname(dir, i, name);
     m = e[12] & 15;
     printf("%-15s %5d  ", name, e[1] - e[0]);
     if (m == 0)                         /* no date */
@@ -513,8 +421,8 @@ void dir(char *arg)
         if (i > nf)
             break;
         last = dir[13 * i + 1];
-        dirname(dir, i, name);
-        if (*pat && !match(pat, name))
+        direntname(dir, i, name);
+        if (*pat && !wildmatch(pat, name))
             continue;
         fileline(dir, i, ext);
         shown++;
@@ -549,14 +457,14 @@ void whereis(char *arg)
     lines = 0;
     for (k = 0; k < 8; k++) {
         u = units[k];
-        if (one ? u != one : !readdir(u, dir))
+        if (one ? u != one : !dirread(u, dir))
             continue;
-        dirname(dir, 0, vol);
+        direntname(dir, 0, vol);
         strcat(vol, ":");
         here = 0;
         for (i = 1; i <= dir[8]; i++) {
-            dirname(dir, i, name);
-            if (*pat && !match(pat, name))
+            direntname(dir, i, name);
+            if (*pat && !wildmatch(pat, name))
                 continue;
             printf("#%-2d %-8s ", u, vol);
             fileline(dir, i, 0);
@@ -580,13 +488,13 @@ void volumes(void)
     char vol[16];
     char pre[8];
     int k, u, used, unused, largest;
-    prefix(pre);
+    prefixvol(pre);
     printf("Unit  Volume    Files  Blocks used\n");
     for (k = 0; k < 8; k++) {
         u = units[k];
-        if (!readdir(u, dir))
+        if (!dirread(u, dir))
             continue;
-        dirname(dir, 0, vol);
+        direntname(dir, 0, vol);
         space(dir, &used, &unused, &largest);
         strcat(vol, ":");
         printf(" #%-2d  %-8s  %5d  %5d of %5d%s%s\n", u, vol, dir[8], used, dir[7],
@@ -616,8 +524,8 @@ void type(char *arg)
     nf = dir[8];
     found = 0;
     for (i = 1; i <= nf; i++) {
-        dirname(dir, i, name);
-        if (!match(pat, name))
+        direntname(dir, i, name);
+        if (!wildmatch(pat, name))
             continue;
         found++;
         if (wild(pat))
@@ -663,8 +571,8 @@ void delete(char *arg)
     nf = dir[8];
     n = 0;
     for (i = 1; i <= nf; i++) {
-        dirname(dir, i, names[n]);
-        if (match(pat, names[n]))
+        direntname(dir, i, names[n]);
+        if (wildmatch(pat, names[n]))
             n++;
     }
     if (n == 0) {
@@ -711,25 +619,13 @@ int bio(char *fib, char *buf, int n, int b, int doread)
     return __cspi(34) == 0 && got == n;
 }
 
-/* write unit u's directory back; the OS's copy of a directory (GDIRP)
-   is then forgotten, so that it reads this one before it changes it */
-int writedir(int u, int *dir)
-{
-    unsigned char *g;
-    __cspv(6, u, dir, 0, 2048, 2, 0);   /* UNITWRITE */
-    g = (unsigned char *)SYSCOM->gdirp;
-    if (g)
-        g[6] = 0;                       /* its volume name: no volume */
-    return __cspi(34) == 0;
-}
-
 /* the entry named name: its index, 0 if none */
 int findentry(int *dir, char *name)
 {
     char got[16];
     int i;
     for (i = 1; i <= dir[8]; i++) {
-        dirname(dir, i, got);
+        direntname(dir, i, got);
         if (strcmp(got, name) == 0)
             return i;
     }
@@ -765,13 +661,13 @@ int copyone(int su, int *sdir, int i, char *svol, int du, char *dvol, char *dnam
     int n, b, nb, j, had;
     e = sdir + 13 * i;
     nb = e[1] - e[0];
-    dirname(sdir, i, sname);
+    direntname(sdir, i, sname);
     sprintf(path, "#%d:%s", su, sname);
     if (!bopen(sfib, path, 1)) {
         printf("%s:%s: cannot open it\n", svol, sname);
         return 0;
     }
-    had = readdir(du, ddir) && findentry(ddir, dname);
+    had = dirread(du, ddir) && findentry(ddir, dname);
     sprintf(path, "#%d:%s", du, dname);
     if (!bopen(dfib, path, 0)) {
         __cxp0v(6, sfib, 0);
@@ -789,7 +685,7 @@ int copyone(int su, int *sdir, int i, char *svol, int du, char *dvol, char *dnam
     }
     __cxp0v(6, sfib, 0);
     __cxp0v(6, dfib, 1);                /* FCLOSE(LOCK): an old one of that name goes */
-    if (__cspi(34) != 0 || !readdir(du, ddir) || !(j = findentry(ddir, dname))) {
+    if (__cspi(34) != 0 || !dirread(du, ddir) || !(j = findentry(ddir, dname))) {
         printf("%s:%s: cannot create it\n", dvol, dname);
         return 0;
     }
@@ -798,7 +694,7 @@ int copyone(int su, int *sdir, int i, char *svol, int du, char *dvol, char *dnam
     e[2] = (e[2] & ~15) | (sdir[13 * i + 2] & 15);      /* DFKIND */
     e[11] = sdir[13 * i + 11];          /* DLASTBYTE */
     e[12] = sdir[13 * i + 12];          /* DACCESS */
-    writedir(du, ddir);
+    dirwrite(du, ddir);
     printf("%s:%s -> %s:%s%s\n", svol, sname, dvol, dname, had ? " (replaced)" : "");
     return 1;
 }
@@ -809,7 +705,7 @@ int renameone(int u, char *vol, char *name, char *new)
     int dir[1024];
     unsigned char *t;
     int i;
-    if (!readdir(u, dir) || !(i = findentry(dir, name))) {
+    if (!dirread(u, dir) || !(i = findentry(dir, name))) {
         printf("%s:%s: not there\n", vol, name);
         return 0;
     }
@@ -820,7 +716,7 @@ int renameone(int u, char *vol, char *name, char *new)
     t = (unsigned char *)dir + 26 * i + 6;      /* DTID */
     t[0] = strlen(new);
     memcpy(t + 1, new, t[0]);
-    if (!writedir(u, dir)) {
+    if (!dirwrite(u, dir)) {
         printf("%s: cannot write its directory\n", vol);
         return 0;
     }
@@ -865,8 +761,8 @@ void copy(char *arg, int move)
     }
     n = 0;
     for (i = 1; i <= sdir[8]; i++) {
-        dirname(sdir, i, sname);
-        if (match(pat, sname))
+        direntname(sdir, i, sname);
+        if (wildmatch(pat, sname))
             idx[n++] = i;
     }
     if (n == 0) {
@@ -884,7 +780,7 @@ void copy(char *arg, int move)
     } else if (dst[0] == '#')
         strcpy(dvol, dst);
     else {
-        prefix(dvol);
+        prefixvol(dvol);
         strncpy(dname, dst, 19);
         dname[19] = 0;
     }
@@ -896,14 +792,14 @@ void copy(char *arg, int move)
         printf("%s: %d files: to a volume, not to one name (%s %s #9:)\n", cmd, n, cmd, pat);
         return;
     }
-    du = unitof(dvol, ddir);
-    if (du == 0 || !readdir(du, ddir)) {
+    du = volunit(dvol, ddir);
+    if (du == 0 || !dirread(du, ddir)) {
         printf("%s: no disk %s on line\n", cmd, dvol);
         return;
     }
-    dirname(ddir, 0, dvol);
+    direntname(ddir, 0, dvol);
     for (k = 0; k < n; k++) {
-        dirname(sdir, idx[k], sname);
+        direntname(sdir, idx[k], sname);
         if (du == su) {
             if (!dname[0] || strcmp(dname, sname) == 0) {
                 printf("%s: %s:%s is that file\n", cmd, svol, sname);
@@ -950,8 +846,8 @@ void rename(char *arg)
         return;
     n = 0;
     for (i = 1; i <= dir[8]; i++) {
-        dirname(dir, i, name);
-        if (*pat && match(pat, name)) {
+        direntname(dir, i, name);
+        if (*pat && wildmatch(pat, name)) {
             n++;
             k = i;
         }
@@ -967,7 +863,7 @@ void rename(char *arg)
     c = strchr(new, ':');
     if (c) {
         *c = 0;
-        if (unitof(new, dir) != u) {
+        if (volunit(new, dir) != u) {
             printf("rename: to another disk: MOVE\n");
             return;
         }
@@ -977,8 +873,8 @@ void rename(char *arg)
         printf("rename: %s is not a file name\n", new);
         return;
     }
-    readdir(u, dir);
-    dirname(dir, k, name);
+    dirread(u, dir);
+    direntname(dir, k, name);
     renameone(u, vol, name, new);
 }
 
@@ -1035,7 +931,7 @@ int isbuiltin(char *name)
 {
     int i;
     for (i = 0; builtins[i]; i++)
-        if (same(name, builtins[i]))
+        if (namesame(name, builtins[i]))
             return 1;
     return 0;
 }
@@ -1046,50 +942,50 @@ int isbye(char *name)
     n = 0;
     while (name[n] && name[n] != ' ')
         n++;
-    return n == 3 && same(name, "bye");
+    return n == 3 && namesame(name, "bye");
 }
 
 void builtin(char *name, char *args)
 {
     char here;
     char *heaptop;
-    if (same(name, "cd")) {
+    if (namesame(name, "cd")) {
         cd(args);
         return;
     }
-    if (same(name, "dir")) {
+    if (namesame(name, "dir")) {
         dir(args);
         return;
     }
-    if (same(name, "type")) {
+    if (namesame(name, "type")) {
         type(args);
         return;
     }
-    if (same(name, "delete") || same(name, "del")) {
+    if (namesame(name, "delete") || namesame(name, "del")) {
         delete(args);
         return;
     }
-    if (same(name, "whereis")) {
+    if (namesame(name, "whereis")) {
         whereis(args);
         return;
     }
-    if (same(name, "volumes") || same(name, "vols")) {
+    if (namesame(name, "volumes") || namesame(name, "vols")) {
         volumes();
         return;
     }
-    if (same(name, "copy")) {
+    if (namesame(name, "copy")) {
         copy(args, 0);
         return;
     }
-    if (same(name, "move")) {
+    if (namesame(name, "move")) {
         copy(args, 1);
         return;
     }
-    if (same(name, "rename") || same(name, "ren")) {
+    if (namesame(name, "rename") || namesame(name, "ren")) {
         rename(args);
         return;
     }
-    if (same(name, "mem")) {
+    if (namesame(name, "mem")) {
         __cspv(32, &heaptop);       /* MARK: the top of the heap */
         printf("shell: %u words free\n", (unsigned)(&here - heaptop) / 2);
         return;

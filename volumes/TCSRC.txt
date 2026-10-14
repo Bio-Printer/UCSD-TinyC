@@ -26,6 +26,7 @@ TCSRC:  40 files  (a UCSD directory holds 77)
   ASSERT.C             4  library: <assert.h>
   CONIO.C              4  library: <conio.h>
   CTYPE.C              4  library: <ctype.h>
+  DIRS.C               8  library: units[], dirread, dirwrite, volunit, wildmatch ...: disks and directories (<psys.h>)
   FLTFMT.C             8  library: printf's %f %e %g (linked only when floats are used)
   IO.C                 6  library: <io.h>
   MATH.C               6  library: <math.h>
@@ -39,6 +40,5 @@ TCSRC:  40 files  (a UCSD directory holds 77)
   STRING.C             8  library: <string.h>
   STRTOLD.C            4  library: strtold, atold (<stdlib.h>, P-Code mode)
   TCRT.C              18  library: runtime helpers: C division, shifts, unsigned, longs
-  UNITS.C              4  library: units[]: the disk units (<psys.h>)
   LIBINT.H             6  library: the library modules' shared declarations
   FILES.TEXT           8  this list

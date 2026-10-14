@@ -24,6 +24,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <psys.h>
+#include <dirs.h>
 
 int exact;                              /* -i: case counts */
 int invert;                             /* -n: the lines without the pattern */
@@ -178,49 +179,6 @@ int match(char *re, char *s)
 
 /* ---- disks, directories, file names ---- */
 
-/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
-int readdir(int u, int *dir)
-{
-    unsigned char *d;
-    d = (unsigned char *)dir;
-    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
-    if (__cspi(34) != 0)
-        return 0;
-    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
-}
-
-/* a directory's volume name (i = 0), or entry i's file name */
-void dirname(int *dir, int i, char *s)
-{
-    unsigned char *e;
-    int n;
-    e = (unsigned char *)dir + 26 * i + 6;
-    for (n = 0; n < e[0] && n < 15; n++)
-        s[n] = e[1 + n];
-    s[n] = 0;
-}
-
-/* a file name's wildcards: * or = any characters, ? any one */
-int wildmatch(char *pat, char *name)
-{
-    if (*pat == 0)
-        return *name == 0;
-    if (*pat == '*' || *pat == '=') {
-        for (;;) {
-            if (wildmatch(pat + 1, name))
-                return 1;
-            if (*name == 0)
-                return 0;
-            name++;
-        }
-    }
-    if (*name == 0)
-        return 0;
-    if (*pat != '?' && toupper(*pat) != toupper(*name))
-        return 0;
-    return wildmatch(pat + 1, name + 1);
-}
-
 /* ---- a text file, read with the OS's untyped file routines: 1 KB pages
    from block 2, lines ending in CR, DLE n = n - 32 blanks, NULs filling
    the rest of a page ---- */
@@ -340,9 +298,9 @@ void files(char *re, char *spec)
     n = 0;
     for (k = 0; k < 8; k++) {
         u = units[k];
-        if (!readdir(u, dir))
+        if (!dirread(u, dir))
             continue;
-        dirname(dir, 0, vol);
+        direntname(dir, 0, vol);
         if (one) {
             if (want[0] == '#' ? atoi(want + 1) != u
                 : want[0] == '*' ? u != SYSCOM->sysunit
@@ -350,7 +308,7 @@ void files(char *re, char *spec)
                 continue;
         }
         for (i = 1; i <= dir[8]; i++) {
-            dirname(dir, i, name);
+            direntname(dir, i, name);
             if ((dir[13 * i + 2] & 15) != 3 || !wildmatch(*pat ? pat : "*", name))
                 continue;               /* not text, or not the name */
             n++;

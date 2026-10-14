@@ -81,11 +81,18 @@ static void passend(void)
     resetpools();
 }
 
-/* one source file to one object file */
+/* one source file to one object file.  The temporary files are removed
+   before and after: a new file of the same name leaves the old one on the
+   disk until it is closed, and on a disk whose largest free area another
+   file has (the output of CC >FILE, a pipe), old and new would share what
+   is left. */
 static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
 {
     char mod[10];
+    int ok;
     basename8(src, mod);
+    remove(tmpi);
+    remove(tmpr);
     say("Preprocessing ");
     sayw(src, 18);                      /* the passes' figures line up in columns */
     passbegin(8000);
@@ -99,9 +106,13 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
     passend();
     say("Generating code ");
     passbegin(1900);
-    if (!gencode(tmpr, obj))
+    ok = gencode(tmpr, obj);
+    if (ok)
+        passend();
+    remove(tmpi);
+    remove(tmpr);
+    if (!ok)
         return 0;
-    passend();
     say("\n");
     return 1;
 }

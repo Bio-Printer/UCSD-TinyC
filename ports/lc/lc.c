@@ -21,104 +21,13 @@
 #include <string.h>
 #include <ctype.h>
 #include <psys.h>
+#include <dirs.h>
 
 int opt1, optx, optF, opts, optr, optS, optC;
 int dir[1024];
 char names[MAXDIR + 1][20];             /* the name, then * perhaps */
 int size[MAXDIR + 1];
 int ord[MAXDIR + 1];
-
-int same(char *a, char *b)
-{
-    while (*a && toupper(*a) == toupper(*b)) {
-        a++;
-        b++;
-    }
-    return *a == 0 && *b == 0;
-}
-
-/* unit u's directory (blocks 2..5) into dir: 0 if no disk is there */
-int readdir(int u)
-{
-    unsigned char *d;
-    d = (unsigned char *)dir;
-    __cspv(5, u, dir, 0, 2048, 2, 0);   /* UNITREAD */
-    if (__cspi(34) != 0)
-        return 0;
-    return d[6] >= 1 && d[6] <= 7 && dir[8] >= 0 && dir[8] <= 77;
-}
-
-/* a directory's volume name, or entry i's file name */
-void dirname(int i, char *s)
-{
-    unsigned char *e;
-    int n;
-    e = (unsigned char *)dir + 26 * i + 6;
-    for (n = 0; n < e[0] && n < 15; n++)
-        s[n] = e[1 + n];
-    s[n] = 0;
-}
-
-/* the unit of a volume: "#n", "n", "*" (the system volume) or a name
-   (":" after it or not); 0 when no disk on line has it */
-int unitof(char *vol)
-{
-    char name[20];
-    char got[16];
-    int n, k, u;
-    strncpy(name, vol, 19);
-    name[19] = 0;
-    n = strlen(name);
-    if (n > 0 && name[n - 1] == ':')
-        name[--n] = 0;
-    if (n == 0)
-        return 0;
-    if (strcmp(name, "*") == 0)
-        return SYSCOM->sysunit;
-    if (name[0] == '#' || isdigit(name[0])) {
-        u = atoi(name[0] == '#' ? name + 1 : name);
-        return u > 0 && u <= 14 && readdir(u) ? u : 0;
-    }
-    for (k = 0; k < 8; k++)
-        if (readdir(units[k])) {
-            dirname(0, got);
-            if (same(got, name))
-                return units[k];
-        }
-    return 0;
-}
-
-/* the prefix volume's name (the OS's DKVID) */
-void prefix(char *s)
-{
-    unsigned char *v;
-    int n;
-    v = (unsigned char *)__osvaraddr(OS_DKVID);
-    for (n = 0; n < v[0] && n < 7; n++)
-        s[n] = v[1 + n];
-    s[n] = 0;
-}
-
-/* does name match the pattern: * or = any characters, ? any one */
-int match(char *pat, char *name)
-{
-    if (*pat == 0)
-        return *name == 0;
-    if (*pat == '*' || *pat == '=') {
-        for (;;) {
-            if (match(pat + 1, name))
-                return 1;
-            if (*name == 0)
-                return 0;
-            name++;
-        }
-    }
-    if (*name == 0)
-        return 0;
-    if (*pat != '?' && toupper(*pat) != toupper(*name))
-        return 0;
-    return match(pat + 1, name + 1);
-}
 
 /* [VOL: | #n:][PAT]: the unit (its directory read into dir, its volume's
    name into vol) and *pat; 0 (and a message) when no disk has it */
@@ -138,15 +47,15 @@ int target(char *arg, char *vol, char **pat)
         strcpy(vol, arg);
         *pat = "";
     } else {
-        prefix(vol);
+        prefixvol(vol);
         *pat = arg;
     }
-    u = unitof(vol);
-    if (u == 0 || !readdir(u)) {
+    u = volunit(vol, dir);
+    if (u == 0 || !dirread(u, dir)) {
         fprintf(stderr, "lc: no disk %s on line\n", *vol ? vol : ":");
         return 0;
     }
-    dirname(0, vol);
+    direntname(dir, 0, vol);
     return u;
 }
 
@@ -232,8 +141,8 @@ int list(char *pat, int header, char *vol)
     nf = dir[8];
     n = 0;
     for (i = 1; i <= nf && n < MAXDIR + 1; i++) {
-        dirname(i, name);
-        if (*pat && !match(pat, name))
+        direntname(dir, i, name);
+        if (*pat && !wildmatch(pat, name))
             continue;
         e = dir + 13 * i;
         kind = e[2] & 15;

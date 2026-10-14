@@ -17,9 +17,6 @@
 #define OS_SYVID 63
 #define MAXDIR 77
 
-/* the disk units, in the order the OS looks at them (units.c) */
-extern int units[8];
-
 /* SYSCOMREC of U134.4 OS source 1.07, GLOBALS.TEXT. The II.0 compiler lays
    out each list of names declared together ("A,B,C: T") last first, so
    e.g. LOWTIME comes before HIGHTIME and BOMBP before LASTMP. Packed
