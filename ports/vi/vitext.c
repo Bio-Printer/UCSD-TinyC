@@ -92,10 +92,8 @@ char *find_line(int li)	// find begining of line #li
 {
 	char *q;
 
-#if ENABLE_FEATURE_VI_PAGING
 	if (pg_f)
 		return pg_goto(li);
-#endif
 	for (q = text; li > 1; li--) {
 		q = next_line(q);
 	}
@@ -147,17 +145,13 @@ char *move_to_col(char *p, int l)
 
 void dot_next(void)
 {
-#if ENABLE_FEATURE_VI_PAGING
 	pg_edge(FORWARD);
-#endif
 	dot = next_line(dot);
 }
 
 void dot_prev(void)
 {
-#if ENABLE_FEATURE_VI_PAGING
 	pg_edge(BACK);
-#endif
 	dot = prev_line(dot);
 }
 
@@ -165,9 +159,7 @@ void dot_scroll(int cnt, int dir)
 {
 	char *q;
 
-#if ENABLE_FEATURE_VI_PAGING
 	cnt -= pg_scroll(cnt, dir);	// (moved over as many lines as the window allows)
-#endif
 	for (; cnt > 0; cnt--) {
 		if (dir < 0) {
 			// scroll Backwards
@@ -417,7 +409,6 @@ int find_range(char **start, char **stop, char c)
 	char *save_dot, *p, *q, *t;
 	int cnt, multiline = 0;
 
-#if ENABLE_FEATURE_VI_PAGING
 	{
 		int n, l, ok;
 		n = cmdcnt > 1 ? cmdcnt : 1;
@@ -437,7 +428,6 @@ int find_range(char **start, char **stop, char c)
 		}
 		pg_lock++;
 	}
-#endif
 	save_dot = dot;
 	p = q = dot;
 
@@ -503,9 +493,7 @@ int find_range(char **start, char **stop, char c)
 	*start = p;
 	*stop = q;
 	dot = save_dot;
-#if ENABLE_FEATURE_VI_PAGING
 	pg_lock--;
-#endif
 	return multiline;
 }
 
@@ -596,13 +584,11 @@ char *text_hole_make(char *p, int size)	// at "p", make a 'size' byte hole
 {
 	if (size <= 0)
 		return p;
-#if ENABLE_FEATURE_VI_PAGING
 	if (pg_room() < size) {
 		p = pg_makeroom(p, size);
 		if (!p)
 			return NULL;
 	}
-#endif
 	end += size;		// adjust the new END
 	if (end >= (text + text_size)) {
 		char *new_text;
@@ -660,11 +646,9 @@ char *text_hole_delete(char *p, char *q) // delete "p" through "q", inclusive
 	memmove(dest, src, cnt);
  thd_atend:
 	end = end - hole_size;	// adjust the new END
-#if ENABLE_FEATURE_VI_PAGING
 	// deleted to the window's end: the lines after it in (if they fit
 	// without moving what callers point at; else yank_delete does it)
 	pg_atend = dest >= end && PG_MORE() && !pg_fill_bottom();
-#endif
 	if (dest >= end)
 		dest = end - 1;	// make sure dest in below end-1
 	if (end <= text)
@@ -711,10 +695,8 @@ char *yank_delete(char *start, char *stop, int dist, int yf)
 #endif
 	if (yf == YANKDEL) {
 		p = text_hole_delete(start, stop);
-#if ENABLE_FEATURE_VI_PAGING
 		if (pg_atend)
 			p = pg_next_in(end);	// at the window's end: the next line in
-#endif
 	}					// delete lines
 	return p;
 }
@@ -811,7 +793,6 @@ void check_context(char cmd)
 	// A context is defined to be "modifying text"
 	// Any modifying command establishes a new context.
 
-#if ENABLE_FEATURE_VI_PAGING
 	int l = ABSLINE(dot);
 	if (l < ctx_s || l > ctx_e) {
 		if (strchr(modifying_cmds, cmd) != NULL) {
@@ -822,7 +803,6 @@ void check_context(char cmd)
 		}
 	}
 	return;
-#endif
 	if (dot < context_start || dot > context_end) {
 		if (strchr(modifying_cmds, cmd) != NULL) {
 			// we are trying to modify text[]- make this the current context
@@ -842,7 +822,6 @@ char *swap_context(char *p) // goto new context for '' command make this the cur
 	// the current context is in mark[26]
 	// the previous context is in mark[27]
 	// only swap context if other context is valid
-#if ENABLE_FEATURE_VI_PAGING
 	int t;
 	if (markl[27] >= 1 && markl[27] <= TOTLINES()) {
 		t = markl[27];
@@ -853,7 +832,6 @@ char *swap_context(char *p) // goto new context for '' command make this the cur
 		ctx_e = t + 3;
 	}
 	return p;
-#endif
 	if (text <= mark[27] && mark[27] <= end - 1) {
 		tmp = mark[27];
 		mark[27] = mark[26];

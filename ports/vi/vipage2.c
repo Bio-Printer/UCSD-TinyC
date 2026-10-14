@@ -1,7 +1,6 @@
 /* vipage2.c -- vi: the rest of the window into big files: jumps, ranges, searching the stores,
    loading and saving (vipage.c has the window's moves; split to compile in less memory) */
 #include "vi.h"
-#if ENABLE_FEATURE_VI_PAGING
 
 static void pg_abandon(const char *fn, const char *why);
 static int pg_scan(struct pgchunk *c, int next, const char *pat, int dir, int *line, int *col);
@@ -546,4 +545,3 @@ int pg_save(const char *fn)
 	return ok;
 }
 
-#endif

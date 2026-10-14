@@ -231,9 +231,7 @@ int vi_main(int argc, char **argv)
 	}
 	//-----------------------------------------------------------
 
-#if ENABLE_FEATURE_VI_PAGING
 	pg_close();
-#endif
 	return 0;
 }
 
@@ -242,11 +240,7 @@ int vi_main(int argc, char **argv)
 int init_text_buffer(char *fn)
 {
 	int rc;
-#if !ENABLE_FEATURE_VI_PAGING
-	int size = file_size(fn);	// file size. -1 means does not exist.
-#endif
 
-#if ENABLE_FEATURE_VI_PAGING
 	/* the window: allocated once, as big as memory allows */
 	if (!text) {
 		pg_init(fn);
@@ -256,40 +250,24 @@ int init_text_buffer(char *fn)
 	memset(text, 0, text_size);
 	pg_reset();
 	screenbegin = dot = end = text;
-#else
-	/* allocate/reallocate text buffer */
-	free(text);
-	text_size = size + TEXT_SLACK;
-	screenbegin = dot = end = text = xzalloc(text_size);
-#endif
 
 	if (fn != current_filename) {
 		free(current_filename);
 		current_filename = xstrdup(fn);
 	}
-#if ENABLE_FEATURE_VI_PAGING
 	rc = pg_load(fn);		// -1: the file does not exist (no counting its bytes first)
 	if (rc < 0) {
-#else
-	if (size < 0) {
-#endif
 		// file dont exist. Start empty buf with dummy line
 		char_insert(text, '\n');
 		rc = 0;
-#if !ENABLE_FEATURE_VI_PAGING
-	} else {
-		rc = file_insert(fn, text, 1);
-#endif
 	}
 	(file_modified = 0, scr_gen++);
 	last_file_modified = -1;
 #if ENABLE_FEATURE_VI_YANKMARK
 	/* init the marks. */
 	memset(mark, 0, sizeof(mark));
-#if ENABLE_FEATURE_VI_PAGING
 	memset(markl, 0, sizeof(markl));
 	ctx_s = ctx_e = 0;
-#endif
 #endif
 	return rc;
 }
@@ -315,9 +293,7 @@ static void edit_file(char *fn)
 	YDreg = 26;			// default Yank/Delete reg
 	Ureg = 27;			// hold orig line for "U" cmd
 	mark[26] = mark[27] = text;	// init "previous context"
-#if ENABLE_FEATURE_VI_PAGING
 	markl[26] = markl[27] = 1;
-#endif
 #endif
 
 	last_forward_char = last_input_char = '\0';
@@ -353,11 +329,9 @@ static void edit_file(char *fn)
 
 	//------This is the main Vi cmd handling loop -----------------------
 	while (editing > 0) {
-#if ENABLE_FEATURE_VI_PAGING
 		// (typing ahead in insert mode: the margins can wait until the keys are in)
 		if (!((cmd_mode & CMODES) == CMODE_INSERT && pg_room() > 64 && (chars_to_parse || awaitInput(0))))
 			pg_fix();
-#endif
 		refresh();
 		last_input_char = c = get_one_char();	// get a cmd from user
 		*status_buffer=0;
@@ -723,12 +697,10 @@ int file_write(char *fn, char *first, char *last)
 		status_line_bold("No current filename");
 		return -2;
 	}
-#if ENABLE_FEATURE_VI_PAGING
 	if (pg_f && first == text && last == end - 1) {	// the whole file
 		cnt = pg_save(fn);
 		return cnt < 0 ? -1 : cnt ? last - first + 1 : 0;
 	}
-#endif
 	charcnt = 0;
 	/* By popular request we do not open file with O_TRUNC,
 	 * but instead ftruncate() it _after_ successful write.

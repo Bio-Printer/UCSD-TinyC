@@ -87,7 +87,8 @@ UCSD text files); from X(ecute) it asks for the file.
 ## Big files: a window (vipage.c)
 
 As the UCSD L2 editor does it, vi keeps only a window of the file in memory
-(`ENABLE_FEATURE_VI_PAGING`, on for the P-System). The whole file goes into a
+(always: on Linux too, where the window is `VI_PAGECAP` bytes, 30000 unless the
+environment says otherwise). The whole file goes into a
 temporary file, `VI.SWAP` on the prefix volume, in 1 KB slots of whole lines; two
 stacks of slot descriptors hold the lines *before* and *after* the window. Moving the
 window writes the lines leaving it at one edge onto that side's stack and reads the top
@@ -135,8 +136,8 @@ gave.  In Z80 mode 687G in SYSTEM.LIST puts the line on row 18 of 44.)
   exits).
 * The window is allocated once, as big as memory allows, and never reallocated.
 
-Tested by giving the Linux build a small window (`gcc -DSTANDALONE
--DENABLE_FEATURE_VI_PAGING=1 vi*.c`, `VI_PAGECAP=6000`): `tools/vipagetest.py`, random
+Tested by giving the Linux build a small window (`gcc -DSTANDALONE vi*.c`,
+`VI_PAGECAP=6000`): `tools/vipagetest.py`, random
 sessions of 60 commands on a 1500-line file, must save what the committed version
 saves, with the file loaded lazily and not; and on the P-System by `tools/vitest.py`
 (a 1500-line file through a 2.8 KB window in Z80 mode).

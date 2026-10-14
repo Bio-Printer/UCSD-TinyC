@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """vitest.py -- ports/vi: the same editing sessions on Linux (gcc
--DSTANDALONE: the whole file in memory, in a pseudo-terminal) and on the
+-DSTANDALONE: a 30000-byte window, in a pseudo-terminal) and on the
 P-System (from the mini-shell: VI #5:X.C; the file paged through VI.SWAP),
 and the files they save must be identical:
   * 60 commands on a small file (moves, deletes, yank/put, change, join,

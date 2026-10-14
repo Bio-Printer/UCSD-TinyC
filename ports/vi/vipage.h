@@ -1,5 +1,5 @@
-/* vipage.h -- vi.c: a window into a file bigger than memory
-   (ENABLE_FEATURE_VI_PAGING), the way the UCSD L2 editor does it.
+/* vipage.h -- vi: a window into a file bigger than memory,
+   the way the UCSD L2 editor does it.
 
    text..end holds a window of whole lines.  The rest of the file is in one
    temporary file, VI.SWAP, in slots of PG_SLOT bytes, each holding a chunk

@@ -352,17 +352,8 @@ int file_size(const char *fn)
 	ucsd_reserve();
 	if (!f)
 		return -1;
-#if ENABLE_FEATURE_VI_PAGING
 	/* paging: only :r takes a whole file into memory, and it must fit */
 	return n > 32000L ? 32000 : (int)n;
-#else
-	if (n > 30000L) {	/* an int holds no more; never edit (and save) part of it */
-		gracefulExit();
-		printf("vi: %s is too big (more than 30000 characters)\n", fn);
-		exit(1);
-	}
-	return (int)n;
-#endif
 }
 
 int file_insert(const char *fn, char *p, int update_ro_status)
@@ -409,12 +400,10 @@ int file_write(char *fn, char *first, char *last)
 		status_line_bold("No current filename");
 		return -2;
 	}
-#if ENABLE_FEATURE_VI_PAGING
 	if (pg_f && first == text && last == end - 1) {	/* the whole file */
 		cnt = pg_save(fn);
 		return cnt < 0 ? -1 : cnt ? last - first + 1 : 0;
 	}
-#endif
 	ucsd_unreserve();
 	f = fopen(fn, "w");
 	if (!f) {

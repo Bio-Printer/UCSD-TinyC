@@ -31,15 +31,8 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 		if (c >= 'a' && c <= 'z') {
 			// we have a mark
 			c = c - 'a';
-#if ENABLE_FEATURE_VI_PAGING
 			if (markl[(unsigned char) c])
 				*addr = markl[(unsigned char) c];
-#else
-			q = mark[(unsigned char) c];
-			if (q != NULL) {	// is mark valid
-				*addr = count_lines(text, q);	// count lines
-			}
-#endif
 		}
 	}
 #endif
@@ -54,10 +47,8 @@ static char *get_one_address(char *p, int *addr)	// get colon addr, if present
 		if (q != NULL) {
 			*addr = ABSLINE(q);
 		}
-#if ENABLE_FEATURE_VI_PAGING
 		else if (pg_find_line(pat))
 			*addr = pg_find_line(pat);
-#endif
 		free(pat);
 	}
 #endif
@@ -269,7 +260,6 @@ vc4:
 	return 0;
 }
 
-#if ENABLE_FEATURE_VI_PAGING
 // the lines a : command works on stay where they are until it is done
 void colon(char *buf)
 {
@@ -293,9 +283,6 @@ void colon(char *buf)
 	}
 	pg_park = NULL;
 }
-#else
-#define colon1 colon
-#endif
 void colon1(char *buf)
 {
 	char c, *orig_buf, *buf1, *q, *r;
@@ -332,7 +319,6 @@ void colon1(char *buf)
 
 	// look for optional address(es)  :.  :1  :1,9   :'q,'a   :%
 	buf = get_address(buf, &b, &e);
-#if ENABLE_FEATURE_VI_PAGING
 	if (b >= 0 && !pg_hold(b, e >= 0 ? e : b)) {
 		status_line_bold("Lines %d to %d do not fit in memory", b, e >= 0 ? e : b);
 		return;
@@ -340,7 +326,6 @@ void colon1(char *buf)
 	pg_lock = 1;
 	q = text;			// the window may have moved
 	r = end - 1;
-#endif
 
 	// remember orig command line
 	orig_buf = buf;
@@ -381,10 +366,8 @@ void colon1(char *buf)
 	}
 	// ------------ now look for the command ------------
 	i = strlen(cmd);
-#if ENABLE_FEATURE_VI_PAGING
 	// these leave the cursor where it was (colon() puts it back if pg_hold moved it)
 	pg_keep = i > 0 && strchr("swy=lf", cmd[0]) != NULL;
-#endif
 	if (i == 0) {		// :123CR goto line #123
 		if (b >= 0) {
 			dot = find_line(b);	// what line is #b
@@ -518,10 +501,8 @@ void colon1(char *buf)
 		// how many lines in text[]?
 		li = count_lines(q, r);
 		ch = r - q + 1;
-#if ENABLE_FEATURE_VI_PAGING
 		if (q == text && r == end - 1)
 			li = TOTLINES();
-#endif
 		// see if file exists- if not, its just a new file request
 		if (useforce) {
 			// if "fn" is not write-able, chmod u+w
@@ -540,11 +521,9 @@ void colon1(char *buf)
 			if (l == -1)
 				status_line_bold("\"%s\" %s", fn, strerror(errno));
 		} else {
-#if ENABLE_FEATURE_VI_PAGING
 			if (q == text && r == end - 1)
 				status_line("\"%s\" %dL, %ldC", fn, li, pg_bytes());
 			else
-#endif
 			status_line("\"%s\" %dL, %dC", fn, li, l);
 			if (q == text && r == end - 1 && l == ch) {
 				(file_modified = 0, scr_gen++);

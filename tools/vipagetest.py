@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """vipagetest.py [SEEDS] [REF_DIR] -- vi's window into big files
 (ports/vi/vipage.c) on Linux: random sessions of 60 commands on a 1500-line
-file, run by the paged build (gcc -DENABLE_FEATURE_VI_PAGING=1, a small window:
-VI_PAGECAP=6000) of an earlier version (REF_DIR: its ports/vi sources; default
+file, run with a small window (VI_PAGECAP=6000) of an earlier version (REF_DIR: its ports/vi sources; default
 the committed ones, git HEAD) and by the paged build of these sources, which
 loads the file lazily: as it is needed (VI_NOIDLE: not while vi waits for a key)
-and while vi waits.  All must save the same file (ZZ).  (The paged builds are
-not always the same as the build that holds the whole file in memory: a range
-that does not fit the window is refused, and some moves of a small window
-differ.)
+and while vi waits.  All must save the same file (ZZ).  (A small window is not
+always the same as one that holds the whole file: a range that does not fit the
+window is refused, and some moves of a small window differ.)
 """
 import os, sys, random, subprocess, tempfile, pty, select, time
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +31,7 @@ def session(rng):
 
 
 def build(exe, src):
-    subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-DENABLE_FEATURE_VI_PAGING=1', '-o', exe] +
+    subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-o', exe] +
                           [os.path.join(src, os.path.basename(m)) for m in VI_MODULES if os.path.exists(os.path.join(src, os.path.basename(m)))])
 
 

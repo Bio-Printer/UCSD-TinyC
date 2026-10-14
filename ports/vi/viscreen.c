@@ -73,7 +73,6 @@ static void sync_cursor(char *d, int *row, int *col)
 
 	beg_cur = begin_line(d);	// first char of cur line
 
-#if ENABLE_FEATURE_VI_PAGING
 	if (pg_top) {
 		// the screen's top line went out of the window: the same moves,
 		// counted in line numbers
@@ -83,7 +82,6 @@ static void sync_cursor(char *d, int *row, int *col)
 		if (!screenbegin)
 			screenbegin = text;
 	} else
-#endif
 	if (beg_cur < screenbegin) {
 		// "d" is before top line on screen
 		// how many lines do we have to move
@@ -427,10 +425,8 @@ int format_edit_status(const char *fmt)
 #define tot format_edit_status__tot
 
 	int cur, percent, ret, trunc_at;
-#if ENABLE_FEATURE_VI_PAGING
 	char sfx[40];
 	int sl = 0;
-#endif
 
 	// file_modified is now a counter rather than a flag.  this
 	// helps reduce the amount of line counting we need to do.
@@ -445,9 +441,7 @@ int format_edit_status(const char *fmt)
 	// reduce counting -- the total lines can't have
 	// changed if we haven't done any edits.
 	if (file_modified != last_file_modified
-#if ENABLE_FEATURE_VI_PAGING
 	 || pg_rf			// the file is still loading: its lines so far
-#endif
 	) {
 		tot = STATLINES();
 		last_file_modified = file_modified;
@@ -466,7 +460,6 @@ int format_edit_status(const char *fmt)
 	trunc_at = columns < STATUS_BUFFER_LEN-1 ?
 		columns : STATUS_BUFFER_LEN-1;
 
-#if ENABLE_FEATURE_VI_PAGING
 	// at the far right: where the cursor is in the window, and the window in
 	// the file: w<bytes above dot>+<bytes below dot in window>  b<lines>/<chunks>
 	// before  a<lines>/<chunks> after  L: still loading
@@ -479,7 +472,6 @@ int format_edit_status(const char *fmt)
 		else
 			sfx[0] = 0;
 	}
-#endif
 	ret = snprintf(status_buffer, trunc_at+1, fmt,
 		cmd_mode_indicator[cmd_mode & CMODES],
 		(current_filename != NULL ? current_filename : "No file"),
@@ -488,14 +480,12 @@ int format_edit_status(const char *fmt)
 
 	if (ret < 0 || ret > trunc_at)
 		ret = trunc_at;  /* had to truncate */
-#if ENABLE_FEATURE_VI_PAGING
 	if (sfx[0]) {
 		sl = strlen(sfx);
 		memset(status_buffer + ret, ' ', trunc_at + 1 - ret);	// trunc_at + 1: the gap
 		strcpy(status_buffer + trunc_at + 1, sfx);
 		ret = trunc_at + 1 + sl;
 	}
-#endif
 	return ret;
 #undef tot
 }
@@ -586,11 +576,7 @@ static char *skip_line(char *tp)
 	return tp;
 }
 
-#if ENABLE_FEATURE_VI_PAGING
 #define SOFT_SIG() (pg_nb + pg_na * 7 + pg_lb * 31)
-#else
-#define SOFT_SIG() 0
-#endif
 void scr_soft_edit(char *p)
 {
 	char *b = begin_line(p);
@@ -636,9 +622,7 @@ void refresh(void)
 	scr_key[0] = scr_gen;
 	scr_key[1] = (int)(size_t)screenbegin;
 	scr_key[2] = (int)(size_t)end;
-#if ENABLE_FEATURE_VI_PAGING
 	scr_key[3] = pg_nb + pg_na * 7 + pg_lb * 31;
-#endif
 	same = scr_top && !scr_soft_p && offset == old_offset && !memcmp(scr_key, scr_keyed_for, sizeof(scr_key));
 
 #ifdef VI_ROW_SUMS

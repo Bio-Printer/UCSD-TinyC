@@ -22,8 +22,8 @@ KEYS = ['j'] * 5 + ['l'] * 10 + ['\x06', '\x06', '\x02', 'G', 'gg', '30G', 'x', 
         '\x05', '\x05', '\x19', '\x04', '\x15', 'H', 'L', 'M'] + ['j'] * 40 + ['k'] * 45 + ['\x05'] * 6 + ['\x19'] * 7 + ['G'] + ['k'] * 3 + ['\x06', '\x02', '3\x04', '3\x15', 'ihello world', ' ' * 12, '\x7f' * 5, '\x1b', 'j', 'A', 'abc', 'd', '\x7f\x7f', '\x1b', 'xxxxx', 'u', 'wcwfoo', '\x1b', 'kk', 'ix', 'y', 'z', '\r', 'q', '\x1b', 'j' * 30, 'k' * 33, 'j' * 7 + 'k' * 3 + 'j' * 12, ':q!\r']
 
 
-def build(srcdir, exe, paged):
-    subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-DVI_ROW_SUMS'] + (['-DENABLE_FEATURE_VI_PAGING=1'] if paged else []) + ['-o', exe] +
+def build(srcdir, exe):
+    subprocess.check_call(['gcc', '-w', '-DSTANDALONE', '-DVI_ROW_SUMS', '-o', exe] +
                           [os.path.join(srcdir, m + '.c') for m in MODS if os.path.exists(os.path.join(srcdir, m + '.c'))])
 
 
@@ -166,15 +166,15 @@ def main():
                 except subprocess.CalledProcessError:
                     pass                        # (a file the committed version does not have)
     ok = True
-    for paged in (False, True):         # the whole file in memory; a 2600 byte window
+    for paged in (False, True):         # a window that holds the whole file; a 4500 byte window
         out = {}
         new = os.path.join(ROOT, 'ports', 'vi')
         # the reference (the committed vi) and the new vi, both with the console's scroll codes
         for name, src, extra in (('ref', ref, None), ('new', new, None)):
             d = os.path.join(work, 'run_%s%d' % (name, paged))
             os.makedirs(d)
-            build(src, os.path.join(d, 'vi'), paged)
-            out[name] = session(os.path.join(d, 'vi'), d, extra)
+            build(src, os.path.join(d, 'vi'))
+            out[name] = session(os.path.join(d, 'vi'), d, extra if paged else {'VI_PAGECAP': '30000'})
         a = out['ref']
         a.pop()
         for name in ('new',):
@@ -182,7 +182,7 @@ def main():
             nscroll = b.pop()
             bad = [i for i in range(min(len(a), len(b))) if a[i] != b[i]]
             print('%s, %s: %d screens compared; %d differ; reference %d screens, new %d; the new vi scrolled %d times' %
-                  ('paged' if paged else 'unpaged', name, min(len(a), len(b)), len(bad), len(a), len(b), nscroll))
+                  ('small window' if paged else 'whole file', name, min(len(a), len(b)), len(bad), len(a), len(b), nscroll))
             for i in bad[:3]:
                 sent = [k for k in KEYS if k]                # (the screens are those after the keys sent)
                 print('after key %d (%r):' % (i, sent[i - 1] if i else 'start'))

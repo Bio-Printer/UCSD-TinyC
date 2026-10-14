@@ -1,6 +1,5 @@
 /* vipage.c -- vi: a window into big files (see vipage.h) */
 #include "vi.h"
-#if ENABLE_FEATURE_VI_PAGING
 
 struct pgchunk *pg_ch;   /* before: 0 up; after: PG_MAXCH - 1 down */
 int pg_nb, pg_na;        /* chunks before / after the window */
@@ -495,4 +494,3 @@ int pg_scroll(int cnt, int dir)
 	}
 }
 
-#endif

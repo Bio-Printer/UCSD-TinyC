@@ -54,22 +54,20 @@
 
 #define CONFIG_FEATURE_VI_MAX_LEN 132
 #define TEXT_SLACK 1024	// free room in the text buffer: memory is small
-#define ENABLE_FEATURE_VI_PAGING 1	// a window into big files (vipage.h)
 #define VI_ROW_SUMS 1	// the screen as a checksum per row, not a copy
 #define PG_RESERVE 1024	// memory left out of the window: yanks, and so on
 #include <limits.h>
 /* The P-System opens an include file with a 2K buffer on the stack, so the
    includes come before the macros below: Tiny-C's preprocessor has the least
    free memory there (every macro takes about 40 bytes). */
-#include "vipage.h"
-#define VI_PAGE_INCLUDED 1
+#include "vipage.h"	// a window into big files
 
 #define USE_FEATURE_VI_COLON(x) x
 #define USE_FEATURE_VI_YANKMARK(x) x
 #define USE_FEATURE_VI_SEARCH(x) x
 #define ATTRIBUTE_UNUSED
 
-#else	// Linux: gcc -DSTANDALONE (the tests' reference; -DENABLE_FEATURE_VI_PAGING=1 for the paged build)
+#else	// Linux: gcc -DSTANDALONE (the tests' reference; VI_PAGECAP=N: the window's size)
 #define BB_VER "version 2.63"
 
 #define _GNU_SOURCE
@@ -89,12 +87,10 @@
 #include <termios.h>
 #include <poll.h>
 #include <limits.h>
+#include "vipage.h"	// a window into big files
 
 #define CONFIG_FEATURE_VI_MAX_LEN 4096
 #define TEXT_SLACK 10240	// free room in the text buffer
-#ifndef ENABLE_FEATURE_VI_PAGING
-#define ENABLE_FEATURE_VI_PAGING 0
-#endif
 #undef ENABLE_FEATURE_VI_OPTIMIZE_CURSOR
 
 #define USE_FEATURE_VI_COLON(...) __VA_ARGS__
@@ -284,10 +280,8 @@ struct globals {
 	char *reg[28];          // named register a-z, "D", and "U" 0-25,26,27
 	char *mark[28];         // user marks points somewhere in text[]-  a-z and previous context ''
 	char *context_start, *context_end;
-#if ENABLE_FEATURE_VI_PAGING
 	int markl[28];          // marks as line numbers: the window moves
 	int ctx_s, ctx_e;       // the context, as line numbers
-#endif
 #endif
 #ifndef __UCSD__
 	struct termios term_orig, term_vi; // remember what the cooked mode was
@@ -380,20 +374,10 @@ extern struct globals G;
 #define end_cmd_q() ((void)0)
 #endif
 
-#if ENABLE_FEATURE_VI_PAGING
-#ifndef VI_PAGE_INCLUDED
-#include "vipage.h"
-#endif
 #define ABSLINE(p) (pg_lb + count_lines(text, p))	// p's line in the file
 #define TOTLINES() (pg_total())			// the file's lines (all of the file loaded)
 #define STATLINES() (pg_lines())		// ... or as many as are loaded (the status line)
 #define PG_IDLE() pg_idle()
-#else
-#define ABSLINE(p) count_lines(text, p)
-#define TOTLINES() count_lines(text, end - 1)
-#define STATLINES() TOTLINES()
-#define PG_IDLE() ((void)0)
-#endif
 
 /* ---- the functions the modules share ---- */
 void *xmalloc(size_t size);

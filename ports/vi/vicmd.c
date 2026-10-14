@@ -13,13 +13,11 @@ static void shift_cmd(char c)
 	cnt = ABSLINE(dot);	// remember what line we are on
 	c1 = get_one_char();	// get the type of thing to delete
 	find_range(&p, &q, c1);
-#if ENABLE_FEATURE_VI_PAGING
 	if (pg_over) {
 		status_line_bold("Too many lines for memory");
 		end_cmd_q();
 		return;
 	}
-#endif
 	yank_delete(p, q, 1, YANKONLY);	// save copy before change
 	p = begin_line(p);
 	q = end_line(q);
@@ -190,10 +188,8 @@ static int do_cmd2(char *cp)
 			cmdcnt = 1;
 		/* fall through */
 	case 'G':		// G- goto to a line number (default= E-O-F)
-#if ENABLE_FEATURE_VI_PAGING
 		if (pg_f)
 			pg_goto(TOTLINES());	// the window to the file's end
-#endif
 		dot = end - 1;				// assume E-O-F
 		if (cmdcnt > 0) {
 			dot = find_line(cmdcnt);	// what line is #cmdcnt
@@ -344,13 +340,11 @@ dc5:
 			c1 = get_one_char();	// get the type of thing to delete
 		// determine range, and whether it spans lines
 		ml = find_range(&p, &q, c1);
-#if ENABLE_FEATURE_VI_PAGING
 		if (pg_over) {
 			status_line_bold("Too many lines for memory");
 			end_cmd_q();
 			break;
 		}
-#endif
 		if (c1 == 27) {	// ESC- user changed mind and wants out
 			c = c1 = 27;	// Escape- do nothing
 		} else if (strchr("wW", c1)) {
@@ -501,9 +495,7 @@ void do_cmd(char c)
 	int dir, cnt, i, j;
 
 again:
-#if ENABLE_FEATURE_VI_PAGING
 	pg_fix();
-#endif
 	/* if this is a cursor key, skip these checks */
 	switch (c) {
 		case VI_K_UP:
@@ -674,19 +666,10 @@ repeat:
 		if (islower(c1)) {
 			c1 = c1 - 'a';
 			// get the b-o-l
-#if ENABLE_FEATURE_VI_PAGING
 			if (markl[(unsigned char) c1]) {
 				dot = find_line(markl[(unsigned char) c1]);
 				dot_skip_over_ws();
 			}
-#else
-			q = mark[(unsigned char) c1];
-			if (text <= q && q < end) {
-				dot = q;
-				dot_begin();	// go to B-o-l
-				dot_skip_over_ws();
-			}
-#endif
 		} else if (c1 == '\'') {	// goto previous context
 			dot = swap_context(dot);	// swap current and previous context
 			dot_begin();	// go to B-o-l
@@ -706,9 +689,7 @@ repeat:
 			c1 = c1 - 'a';
 			// remember the line
 			mark[(int) c1] = dot;
-#if ENABLE_FEATURE_VI_PAGING
 			markl[(int) c1] = ABSLINE(dot);
-#endif
 		} else {
 			indicate_error(c);
 		}
@@ -856,27 +837,21 @@ findPattern:
 			dir = -dir;  //relies on FORWARD/BACK being 1/-1, respectively
 		p = dot + dir;
 		q = char_search(p, last_search_pattern + 1, dir, FULL);
-#if ENABLE_FEATURE_VI_PAGING
 		if (q == NULL)		// on beyond the window
 			q = pg_search(last_search_pattern + 1, dir, 0);
-#endif
 		if (q != NULL) {
 			dot = q;	// good search, update "dot"
 			goto repeat;
 		}
 		// no pattern found between "dot" and "end"- continue at top
-#if ENABLE_FEATURE_VI_PAGING
 		q = pg_search(last_search_pattern + 1, dir, 1);
 		if (q == NULL) {	// the stores on the other side, then the window
-#endif
 		p = text;
 		if (dir == BACK) {
 			p = end - 1;
 		}
 		q = char_search(p, last_search_pattern + 1, dir, FULL);
-#if ENABLE_FEATURE_VI_PAGING
 		}
-#endif
 		if (q != NULL) {	// found something
 			dot = q;	// found new pattern- goto it
 			msg = "search hit BOTTOM, continuing at TOP";
@@ -889,20 +864,16 @@ dc2:
 		break;
 	case '{':			// {- move backward paragraph
 		q = char_search(dot, "\n\n", BACK, FULL);
-#if ENABLE_FEATURE_VI_PAGING
 		if (q == NULL)
 			q = pg_search("\n\n", BACK, 0);
-#endif
 		if (q != NULL) {	// found blank line
 			dot = next_line(q);	// move to next blank line
 		}
 		break;
 	case '}':			// }- move forward paragraph
 		q = char_search(dot, "\n\n", FORWARD, FULL);
-#if ENABLE_FEATURE_VI_PAGING
 		if (q == NULL)
 			q = pg_search("\n\n", FORWARD, 0);
-#endif
 		if (q != NULL) {	// found blank line
 			dot = next_line(q);	// move to next blank line
 		}
