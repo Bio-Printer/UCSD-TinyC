@@ -165,10 +165,12 @@ and you choose with one key (no RETURN).  Its own commands:
         BLOCKS) whose blocks 2..5 are a directory of its own (77 files).
         Its files are VOL:NAME/FILE or VOL:/NAME/FILE, and sub-volumes
         nest (VOL:/A/B/FILE).  Programs open such paths like any name;
-        DIR, TYPE, DELETE and WHEREIS take them too (DIR #5:/A/*.C), not
-        yet COPY, MOVE, RENAME, nor the wildcards of GREP, LC and WC.
+        DIR, TYPE, DELETE, WHEREIS, COPY, MOVE and RENAME take them too
+        (DIR #5:/A/*.C, COPY X.C A, MOVE A/*.C #9:); not yet the
+        wildcards of GREP, LC and WC.
         DIR A lists what is in A; DIR marks sub-volumes "Sub-volume".
-  RMDIR NAME   an empty sub-volume goes (not one the shell's path is in).
+  RMDIR NAME   a sub-volume goes; with files in it, after a Y (not one
+        the shell's path is in).  DELETE leaves sub-volumes alone.
   DIR [/E] [VOL: or #5:][PATTERN]   the files of the prefix volume (or
         VOL:, or unit 5) whose names match: * or = any characters, ? any
         one (DIR *.C, DIR #9:, DIR TOOLSRC:VI*.C); ESC stops a long list.
@@ -182,14 +184,15 @@ and you choose with one key (no RETURN).  Its own commands:
         line (WHEREIS STDIO.H, WHEREIS *.C), or on the volume named.
   VOLUMES (or VOLS)              every disk on line: unit, volume,
         files, blocks used of its size; (boot) and (prefix) marked.
-  COPY SOURCE DEST    SOURCE: [VOL: or #5:]PATTERN; DEST: a volume (#9:,
-        TOOLSRC:) keeps the names, or for one file a new name ([VOL:]NAME;
-        no volume: the prefix).  The copy keeps the kind (a .C stays a
-        text file), the date and the length; a file of that name there
-        is replaced.
-  MOVE SOURCE DEST    as COPY, then the original is deleted; on its own
-        disk only its name changes.
-  RENAME (or REN) [VOL: or #5:]NAME NEWNAME   on the same disk.
+  COPY SOURCE DEST    SOURCE: [VOL: or #5: or a path]PATTERN; DEST: a
+        volume or sub-volume (#9:, TOOLSRC:, A/, #5:/A/B/, or A when A is
+        a sub-volume) keeps the names, or for one file a new name
+        ([VOL:]NAME; no volume: the path or the prefix).  The copy keeps
+        the kind (a .C stays a text file), the date and the length; a
+        file of that name there is replaced.  A sub-volume copies whole.
+  MOVE SOURCE DEST    as COPY, then the original is deleted; in its own
+        directory only its name changes.
+  RENAME (or REN) [VOL: or #5: or a path]NAME NEWNAME   where it is.
 THE COMMAND LINE: Up and Down bring back the last 10 commands (kept in
 #4:SYSTEM.CMDS, so they are there the next time too); Left, Right, Home
 and End move in the line; Insert switches between inserting and typing
