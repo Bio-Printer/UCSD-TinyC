@@ -189,8 +189,6 @@ int vi_printf(const char *fmt, ...)
 	return fputs(tmp, stdout);
 }
 
-int optind = 1;		/* the next file name in argv (:n, :rew) */
-
 /* ---- the terminal and the files ---- */
 /* The memory a file needs (stdio's 1 KB page and the 80-byte file
    information block) is set aside at the start, so that when the text has

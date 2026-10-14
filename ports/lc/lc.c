@@ -22,7 +22,6 @@
 #include <ctype.h>
 #include <psys.h>
 
-int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
 int opt1, optx, optF, opts, optr, optS, optC;
 int dir[1024];
 char names[MAXDIR + 1][20];             /* the name, then * perhaps */

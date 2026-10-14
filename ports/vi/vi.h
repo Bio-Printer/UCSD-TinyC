@@ -21,7 +21,6 @@
 
 /*
  * Things To Do:
- *	EXINIT
  *	$HOME/.exrc  and  ./.exrc
  *	add magic to search	/foo.*bar
  *	add :help command
@@ -152,7 +151,6 @@ void *memrchr(const void *s, int c_in, size_t n)
 
 typedef signed char smallint;
 
-#define bb_show_usage()
 #define bb_perror_msg(msg)  perror(msg)
 
 #define Isprint(c) ((unsigned char)(c) >= ' ' && (unsigned char)(c) < 0x7f)
@@ -243,7 +241,7 @@ struct globals {
 	smallint cmd_mode;       // 0=command  1=insert 2=replace
 	int file_modified;       // buffer contents changed (counter, not flag!)
 	int last_file_modified;  // = -1;
-	int fn_start;            // index of first cmd line file name
+	int fn_next;             // the next file name in argv (:n, :rew)
 	int save_argc;           // how many file names on cmd line
 	int cmdcnt;              // repetition count
 	unsigned rows, columns;	 // the terminal screen is this size
@@ -295,9 +293,6 @@ struct globals {
 	struct termios term_orig, term_vi; // remember what the cooked mode was
 #endif
 	unsigned ticsPerChar;	//# of 100hz tics per character received
-#if ENABLE_FEATURE_VI_COLON
-	char *initial_cmds[3];  // currently 2 entries, NULL terminated
-#endif
 	// Should be just enough to hold a key sequence,
 	// but CRASME mode uses it as generated command buffer too
 	char readbuffer[128];
@@ -323,7 +318,7 @@ extern struct globals G;
 #define cmd_mode                (G.cmd_mode           )
 #define file_modified           (G.file_modified      )
 #define last_file_modified      (G.last_file_modified )
-#define fn_start                (G.fn_start           )
+#define fn_next                 (G.fn_next            )
 #define save_argc               (G.save_argc          )
 #define cmdcnt                  (G.cmdcnt             )
 #define rows                    (G.rows               )
@@ -365,7 +360,6 @@ extern struct globals G;
 #define term_orig      (G.term_orig     )
 #define ticsPerChar	   (G.ticsPerChar   )
 #define term_vi        (G.term_vi       )
-#define initial_cmds   (G.initial_cmds  )
 #define readbuffer     (G.readbuffer    )
 #define scr_out_buf    (G.scr_out_buf   )
 #define last_modifying_cmd  (G.last_modifying_cmd )
@@ -376,7 +370,6 @@ extern struct globals G;
 /* in viucsd.c */
 #define isblank(c) ((c) == ' ' || (c) == '\t')
 #define errno (SYSCOM->iorslt)
-extern int optind;
 #endif
 
 #if !ENABLE_FEATURE_VI_OPTIMIZE_CURSOR

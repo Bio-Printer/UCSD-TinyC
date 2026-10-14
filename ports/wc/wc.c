@@ -27,7 +27,6 @@
 int optl, optw, optc, optm, optL;
 char ibuf[512];
 
-int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
 int dir[1024];
 char fname[MAXDIR + 1][32];             /* the names the wild cards gave */
 long cl[MAXDIR + 2], cw[MAXDIR + 2], cb[MAXDIR + 2], cL[MAXDIR + 2];

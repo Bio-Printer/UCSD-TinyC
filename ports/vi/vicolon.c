@@ -440,7 +440,7 @@ void colon1(char *buf)
 		if (useforce) {
 			// force end of argv list
 			if (*cmd == 'q') {
-				optind = save_argc;
+				fn_next = save_argc;
 			}
 			editing = 0;
 			goto vc1;
@@ -452,11 +452,11 @@ void colon1(char *buf)
 			goto vc1;
 		}
 		// are there other file to edit
-		if (*cmd == 'q' && optind < save_argc - 1) {
-			status_line_bold("%d more file to edit", (save_argc - optind - 1));
+		if (*cmd == 'q' && fn_next < save_argc - 1) {
+			status_line_bold("%d more file to edit", (save_argc - fn_next - 1));
 			goto vc1;
 		}
-		if (*cmd == 'n' && optind >= save_argc - 1) {
+		if (*cmd == 'n' && fn_next >= save_argc - 1) {
 			status_line_bold("No more files to edit");
 			goto vc1;
 		}
@@ -490,7 +490,7 @@ void colon1(char *buf)
 			status_line_bold("No write since last change (:rewind! overrides)");
 		} else {
 			// reset the filenames to edit
-			optind = fn_start - 1;
+			fn_next = 0;	// (the loop's ++: the first file name)
 			editing = 0;
 		}
 #if ENABLE_FEATURE_VI_SET

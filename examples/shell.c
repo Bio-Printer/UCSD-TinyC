@@ -52,8 +52,6 @@
 
 #define MAXFOUND 8
 
-int units[] = { 4, 5, 9, 10, 11, 12, 13, 14 };   /* the disk units */
-
 /* ---- the command line: history and editing ---- */
 
 #define NHIST 10

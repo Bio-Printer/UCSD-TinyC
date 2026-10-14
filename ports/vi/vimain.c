@@ -188,8 +188,6 @@ void createScreen(void)
 int vi_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
 int vi_main(int argc, char **argv)
 {
-	int c;
-
 	INIT_G();
 	rows = 24;
 	columns = 80;
@@ -198,7 +196,7 @@ int vi_main(int argc, char **argv)
 		rows = SYSCOM->crtinfo.height;
 	if (SYSCOM->crtinfo.width > 0)
 		columns = SYSCOM->crtinfo.width;
-#endif
+#else
 	{  //try to get terminal dimensions from environment
 		char *txt = getenv("LINES");
 		if (txt)
@@ -206,47 +204,20 @@ int vi_main(int argc, char **argv)
 		txt = getenv("COLUMNS");
 		if (txt)
 			columns = atoi(txt);
-		clampScreenSize();
 	}
+#endif
+	clampScreenSize();
 
 	vi_setops = VI_AUTOINDENT | VI_SHOWMATCH | VI_IGNORECASE;
 #if ENABLE_FEATURE_VI_DOT_CMD || ENABLE_FEATURE_VI_YANKMARK
 	modifying_cmds = "aAcCdDiIJoOpPrRsxX<>~";	// cmds modifying text[]
 #endif
 
-	//  1-  process $HOME/.exrc file (not inplemented yet)
-	//  2-  process EXINIT variable from environment
-	//  3-  process command line args
-#ifndef __UCSD__
-#if ENABLE_FEATURE_VI_COLON
-	{
-		char *p = getenv("EXINIT");
-		if (p && *p)
-			initial_cmds[0] = xstrndup(p, MAX_INPUT_LEN);
-	}
-#endif
-	while ((c = getopt(argc, argv, "hC" USE_FEATURE_VI_COLON("c:"))) != -1) {
-		switch (c) {
-#if ENABLE_FEATURE_VI_COLON
-		case 'c':		// cmd line vi command
-			if (*optarg)
-				initial_cmds[initial_cmds[0] != 0] = xstrndup(optarg, MAX_INPUT_LEN);
-			break;
-#endif
-		default:
-			bb_show_usage();
-			return 1;
-		}
-	}
-#endif	// (the P-System's vi has no options: VI NAME ...)
-
-	// The argv array can be used by the ":next"  and ":rewind" commands
-	// save optind.
-	fn_start = optind;	// remember first file name for :next and :rew
+	// no options: the command line is the files to edit (:n, :rew go through it)
 	save_argc = argc;
 
 	//----- This is the main file handling loop --------------
-	if (optind >= argc) {
+	if (argc < 2) {
 #ifdef __UCSD__
 		char *name = ucsd_askname();
 		edit_file(*name ? name : 0);
@@ -254,8 +225,8 @@ int vi_main(int argc, char **argv)
 		edit_file(0);
 #endif
 	} else {
-		for (; optind < argc; optind++) {
-			edit_file(argv[optind]);
+		for (fn_next = 1; fn_next < argc; fn_next++) {
+			edit_file(argv[fn_next]);
 		}
 	}
 	//-----------------------------------------------------------
@@ -377,27 +348,6 @@ static void edit_file(char *fn)
 			p++;
 		dot = p;
 		hdr_line = 0;			// (the first file of the command line only)
-	}
-#endif
-#if ENABLE_FEATURE_VI_COLON && !defined(__UCSD__)
-	{
-		char *p, *q;
-		int n = 0;
-
-		while ((p = initial_cmds[n])) {
-			do {
-				q = p;
-				p = strchr(q, '\n');
-				if (p)
-					while (*p == '\n')
-						*p++ = '\0';
-				if (*q)
-					colon(q);
-			} while (p);
-			free(initial_cmds[n]);
-			initial_cmds[n] = NULL;
-			n++;
-		}
 	}
 #endif
 
