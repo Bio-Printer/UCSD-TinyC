@@ -25,8 +25,8 @@ Build (host): each module `build/tc -c -z -I tinyc/include ports/vi/NAME.c -o NA
 then `build/tc -z -L tinyc/include/tclibz.obj vimain.obj ... viucsd.obj -o VI.CODE`
 (`-z` and `tclibz.obj` so that it also runs in Z80 mode; `compile_modules` in
 `tools/tcrun.py` does it); `tools/mkvolume.py` puts VI.CODE on TOOLS: and the sources
-in TOOLS:/SRC/VI. On the P-System, `CC @TOOLS:/SRC/TOOLS` compiles each module (`/Z /C VI/VIMAIN`)
-and links them (`/L VI=...`): the same VI.CODE byte for byte, in Z80 mode and the
+in TOOLS:/SRC/VI. On the P-System, `CC @TOOLS:/SRC/TOOLS` compiles each module (`-Z -C VI/VIMAIN`)
+and links them (`-L VI=...`): the same VI.CODE byte for byte, in Z80 mode and the
 normal layout too (`tools/vitest.py --build`). In one piece, vi.c needed P-Code mode
 with the Harvard layout, the only one with the memory to compile it.
 

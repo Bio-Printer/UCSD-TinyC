@@ -14,8 +14,8 @@ not take is a syntax error, so a clean compile shows it took the right
 ones; the program it makes prints what the right ones define.
 
   ONE:T.TEXT (only on ONE: found by itself)
-    /Z MAIN       MAIN.C on ONE: (the batch file's disk), not THREE:'s
-    /Z /C MAIN2   F.H on TINY-C: and TWO: only: error, Stopped.
+    -Z MAIN       MAIN.C on ONE: (the batch file's disk), not THREE:'s
+    -Z -C MAIN2   F.H on TINY-C: and TWO: only: error, Stopped.
   ONE:MAIN.C includes
     <stdio.h>     TINY-C:/INCLUDE's, though ONE: has a STDIO.H too
     "stddef.h"    on no disk: TINY-C:/INCLUDE's (the last place looked)
@@ -37,7 +37,7 @@ from psys import ensure_setup, BUILD
 
 WRONG = 'this is the wrong copy\n'
 FILES = {
-    'ONE': {'T.TEXT': '/Z MAIN\n/Z /C MAIN2\n',
+    'ONE': {'T.TEXT': '-Z MAIN\n-Z -C MAIN2\n',
             'MAIN.C': '#include <stdio.h>\n#include "stddef.h"\n#include "a.h"\n#include "b.h"\n#include "c.h"\n'
                       '#include "TWO:d.h"\n'
                       'int main(void) { printf("values %d %d %d %d %d\\n", A, B, C, D, E); return 0; }\n',
@@ -100,12 +100,12 @@ def main():
                         os.path.join(d, 'out'), '', '600'], capture_output=True, text=True, env=env)
     tr = open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read().replace('\r', '\n')
     tr = re.sub(r'\n+', '\n', tr)
-    main_part = tr[tr.find('> /Z MAIN\n'):tr.find('> /Z /C MAIN2')]
-    main2_part = tr[tr.find('> /Z /C MAIN2'):]
+    main_part = tr[tr.find('> -Z MAIN\n'):tr.find('> -Z -C MAIN2')]
+    main2_part = tr[tr.find('> -Z -C MAIN2'):]
     print('\n'.join(l for l in tr.split('\n') if re.search(r'^> |rror|wrong|several|  on |Stopped|values|Linking', l)))
     checks = [
         ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
-        ('@T found on ONE: (the only disk with it); MAIN.C there, not THREE:\'s', '> /Z MAIN' in tr
+        ('@T found on ONE: (the only disk with it); MAIN.C there, not THREE:\'s', '> -Z MAIN' in tr
          and 'ONE:MAIN.C' in main_part and 'rror' not in main_part and 'Linking' in main_part),
         ('MAIN: each include from the right disk (1 2 3 4 5)', 'values 1 2 3 4 5' in tr),
         ('MAIN2: F.H on TINY-C: and TWO:: an error listing them, Stopped',

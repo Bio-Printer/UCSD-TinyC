@@ -11,7 +11,7 @@ Start here when picking the project up in a new session.
 
 | Path | What |
 |---|---|
-| `tinyc/*.c`, `tc.h`, `parse.h`, `gen.h` | the compiler: `main` (driver, `@FILE` batches), `util`, `types`, `pp` (preprocessor), `lex`, `psym`/`expr`/`decl`/`stmt`/`compile` (parser; `compile` is its pass, split from `stmt`), `ir` (intermediate file), `gen`/`genx` (P-code: emitter and object file / expressions; split so that each compiles in Z80 mode), `link` (linker, `/J` join) |
+| `tinyc/*.c`, `tc.h`, `parse.h`, `gen.h` | the compiler: `main` (driver, `@FILE` batches), `util`, `types`, `pp` (preprocessor), `lex`, `psym`/`expr`/`decl`/`stmt`/`compile` (parser; `compile` is its pass, split from `stmt`), `ir` (intermediate file), `gen`/`genx` (P-code: emitter and object file / expressions; split so that each compiles in Z80 mode), `link` (linker, `-J` join) |
 | `tinyc/lib/*.c`, `libint.h` | the C library (joined into `TCLIB.OBJ`) |
 | `tinyc/include/*.h` | headers; `tcmsgs.txt` = the compiler's messages (TCMSGS.TEXT) |
 | `tests/NAME.c` + `.expect` (+ `.keys`, `.wait`) | test/demo programs and their expected output |
@@ -64,11 +64,11 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `vipostest.py` | vi opens a text file where it was left (line and column, binary, in 6 bytes of the file's header page), that line in the middle of the screen; beyond the end, a bad magic, the rest of the header page kept |
 | `viswaptest.py` | vi saves a file on the volume that holds VI.SWAP (the prefix volume): VI.SWAP is the file and 32 KB, so `:w` and `ZZ` find room; Big_Disk's SYSTEM.LIST (CR line ends, 146 KB): saved with CRs, 687G then Up, Page Up and the line in the middle, and it opens with a full screen (at most 4 `~` rows); no VI.SWAP left |
 | `viaddrtest.py` | vi's `:` addresses as patterns (`:/pat/`): found in the window and beyond it, a range of two, and "Pattern not found" (nothing changed) when no line matches |
-| `krunchtest.py` | KRUNCH and the shell's DIR /E: a disk with gaps krunched (the bytes of every file the same, the files one after another), the question answered N, then the boot disk krunched while SYSTEM.PASCAL and the shell run (the shell comes back, the Filer and S work) |
+| `krunchtest.py` | KRUNCH and the shell's DIR -E, -S, -N: a disk with gaps krunched (DIR -S the largest first, -N by name) (the bytes of every file the same, the files one after another), the question answered N, then the boot disk krunched while SYSTEM.PASCAL and the shell run (the shell comes back, the Filer and S work) |
 | `subvoltest.py` | sub-volumes: the shell's MKDIR (one inside another), CD into a path (kept after programs ran), DIR to a file there, WC and CAT on paths (`>B/COPY.TEXT`), TYPE, CD .., DELETE, refusals; on the host the inner directories and the copied text |
 | `subvolxfertest.py` | the emulator's Options > Import / Export into and out of sub-volumes (2.07; `build/run_verify_new`): a Windows text file imported into `#5:/A/B` while the shell runs and TYPEd there, a file exported from `#5:/A` as Windows text, the sub-volumes listed |
-| `growtest.py` | GROW and SHRINK (the library's `svresize`): a sub-volume grown where there is no room after it (moved, whole), in place, shrunk without and with the krunch it needs, refused below its files; GROW of one inside another that krunches the outer one first; no room, a bad size, a file; KRUNCH of a sub-volume; GREP, LC and WC wildcards in sub-volumes and on the shell's path; on the host the sizes and the files byte for byte (both modes) |
-| `ccsubvoltest.py` | CC with sub-volumes: on the shell's path (CD) the source, its includes, objects (/C, /L) and an @batch file from the sub-volume, a path (`CC #9:A/PROG2`) whose `"y.h"` comes from its own sub-volume, a big source (GREP.C); the .OBJ files next to their sources, the .CODE files on the volume that holds the sub-volume, no TCTEMP left; copies of the files outside the sub-volume are syntax errors |
+| `growtest.py` | GROW and SHRINK (the library's `svresize`): a sub-volume grown where there is no room after it (moved, whole), in place, shrunk without and with the krunch it needs, refused below its files, SHRINK without a size (no free blocks left); GROW of one inside another that krunches the outer one first; no room, a bad size, a file; KRUNCH of a sub-volume; GREP, LC and WC wildcards in sub-volumes and on the shell's path; on the host the sizes and the files byte for byte (both modes) |
+| `ccsubvoltest.py` | CC with sub-volumes: on the shell's path (CD) the source, its includes, objects (-C, -L) and an @batch file from the sub-volume, a path (`CC #9:A/PROG2`) whose `"y.h"` comes from its own sub-volume, a big source (GREP.C); the .OBJ files next to their sources, the .CODE files on the volume that holds the sub-volume, no TCTEMP left; copies of the files outside the sub-volume are syntax errors |
 | `xsubvoltest.py` | X(ecute at the Command: prompt with a path into sub-volumes (BIGGY 1.26's OS, U134.4_OS_SOURCE_v1.13): `#5:A/HELLO`, `#5:/A/B/HELLO2`, `#5:\a\b\hello2`, `A/HELLO` on the prefix, an exact name, a name without a path as before; No file, not code (both modes) |
 | `visubvoltest.py` | vi on a file in a sub-volume inside a sub-volume (CD): dd dd ZZ saves it, the place kept in its header page (vi opens there again), VI.SWAP on the prefix volume and gone afterwards; the file (600 lines) is bigger than the Z80 window: loaded lazily and saved by its place (the library's SVAT segment; both modes) |
 | `quicktest.py` | the normal regression test, one shell session: `cc @libs \| grep Joining` (IDENTICAL), `hexdump -i system.list \| grep -n :10` (its 3 non-data lines), `lc \| wc`, `wc`, `cat \| grep -n \| wc`, `diff -u` + `patch`, vi `dd` `:w` `ZZ` (12 s; Z80 mode 5 min) |
@@ -82,7 +82,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `hexdumptest.py` | HEXDUMP, its output redirected into files read back from the disk image: the dump layout, Intel Hex (read back by the host's objcopy), binary and text files, one over 64 KB, several files, stdin, a pipe, errors |
 | `cattest.py` | CAT from the shell: every option against the host's cat on the same bytes (text files with tabs and control characters, a binary file, several files, standard input, a pipe, errors) |
 | `greptest.py` | GREP from the shell: case, `-i`, regular expressions, wildcards on every disk or one volume, line numbers across pages |
-| `alltest.py` | TINY-C:/SRC/ALL.TEXT: one batch file running `@TINY-C:/SRC/CC/BUILD`, `@TINY-C:/SRC/LIB/LIBS` and `@TOOLS:/SRC/TOOLS`; the compiler, library and tools identical to the shipped ones, every object in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' `/O`), none among the sources or on the prefix volume |
+| `alltest.py` | TINY-C:/SRC/ALL.TEXT: one batch file running `@TINY-C:/SRC/CC/BUILD`, `@TINY-C:/SRC/LIB/LIBS` and `@TOOLS:/SRC/TOOLS`; the compiler, library and tools identical to the shipped ones, every object in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' `-O`), none among the sources or on the prefix volume |
 | `shellalltest.py` | the way a user starts a total rebuild: `S` at the Command: prompt, then `cc @tiny-c:/src/all` in the shell (BUILD, LIBS, TOOLS); the same checks as `alltest.py`, and the tracked least free memory with the lowest passes |
 | `findtest.py` | which disk CC takes `#include` files and a batch file's sources from (copies on several disks; the including file's disk, the prefix, an error) |
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; the shell's CD, DIR, TYPE, DELETE, WHEREIS, VOLUMES, COPY, MOVE and RENAME, its command history and line editing; `S` at the Command: prompt |
@@ -109,11 +109,13 @@ Before committing a compiler change, run: `runtests.py`, `selfcompile.py`,
 ## On the P-System
 
 `X(ecute TINY-C:CC` (the compiler is CC.CODE on TINY-C:), then at "Compile what file?":
-`NAME` (compile NAME.C, or NAME.TEXT, and link), `/C NAME`, `/L OUT=A,B`,
-`/J LIB=A,B` (join objects into a library), `@FILE` (commands from FILE.TEXT);
-`/Z NAME` and `/Z /C NAME` are `NAME` and `/C NAME` with `-z` (below).
+`NAME` (compile NAME.C, or NAME.TEXT, and link), `-C NAME`, `-L OUT=A,B`,
+`-J LIB=A,B` (join objects into a library), `@FILE` (commands from FILE.TEXT);
+`-Z NAME` and `-Z -C NAME` are `NAME` and `-C NAME` with `-z` (below); `-O DIR` sends
+the objects of the commands after it into DIR.  Options start with `-` (they were `/`
+until a path could start with one); `-c` and `-C` are the same.
 The same commands can be given as arguments instead, e.g. from the shell
-`cc @build @libs` or `cc /z hanoi sieve`: options and the word after them make
+`cc @build @libs` or `cc -z hanoi sieve`: options and the word after them make
 one command, they run in turn without a prompt, and the first that fails stops CC
 (exit status 1).
 Sources are `NAME.C`, headers `NAME.H` (UCSD text format, text kind).
@@ -129,10 +131,10 @@ an `@FILE` in a sub-volume are looked for beside it first.  A file in a sub-volu
 with its volume (a header, an object CC writes or the linker reads) is opened by the
 sub-volume's place, found once (`placeopen`, `svfopen`), not through the library's path
 code and a 2 KB directory each time.
-From the shell (or `X(ecute TINY-C:CC`), `CC @TINY-C:/SRC/CC/BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `CC @TINY-C:/SRC/LIB/LIBS` the library (TINY-C:/LIB/TCLIB2.OBJ); `CC @TOOLS:/SRC/TOOLS` links every tool onto TOOLS:; `CC @TINY-C:/SRC/ALL` runs all three (a batch file may name others; `/C` puts NAME.OBJ next to its source, or into the sub-volume a `/O DIR` before it named -- the batch files start with `/O TINY-C:/OBJ` or `/O TOOLS:/OBJ`; `/L` and `/J` look there first, then find objects the way sources are found);
+From the shell (or `X(ecute TINY-C:CC`), `CC @TINY-C:/SRC/CC/BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `CC @TINY-C:/SRC/LIB/LIBS` the library (TINY-C:/LIB/TCLIB2.OBJ); `CC @TOOLS:/SRC/TOOLS` links every tool onto TOOLS:; `CC @TINY-C:/SRC/ALL` runs all three (a batch file may name others; `-C` puts NAME.OBJ next to its source, or into the sub-volume a `-O DIR` before it named -- the batch files start with `-O TINY-C:/OBJ` or `-O TOOLS:/OBJ`; `-L` and `-J` look there first, then find objects the way sources are found);
 `@DEMOS` (on TCEXTRA:) and `@TESTS` (on TCTESTS:) every program there.
 
-## Calls through function pointers (`-z` / `/Z`)
+## Calls through function pointers (`-z` / `-Z`)
 
 A call through a function pointer (`f(x)` with `f` a variable; `qsort`, `bsearch` and
 `printf`'s floating-point formatting do it) is compiled to `<arguments>; <function value>;
@@ -141,7 +143,7 @@ CSP 138` (CALLI): the engine pops the function value (`seg | proc << 8`) and doe
 a separate instruction space. CALLI is in the native P-Code engine from version 1.91; in Z80
 mode the engine's coprocessor (version 1.93) does it too.
 
-`-z` (host) or `/Z` (P-System) generates the earlier sequence instead, which stores the
+`-z` (host) or `-Z` (P-System) generates the earlier sequence instead, which stores the
 function value into the operands of a following `CXP` at run time. That works everywhere,
 Z80 mode included. Everything linked into a program must be built the same way, the library
 too: the tools build it twice (`tclib.obj`, and `tclibz.obj` with `-z`), `tcrun.py` picks
@@ -222,7 +224,7 @@ docs/DESIGN.md for how.
     and opened the object files with them in memory: 1,807 -> 2,934 words
     for linking CC2.CODE.
   - cold code left the always-resident segments: `linkall` and `linkcmd`
-    (the /L and /J commands) are in LINK, `message` (reads TCMSGS.TEXT) in
+    (the -L and -J commands) are in LINK, `message` (reads TCMSGS.TEXT) in
     CINIT, the double and long-constant conversions in REALLIT: 1.7 KB.
   - the preprocessor keeps a macro in one block (name and body after a
     6-byte record) and collapses blanks in bodies (vi.h pads its 70

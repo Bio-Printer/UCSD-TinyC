@@ -3,7 +3,7 @@
 made by mkvolume.py) on the P-System: TINY-C: on unit #5, an empty SPARE: on
 #9, TCEXTRA: on #10, TCTESTS: on #11.
 
-  @TINY-C:/SRC/LIB/LIBS   (X TINY-C:CC) -> TINY-C:/LIB/TCLIB2.OBJ (/Z /C),
+  @TINY-C:/SRC/LIB/LIBS   (X TINY-C:CC) -> TINY-C:/LIB/TCLIB2.OBJ (-Z -C),
            CMPCODE: IDENTICAL to TINY-C:/LIB/TCLIB.OBJ
   @TINY-C:/SRC/CC/BUILD   from the shell (S, cc @tiny-c:/src/cc/build: CC
            takes its commands as arguments) -> TINY-C:CC2.CODE, CMPCODE:
@@ -48,17 +48,17 @@ def cmpcode(a, b):
 
 def script():
     L = ['WAIT "Command:"'] + prefix('SPARE:')
-    L += tinyc('TINY-C:CC', '@TINY-C:/SRC/LIB/LIBS', ['> /Z /C ASSERT', '> /Z /C TCRT', 'Joining TINY-C:/LIB/TCLIB2.OBJ'])
+    L += tinyc('TINY-C:CC', '@TINY-C:/SRC/LIB/LIBS', ['> -Z -C ASSERT', '> -Z -C TCRT', 'Joining TINY-C:/LIB/TCLIB2.OBJ'])
     L += cmpcode('TINY-C:/LIB/TCLIB.OBJ', 'TINY-C:/LIB/TCLIB2.OBJ')
-    L += ['TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @tiny-c:/src/cc/build\\r"', 'WAIT "> @TINY-C:/SRC/CC/BUILD"', 'WAIT "> /C MAIN"',
-          'WAIT "> /L TINY-C:CC2="', 'WAIT "Done."', 'WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"',
+    L += ['TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @tiny-c:/src/cc/build\\r"', 'WAIT "> @TINY-C:/SRC/CC/BUILD"', 'WAIT "> -C MAIN"',
+          'WAIT "> -L TINY-C:CC2="', 'WAIT "Done."', 'WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"',
           'WAIT "Command:"']
     L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')
     L += prefix('TCEXTRA:')
-    L += tinyc('TINY-C:CC', '@DEMOS', ['> /Z BOXES', '> /Z CMPCODE', '> /Z SHELL'])
+    L += tinyc('TINY-C:CC', '@DEMOS', ['> -Z BOXES', '> -Z CMPCODE', '> -Z SHELL'])
     L += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "QUEENS\\r"', 'WAIT "92"', 'WAIT "Command:"']
     L += prefix('TCTESTS:')
-    L += tinyc('TINY-C:CC', '@TESTS', ['> /Z CONTROL', '> /Z STRUCTS', '> /Z SYSCOM'])
+    L += tinyc('TINY-C:CC', '@TESTS', ['> -Z CONTROL', '> -Z STRUCTS', '> -Z SYSCOM'])
     L += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "LONGS\\r"', 'WAIT "%s"' % LONGS1, 'WAIT "Command:"']
     return '\n'.join(L) + '\n'
 

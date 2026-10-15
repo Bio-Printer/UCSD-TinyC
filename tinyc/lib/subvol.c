@@ -203,7 +203,8 @@ static int used(int *dir, int *last)
 }
 
 /* GROW and SHRINK (cmd: their name, for the messages): the sub-volume at
-   path becomes size blocks: +N (N more), -N (N fewer) or N.  Growing takes
+   path becomes size blocks: +N (N more), -N (N fewer) or N; "" (SHRINK NAME): as
+   small as its directory and files let it be, no free blocks left.  Growing takes
    the blocks after it; when those are not free it moves to a free area that
    holds it, and when there is none the volume that holds it is krunched
    first.  Shrinking krunches the sub-volume first when its files reach past
@@ -223,7 +224,7 @@ int svresize(char *path, char *size, char *cmd)
         p++;
     for (n = 0; isdigit(*p) && n < 3277; p++)
         n = n * 10 + *p - '0';
-    if (*p || p == size || !isdigit(p[-1])) {
+    if (*size && (*p || p == size || !isdigit(p[-1]))) {
         fprintf(stderr, "%s: %s: the size is +N (N blocks more), -N (N fewer) or N blocks\n", cmd, size);
         return 1;
     }
@@ -244,6 +245,8 @@ int svresize(char *path, char *size, char *cmd)
     len = e[1] - e[0];
     cur = sdir[7];
     want = size[0] == '+' ? cur + n : size[0] == '-' ? cur - n : n;
+    if (!*size)                                 /* (no size: as small as its files let it be) */
+        want = used(sdir, &last) < 7 ? 7 : used(sdir, &last);
     if (want < 7) {
         fprintf(stderr, "%s: %s: %d blocks: a sub-volume has 7 at least\n", cmd, path, want);
         return 3;

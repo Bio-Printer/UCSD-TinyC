@@ -15,13 +15,14 @@
                              CD .., CD VOL: leaves it): names without a
                              volume (in the shell and in the programs it
                              runs) are in it, and the prefix is its volume
-     DIR [/E] [VOL: | #n:][PAT]   the files of the prefix volume (or the
+     DIR [-E] [-S | -N] [VOL: | #n:][PAT]   the files of the prefix volume (or the
                              path), or of VOL, unit n or a sub-volume
                              (DIR A, DIR #5:/A/B/*.C), whose names match PAT: * or =
                              any characters, ? any one (DIR #5, DIR *.C,
-                             DIR TOOLS:/SRC/VI/*.C, DIR #9:?.TEXT); /E adds
+                             DIR TOOLS:/SRC/VI/*.C, DIR #9:?.TEXT); -E adds
                              each file's first block and the bytes in its
-                             last block, and the unused areas
+                             last block, and the unused areas; -S sorts by
+                             size (the largest first), -N by name
      TYPE [VOL: | #n:]NAME   a text file on the console (with wildcards:
                              each file that matches, under its name)
      DELETE [VOL: | #n:]PAT  the files that match (with wildcards it lists
@@ -511,37 +512,58 @@ void fileline(int *dir, int i, int ext, int sub)
     printf("  %s\n", sub ? "Sub-volume" : kinds[e[2] & 7]);
 }
 
-/* /E among a command's words (before or after the others): 1, and it is
-   taken out of arg */
-int optext(char *arg)
+/* the options among a command's words (before or after the others): -E -S -N, alone or
+   joined (-ES): their letters' bits (E 1, S 2, N 4), the words taken out of arg; -1 for a
+   letter not in the list (said so) */
+int options(char *cmd, char *arg, char *letters)
 {
     char *p;
-    int n;
-    for (p = arg; (p = strchr(p, '/')) != NULL; p++)
-        if ((p == arg || p[-1] == ' ') && toupper(p[1]) == 'E' && (p[2] == 0 || p[2] == ' ')) {
-            memmove(p, p + 2, strlen(p + 2) + 1);
-            while (*arg == ' ')
-                memmove(arg, arg + 1, strlen(arg));
-            n = strlen(arg);
-            while (n > 0 && arg[n - 1] == ' ')
-                arg[--n] = 0;
-            return 1;
+    char *q;
+    char *c;
+    int bits, n;
+    bits = 0;
+    for (p = arg; *p; ) {
+        if (*p != '-' || (p != arg && p[-1] != ' ')) {
+            p++;
+            continue;
         }
-    return 0;
+        for (q = p + 1; *q && *q != ' '; q++) {
+            c = strchr(letters, toupper(*q));
+            if (!c) {
+                printf("%s: no option -%c (%s)\n", cmd, *q, letters);
+                return -1;
+            }
+            bits = bits | (1 << (c - letters));
+        }
+        memmove(p, q, strlen(q) + 1);
+    }
+    while (*arg == ' ')
+        memmove(arg, arg + 1, strlen(arg));
+    n = strlen(arg);
+    while (n > 0 && arg[n - 1] == ' ')
+        arg[--n] = 0;
+    return bits;
 }
 
-/* DIR [/E] [VOL: | #n:][PAT]: /E (extended) adds each file's first block
-   and the bytes in its last block, and (no PAT) the unused areas between
-   the files, where they are */
+/* DIR [-E] [-S | -N] [VOL: | #n:][PAT]: -E (extended) adds each file's first block and the
+   bytes in its last block, and (no PAT, no sorting) the unused areas between the files, where
+   they are; -S sorts the files by size (the largest first), -N by name; else they are in the
+   order of their blocks */
 void dir(char *arg)
 {
     int dir[1024];
     char vol[80];
     char sub[96];
     char name[16];
+    char other[16];
+    char idx[77];
     char *pat;
-    int u, i, nf, shown, used, largest, unused, lines, ext, last, next;
-    ext = optext(arg);
+    int u, i, j, k, t, nf, n, shown, used, largest, unused, lines, ext, sort, last, next;
+    k = options("dir", arg, "ESN");
+    if (k < 0)
+        return;
+    ext = k & 1;
+    sort = k & 6;
     u = target("dir", arg, dir, vol, &pat);
     if (!u)
         return;
@@ -560,21 +582,38 @@ void dir(char *arg)
         printf("File            Blocks  Date       Start  Last  Kind\n");
         lines++;
     }
+    n = 0;                              /* the files to show, in turn */
+    for (i = 1; i <= nf; i++) {
+        direntname(dir, i, name);
+        if (*pat && !wildmatch(pat, name))
+            continue;
+        for (j = n++; j > 0 && sort; j--) {     /* (sorted as they come in) */
+            k = idx[j - 1];
+            if (sort & 2)
+                t = dir[13 * k + 1] - dir[13 * k] < dir[13 * i + 1] - dir[13 * i];
+            else {
+                direntname(dir, k, other);
+                t = strcmp(other, name) > 0;
+            }
+            if (!t)
+                break;
+            idx[j] = k;
+        }
+        idx[j] = i;
+    }
     shown = 0;
     last = dir[1];                      /* the directory's end */
-    for (i = 1; i <= nf + 1; i++) {
+    for (j = 0; j <= n; j++) {
+        i = j < n ? idx[j] : nf + 1;
         next = i <= nf ? dir[13 * i] : dir[7];
-        if (ext && !*pat && next > last) {          /* an unused area */
+        if (ext && !*pat && !sort && next > last) {     /* an unused area */
             printf("< unused >      %5d             %5d\n", next - last, last);
             if (!more(&lines))
                 return;
         }
-        if (i > nf)
+        if (j == n)
             break;
         last = dir[13 * i + 1];
-        direntname(dir, i, name);
-        if (*pat && !wildmatch(pat, name))
-            continue;
         fileline(dir, i, ext, issub(u, tbase, dir, i));
         shown++;
         if (!more(&lines))

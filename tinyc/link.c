@@ -884,7 +884,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     return nerrors == 0;
 }
 
-/* /J OUT=A,B,...: one library file from object files, one after another.
+/* -J OUT=A,B,...: one library file from object files, one after another.
    A file on the P-System is padded with NULs to a whole block, and an
    object file ends in 'E', so trailing NULs are dropped (the linker reads
    a NUL as the end of a file). */

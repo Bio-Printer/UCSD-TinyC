@@ -44,7 +44,7 @@ compiler (disassembled with `tools/pdis.py`).
   operands of a following `CXP` at run time (self-modifying code).
   Like the double CSPs 100..137, CALLI is in the native P-Code engine
   (version 1.91 or later), not in the Z80 interpreter; from engine 1.93 the
-  Z80-mode coprocessor does it there. `-z` (`/Z`) generates the earlier
+  Z80-mode coprocessor does it there. `-z` (`-Z`) generates the earlier
   self-patching sequence for older engines (the library must be built with
   it too: `tclibz.obj`).
 * Jumps: one signed byte. 0..127 forward is short; a negative byte indexes
@@ -277,8 +277,9 @@ TCMSGS.TEXT at the top and the sub-volumes INCLUDE (the headers), LIB
 library with LIBS.TEXT); TOOLS: holds the tools' code files and MAN.TEXT, and
 SRC/ with a sub-volume of sources for each tool and TOOLS.TEXT; each volume
 also has OBJ/, empty, where the batch files put the objects they make (CC's
-/O DIR command: the objects of the commands after it go to DIR, and /L and /J
-look there first; it lasts to the end of the batch file).  TCSRC: and
+-O DIR command: the objects of the commands after it go to DIR, and -L and -J
+look there first; it lasts until the next -O: one copy, not one in each batch
+file's frame on the stack through every pass).  TCSRC: and
 TOOLSRC: are gone.  The host makes the sub-volumes (ucsdvol.Volume.new: the
 shell's MKDIR format) with room for a quarter as much again as their files hold and 40
 blocks more (OBJ/: twice the objects the host's build makes, and 40 blocks);
@@ -303,3 +304,10 @@ layout): 2287 words free at the compile's least (2150 with the old CC and
 layout), 4670 while code is generated (5146: the object is closed in a
 sub-volume, SVAT and a 2 KB directory); CC linking itself no longer has the
 objects' opens at its least.
+
+Options start with `-`.  CC's commands were /C, /Z, /L, /J and /O, and the shell's DIR took
+/E: now that a path may start with / (CC /A/X, DIR /SRC), they are -C, -Z, -L, -J, -O and
+DIR -E (with -S, sort by size, and -N, by name).  The tools always took - options.  CC's -O
+directory is one global (it was a copy in each batch file's frame, which stays on the stack
+through every pass: 60 words at the least free memory of a rebuild).  SHRINK NAME without a
+size leaves the sub-volume no free blocks (svresize with "": its directory and files).

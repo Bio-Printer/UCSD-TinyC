@@ -312,8 +312,10 @@ COMMANDS (upper or lower case)
     CD PATH                    a sub-volume (CD WORK:/A/B, CD A, CD ..): names
                                without a volume are in it, in programs too
                                (CD A: the sub-volume A here, else volume A)
-    DIR [/E] [VOL: | #n:][PATTERN]  files (* or = any characters, ? any one);
-                               /E: first block, bytes in the last, unused areas
+    DIR [-E] [-S | -N] [VOL: | #n:][PATTERN]  files (* or = any characters,
+                               ? any one); -E: first block, bytes in the last,
+                               unused areas; -S by size (largest first), -N by
+                               name (else in the order of their blocks)
     TYPE [VOL: | #n:]NAME      a text file on the console (wildcards: each one)
     DELETE [VOL: | #n:]PAT     delete (with wildcards it lists them and asks, Y)
     WHEREIS [VOL: | #n:]PAT    which disks have the file
@@ -504,7 +506,7 @@ DESCRIPTION
     key: Y goes on.  A code file that is running (SYSTEM.PASCAL, the shell,
     KRUNCH itself) may move: KRUNCH tells the operating system where it
     went.  It will not krunch the disk its own output goes to (KRUNCH >F).
-    DIR /E shows the unused areas.  Exit status 0: done (or nothing to
+    DIR -E shows the unused areas.  Exit status 0: done (or nothing to
     move), 1: not Y, 2: no such disk or a bad option, 3: a disk error (the
     files moved so far stay moved, the others where they were).
 OPTIONS
@@ -513,9 +515,9 @@ EXAMPLES
     KRUNCH                  the prefix volume, after Y
     KRUNCH -y #5            unit 5, at once
     KRUNCH #5:/A            the sub-volume A on unit 5
-    DIR /E #5:              the unused areas, before and after
+    DIR -E #5:              the unused areas, before and after
 SEE ALSO
-    SHELL (DIR /E, MKDIR), GROW, SHRINK, LC
+    SHELL (DIR -E, MKDIR), GROW, SHRINK, LC
 
 %% GROW
 NAME
@@ -541,10 +543,12 @@ SEE ALSO
 NAME
     SHRINK - make a sub-volume smaller (or bigger)
 SYNOPSIS
-    SHRINK NAME -N | +N | N
+    SHRINK NAME [-N | +N | N]
 DESCRIPTION
     The sub-volume NAME (A, #5:A, #5:/A/B) becomes N blocks smaller (-N), N
-    bigger (+N) or N blocks (N), as GROW: the same size syntax.  When its
+    bigger (+N) or N blocks (N), as GROW: the same size syntax.  Without a
+    size it becomes as small as its directory and files let it be: no free
+    blocks are left in it.  When its
     files reach past the new end it is krunched first (its files moved
     down, as KRUNCH does), and only then; it cannot be smaller than its
     directory and its files (it says how many blocks they take), nor than 7
@@ -554,6 +558,7 @@ DESCRIPTION
 EXAMPLES
     SHRINK WORK -50         50 blocks fewer
     SHRINK #5:/A/B 60       B in A on unit 5: 60 blocks
+    SHRINK WORK             WORK holds its files and no free blocks
 SEE ALSO
     GROW, KRUNCH, SHELL (MKDIR, RMDIR)
 

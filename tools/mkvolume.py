@@ -43,7 +43,7 @@ WHAT IS WHERE (FILES.TEXT lists every file):
     TCMSGS.TEXT      its messages
     INCLUDE/         the headers: STDIO.H, STRING.H, PSYS.H ...
     LIB/             the C library, TCLIB.OBJ
-    OBJ/             empty: the objects a rebuild makes (BUILD's and LIBS's /O)
+    OBJ/             empty: the objects a rebuild makes (BUILD's and LIBS's -O)
     SRC/             the sources, and the batch files that rebuild everything:
       SRC/ALL.TEXT     the compiler, the library and the tools at once
       SRC/CC/          the compiler's modules, BUILD.TEXT
@@ -57,18 +57,19 @@ Use: from the shell (S at the Command: prompt) type CC NAME, or
 X(ecute TINY-C:CC and answer "Compile what file?" with
     NAME                 compile NAME.C (or NAME.TEXT), link with
                          TCLIB.OBJ -> NAME.CODE  (NAME.C works too)
-    /C NAME              compile only -> NAME.OBJ
-    /Z NAME, /Z /C NAME  the same, with calls through function pointers made
+    -C NAME              compile only -> NAME.OBJ
+    -Z NAME, -Z -C NAME  the same, with calls through function pointers made
                          for the Z80 interpreter (see FUNCTION POINTERS)
-    /L OUT=A,B,...       link A.OBJ, B.OBJ, ... and TCLIB.OBJ -> OUT.CODE
-    /J LIB=A,B,...       join A.OBJ, B.OBJ, ... into the library LIB.OBJ
-    /O DIR               the objects of the commands after it go into DIR
-                         (TINY-C:/OBJ), and /L and /J look there first; in a
-                         batch file until its end
+    -L OUT=A,B,...       link A.OBJ, B.OBJ, ... and TCLIB.OBJ -> OUT.CODE
+    -J LIB=A,B,...       join A.OBJ, B.OBJ, ... into the library LIB.OBJ
+    -O DIR               the objects of the commands after it go into DIR
+                         (TINY-C:/OBJ), and -L and -J look there first; until
+                         the next -O
+Options start with - (a path may start with /); -c and -C are the same.
     @FILE                run the commands in FILE.TEXT, one per line
                          (blank lines and lines starting with ; skipped;
                          a line @OTHER runs OTHER.TEXT, then goes on)
-The same commands can be arguments instead: CC @TINY-C:/SRC/ALL, CC /Z
+The same commands can be arguments instead: CC @TINY-C:/SRC/ALL, CC -Z
 HANOI SIEVE.  Options and the word after them make one command; they run
 in turn, no prompt, and the first that fails stops CC.
 X(ecute NAME runs a program.  WHICH DISK: a source, a #include file or
@@ -79,11 +80,11 @@ including file, the @FILE), else the one on the prefix volume, else it
 lists the volumes and stops (name one).  HEADERS: <x.h> is taken from
 TINY-C:/INCLUDE first, "x.h" from the including file's sub-volume first,
 then as above, then from TINY-C:/INCLUDE.  SUB-VOLUMES: a path (CC A/X,
-CC #5:/A/B/X, #include "A/X.H", /L OUT=A/X,A/Y) is taken from there;
+CC #5:/A/B/X, #include "A/X.H", -L OUT=A/X,A/Y) is taken from there;
 after the shell's CD into a sub-volume CC looks in it first; the names in
 an @FILE in a sub-volume (SRC/CC/BUILD's MAIN, TOOLS:/SRC/TOOLS's VI/VIMAIN)
 are looked for beside it first.  An object (NAME.OBJ) goes next to its
-source, and /L and /J find objects the same way as sources; the code file
+source, and -L and -J find objects the same way as sources; the code file
 goes where NAME says (its volume or path, else the shell's path or the
 prefix volume) -- the shell runs a code file in a sub-volume where it is;
 the temporary files (TCTEMP.TEXT, TCTEMP.IR) go to the prefix volume, or to
@@ -113,10 +114,10 @@ returned.
 FUNCTION POINTERS: a call through a function pointer (qsort, bsearch and
 printf's floating-point formatting use them) is by default compiled to
 CSP 138 (CALLI), which the native P-Code engine implements and the Z80
-interpreter does not.  /Z compiles the older sequence that works in both,
-so TCLIB.OBJ and the programs on TCEXTRA: are built with /Z (LIBS.TEXT and
-DEMOS.TEXT say so).  Build with /Z anything that must run in Z80 mode,
-the library included; without /Z a program that calls through a function
+interpreter does not.  -Z compiles the older sequence that works in both,
+so TCLIB.OBJ and the programs on TCEXTRA: are built with -Z (LIBS.TEXT and
+DEMOS.TEXT say so).  Build with -Z anything that must run in Z80 mode,
+the library included; without -Z a program that calls through a function
 pointer runs in Z80 mode but gives wrong results.
 
 MEMORY: Tiny-C runs in Z80 mode as well as P-Code mode, and @BUILD
@@ -145,7 +146,7 @@ identical to TINY-C:CC.CODE apart from its name (check it with
 TCEXTRA:CMPCODE).  To use it, change its name to CC.CODE with the Filer.
 
 REBUILDING THE LIBRARY:  CC @TINY-C:/SRC/LIB/LIBS.  LIBS.TEXT compiles the
-library modules and joins them (/J) into TINY-C:/LIB/TCLIB2.OBJ, identical
+library modules and joins them (-J) into TINY-C:/LIB/TCLIB2.OBJ, identical
 to TINY-C:/LIB/TCLIB.OBJ (check it with CMPCODE).  To use it, RENAME
 TINY-C:/LIB/TCLIB2.OBJ TCLIB.OBJ from the shell (after deleting the old
 one).
@@ -154,7 +155,7 @@ EVERYTHING AT ONCE:  CC @TINY-C:/SRC/ALL (TOOLS: on line too): BUILD, LIBS,
 then TOOLS:/SRC/TOOLS (every tool linked onto TOOLS:).
 
 The names in a batch file are looked for beside it first, so these work
-from anywhere.  Their first command, /O TINY-C:/OBJ, puts every NAME.OBJ
+from anywhere.  Their first command, -O TINY-C:/OBJ, puts every NAME.OBJ
 into TINY-C:/OBJ, not among the sources (DELETE TINY-C:/OBJ/*.OBJ from
 the shell to clear it).
 CC/OBJFORMAT.TEXT describes what is in a .OBJ file and how the linker
@@ -204,11 +205,13 @@ Its own commands:
         DIR A lists what is in A; DIR marks sub-volumes "Sub-volume".
   RMDIR NAME   a sub-volume goes; with files in it, after a Y (not one
         the shell's path is in).  DELETE leaves sub-volumes alone.
-  DIR [/E] [VOL: or #5:][PATTERN]   the files of the prefix volume (or
-        VOL:, or unit 5) whose names match: * or = any characters, ? any
-        one (DIR *.C, DIR #9:, DIR TOOLS:/SRC/VI/*.C); ESC stops a long list.
-        /E: each file's first block and bytes in its last block too, and
-        the unused areas between the files.
+  DIR [-E] [-S | -N] [VOL: or #5:][PATTERN]   the files of the prefix
+        volume (or VOL:, or unit 5) whose names match: * or = any
+        characters, ? any one (DIR *.C, DIR #9:, DIR TOOLS:/SRC/VI/*.C); ESC
+        stops a long list.  -E: each file's first block and bytes in its
+        last block too, and the unused areas between the files; -S sorts
+        the files by size (the largest first), -N by name (else they are in
+        the order of their blocks); -ES both.
   TYPE [VOL: or #5:]NAME         a text file on the console; with
         wildcards each file that matches, under its name.
   DELETE (or DEL) [VOL: or #5:]PATTERN   deletes the files that match;
@@ -284,7 +287,7 @@ TOOLS = [
     ('LC', ['ports/lc/lc.c'], [], 'lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns'),
     ('KRUNCH', ['ports/krunch/krunch.c'], [], 'krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area'),
     ('GROW', ['ports/grow/grow.c'], [], 'grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)'),
-    ('SHRINK', ['ports/shrink/shrink.c'], [], 'shrink: SHRINK NAME -N | +N | N a sub-volume smaller (krunched first if it must be)'),
+    ('SHRINK', ['ports/shrink/shrink.c'], [], 'shrink: SHRINK NAME [-N | +N | N] a sub-volume smaller (no size: no free blocks left)'),
     ('PATCH', ['ports/patch/patch.c'], [], 'patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]'),
     ('MAN', ['ports/man/man.c'], [], 'man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)'),
     ('BINDERC', ['ports/binder/binderc.c'], [], 'BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)'),
@@ -404,9 +407,9 @@ KRUNCH  KRUNCH [-y] [VOL: | #n | PATH]  from the shell: moves the files of
         unless -y).  Running code files (SYSTEM.PASCAL, the shell) may move:
         KRUNCH tells the OS.
 
-GROW    GROW NAME SIZE, SHRINK NAME SIZE  from the shell: the sub-volume NAME
+GROW    GROW NAME SIZE, SHRINK NAME [SIZE]  from the shell: the sub-volume NAME
 SHRINK  (MKDIR makes one) becomes SIZE blocks: +N (N more), -N (N fewer) or
-        N.  Growing takes the blocks after it, or moves it to a free area,
+        N; SHRINK NAME alone leaves it no free blocks.  Growing takes the blocks after it, or moves it to a free area,
         krunching the volume that holds it when it must; shrinking krunches
         the sub-volume first only when its files reach past the new end.
 
@@ -438,7 +441,7 @@ modules, SRC/GREP GREP.C, and so on.
 
 REBUILDING THEM:  from the shell, CC @TOOLS:/SRC/TOOLS (or X(ecute
 TINY-C:CC, answer @TOOLS:/SRC/TOOLS).  TOOLS.TEXT compiles every tool's
-modules (VI/VIMAIN: found beside TOOLS.TEXT; /O TOOLS:/OBJ puts each
+modules (VI/VIMAIN: found beside TOOLS.TEXT; -O TOOLS:/OBJ puts each
 NAME.OBJ into TOOLS:/OBJ) and links the tool straight onto TOOLS:
 (TOOLS:NAME.CODE, replacing the one there).
 
@@ -447,7 +450,7 @@ the library (TINY-C:/LIB/TCLIB2.OBJ), then TOOLS; a batch file can name
 other batch files (@NAME).
 
 A NEW TOOL: MKDIR TOOLS:/SRC/NAME, its sources there, its lines in
-TOOLS.TEXT (/Z /C NAME/NAME, /L TOOLS:NAME=NAME/NAME) and a page in
+TOOLS.TEXT (-Z -C NAME/NAME, -L TOOLS:NAME=NAME/NAME) and a page in
 TOOLS:MAN.TEXT.
 
 VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
@@ -455,8 +458,8 @@ VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
         main loop), VISCREEN.C (the screen), VITEXT.C (moving, changing
         text), VICOLON.C (the : commands), VICMD.C (the vi commands),
         VIPAGE.C and VIPAGE.H (the window into big files), VIUCSD.C (the
-        P-System: keys, screen, files).  @TOOLS compiles each (/Z /C) and
-        links them (/L VI=...), in P-Code or Z80 mode.
+        P-System: keys, screen, files).  @TOOLS compiles each (-Z -C) and
+        links them (-L VI=...), in P-Code or Z80 mode.
 
 GREP.C  grep (a regular expression, wildcards, every disk).
 
@@ -494,18 +497,18 @@ DEMOS = ('boxes', 'calc', 'demo', 'guess', 'hanoi', 'pi', 'queens', 'sieve')
 LIBMODS_ = sorted(f[:-2] for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c'))
 LIBS = """; LIBS -- rebuild the C library: CC @TINY-C:/SRC/LIB/LIBS from the shell
 ; (or X(ecute TINY-C:CC and answer @TINY-C:/SRC/LIB/LIBS).  Compiles every library
-; module here (/O: each NAME.OBJ into TINY-C:/OBJ), then joins them into
+; module here (-O: each NAME.OBJ into TINY-C:/OBJ), then joins them into
 ; TINY-C:/LIB/TCLIB2.OBJ.
-/O TINY-C:/OBJ
-""" + ''.join('/Z /C %s\n' % m.upper() for m in LIBMODS_) + \
-    '/J TINY-C:/LIB/TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
+-O TINY-C:/OBJ
+""" + ''.join('-Z -C %s\n' % m.upper() for m in LIBMODS_) + \
+    '-J TINY-C:/LIB/TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
 
 BUILD = """; BUILD -- rebuild the Tiny-C compiler: CC @TINY-C:/SRC/CC/BUILD from the shell
 ; (or X(ecute TINY-C:CC and answer @TINY-C:/SRC/CC/BUILD).  Compiles every module
-; here (/O: each NAME.OBJ into TINY-C:/OBJ), then links them into TINY-C:CC2.CODE.
-/O TINY-C:/OBJ
-""" + ''.join('/C %s\n' % m.upper() for m in MODULES) + \
-    '/L TINY-C:CC2=%s\n' % ','.join(m.upper() for m in MODULES)
+; here (-O: each NAME.OBJ into TINY-C:/OBJ), then links them into TINY-C:CC2.CODE.
+-O TINY-C:/OBJ
+""" + ''.join('-C %s\n' % m.upper() for m in MODULES) + \
+    '-L TINY-C:CC2=%s\n' % ','.join(m.upper() for m in MODULES)
 
 
 WHAT = {
@@ -670,7 +673,7 @@ def tiny_c():
             inc.textfile(f.upper(), os.path.join(INC, f), describe(os.path.join(INC, f)))
     tclib = open(build_lib(True), 'rb').read()
     lib = t.sub('LIB', 'the C library', 6 + 2 * ((len(tclib) + 511) // 512) + ROOM)  # (and TCLIB2.OBJ, LIBS)
-    lib.binary('TCLIB.OBJ', tclib, 'the C library (built with /Z), linked into every program')
+    lib.binary('TCLIB.OBJ', tclib, 'the C library (built with -Z), linked into every program')
     src = t.sub('SRC', 'the sources of the compiler and the library, and how to rebuild them')
     src.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C and the tools')
     src.text('ALL.TEXT', ALL, 'CC @TINY-C:/SRC/ALL: the compiler, the library and every tool')
@@ -688,7 +691,7 @@ def tiny_c():
     lb.textfile('LIBINT.H', os.path.join(LIB, 'libint.h'))
     objdir(t, [os.path.join(os.path.dirname(code), m + '.obj') for m in MODULES] +
            [os.path.join(ROOT, 'build', 'libz', m + '.obj') for m in LIBMODS],
-           "empty: the objects BUILD and LIBS make (/O TINY-C:/OBJ)")
+           "empty: the objects BUILD and LIBS make (-O TINY-C:/OBJ)")
     t.finish()
 
 
@@ -704,7 +707,7 @@ def programs(vol, batch, progs, desc):
     names = [os.path.splitext(os.path.basename(p))[0].upper()[:10] for p in progs]
     vol.text(batch + '.TEXT', '; %s -- compile and link every program on %s:\n'
              '; prefix %s:, X(ecute TINY-C:CC, answer @%s\n' % (batch, vol.name, vol.name, batch) +
-             ''.join('/Z %s\n' % n for n in names), desc)
+             ''.join('-Z %s\n' % n for n in names), desc)
     for p in progs:
         name = os.path.splitext(os.path.basename(p))[0].upper()[:10]
         vol.textfile(name + '.C', p, describe(p))
@@ -738,9 +741,9 @@ ALL = """; ALL -- rebuild the compiler, the library and every tool (TOOLS: on li
 
 
 def tool_batch(name, mods):
-    """TOOLS.TEXT's lines for a tool: each module in its sub-volume compiled (/Z /C), then linked"""
+    """TOOLS.TEXT's lines for a tool: each module in its sub-volume compiled (-Z -C), then linked"""
     names = ['%s/%s' % (name, os.path.splitext(os.path.basename(m))[0].upper()) for m in mods]
-    return ''.join('/Z /C %s\n' % n for n in names) + '/L TOOLS:%s=%s\n' % (name, ','.join(names))
+    return ''.join('-Z -C %s\n' % n for n in names) + '-L TOOLS:%s=%s\n' % (name, ','.join(names))
 
 
 def tools():
@@ -762,7 +765,7 @@ def tools():
     s.text('README.TEXT', README_TOOLS_SRC, "how to rebuild the tools")
     s.text('TOOLS.TEXT', '; TOOLS -- compile and link every tool onto TOOLS:\n'
            '; CC @TOOLS:/SRC/TOOLS from the shell, or X(ecute TINY-C:CC and answer @TOOLS:/SRC/TOOLS\n'
-           '; (/O: the objects into TOOLS:/OBJ)\n/O TOOLS:/OBJ\n' +
+           '; (-O: the objects into TOOLS:/OBJ)\n-O TOOLS:/OBJ\n' +
            ''.join(tool_batch(name, mods) for name, mods, hdrs, desc in TOOLS),
            'CC @TOOLS:/SRC/TOOLS: rebuilds every tool')
     for name, mods, hdrs, desc in TOOLS:
@@ -771,7 +774,7 @@ def tools():
             d.textfile(os.path.basename(f).upper(), os.path.join(ROOT, f))
     objdir(t, [os.path.join(TMP, os.path.splitext(os.path.basename(m))[0] + '.obj')
                for name, mods, hdrs, desc in TOOLS for m in mods],
-           "empty: the objects TOOLS.TEXT makes (/O TOOLS:/OBJ)")
+           "empty: the objects TOOLS.TEXT makes (-O TOOLS:/OBJ)")
     t.finish()
 
 

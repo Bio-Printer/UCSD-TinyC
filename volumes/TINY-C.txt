@@ -24,7 +24,7 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   INCLUDE/STRING.H              4  strcpy, strcmp, strlen, memcpy, memset, ...
   INCLUDE/TCRT.H                6  runtime helpers the compiler calls (reference only)
   LIB/                        204  sub-volume: the C library
-  LIB/TCLIB.OBJ                79  the C library (built with /Z), linked into every program
+  LIB/TCLIB.OBJ                79  the C library (built with -Z), linked into every program
   SRC/                       1140  sub-volume: the sources of the compiler and the library, and how to rebuild them
   SRC/README.TEXT               6  how to rebuild Tiny-C and the tools
   SRC/ALL.TEXT                  4  CC @TINY-C:/SRC/ALL: the compiler, the library and every tool
@@ -69,5 +69,5 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/LIB/SUBVOL.C             26  svcanon, dirfree, dirkrunch, svresize: KRUNCH, GROW, SHRINK (<dirs.h>)
   SRC/LIB/TCRT.C               18  runtime helpers: C division, shifts, unsigned, longs
   SRC/LIB/LIBINT.H              6  the library modules' shared declarations
-  OBJ/                        658  sub-volume: empty: the objects BUILD and LIBS make (/O TINY-C:/OBJ)
+  OBJ/                        658  sub-volume: empty: the objects BUILD and LIBS make (-O TINY-C:/OBJ)
   FILES.TEXT                   14  this list

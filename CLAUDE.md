@@ -27,7 +27,7 @@ Say in the report which emulator version a change needs.
 
 The normal regression test is `tools/quicktest.py` (about 12 s native; about 5 minutes
 in Z80 mode, `PSYS_MODE=z80`): one shell session on the P-System in which the library
-compiles itself (`cc @libs | grep Joining`, IDENTICAL to the host's), `hexdump -i
+compiles itself (`cc @tiny-c:/src/lib/libs | grep Joining`, IDENTICAL to the host's), `hexdump -i
 system.list | grep -n :10` gives its 3 non-data lines, `lc | wc`, `wc`, `cat | grep -n
 | wc` (two pipes), `diff -u` then `patch` turns one file into the other, and vi
 deletes a line and saves it.  So the compiler, linker, pipes, volumes and most tools
@@ -58,7 +58,7 @@ full regression test is asked for (it takes a long time).
 | diff (`ports/diff/`) | `tools/difftest.py` (against the host's diff and patch) |
 | wc (`ports/wc/`) | `tools/wctest.py` (against the host's wc; needs cat) |
 | lc (`ports/lc/`) | `tools/lctest.py` (needs wc) |
-| krunch (`ports/krunch/`), the shell's DIR /E | `tools/krunchtest.py` (both modes: it krunches the boot disk while SYSTEM.PASCAL and the shell run) |
+| krunch (`ports/krunch/`), the shell's DIR -E | `tools/krunchtest.py` (both modes: it krunches the boot disk while SYSTEM.PASCAL and the shell run) |
 | grow, shrink (`ports/grow/`, `ports/shrink/`), `tinyc/lib/subvol.c` (dirkrunch, svresize) | `tools/growtest.py` (both modes), `tools/krunchtest.py` |
 | patch (`ports/patch/`) | `tools/patchtest.py` (against the host's diff) |
 | shell redirection / pipes (`examples/shell.c`, `tinyc/lib/redirect.c`) | `tools/redirtest.py`, `tools/pexectest.py`, `tools/greptest.py` |

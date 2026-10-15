@@ -9,7 +9,7 @@ others.  With the prefix on SPARE: (an empty volume), X(ecute TINY-C:CC,
                           to TCLIB.OBJ
   @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
                           first): the same bytes as mkvolume's
-and every object is in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' /O),
+and every object is in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' -O),
 none among the sources (TINY-C:/SRC/CC, TOOLS:/SRC/VI ...: the names in a
 batch file are looked for beside it) or on the prefix volume.
 
@@ -26,8 +26,8 @@ from voltest import prefix, cmpcode
 from mkvolume import TOOLS, MODULES, LIBMODS_
 
 # what the run prints, in turn
-WAITS = ['> @TINY-C:/SRC/CC/BUILD', '> /L TINY-C:CC2=', '> @TINY-C:/SRC/LIB/LIBS',
-         'Joining TINY-C:/LIB/TCLIB2.OBJ', '> @TOOLS:/SRC/TOOLS', '> /L TOOLS:GREP=']
+WAITS = ['> @TINY-C:/SRC/CC/BUILD', '> -L TINY-C:CC2=', '> @TINY-C:/SRC/LIB/LIBS',
+         'Joining TINY-C:/LIB/TCLIB2.OBJ', '> @TOOLS:/SRC/TOOLS', '> -L TOOLS:GREP=']
 
 
 def prepare(d):
@@ -77,7 +77,7 @@ def results(d, r, tr, names):
         ('TINY-C:CC2.CODE and TINY-C:/LIB/TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
         ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
          and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
-        ('every object in TINY-C:/OBJ or TOOLS:/OBJ (/O), none in SRC/CC, SRC/LIB, TOOLS:/SRC/VI ... or on the prefix SPARE:',
+        ('every object in TINY-C:/OBJ or TOOLS:/OBJ (-O), none in SRC/CC, SRC/LIB, TOOLS:/SRC/VI ... or on the prefix SPARE:',
          tinyc is not None and tools is not None and spare is not None
          and objs_in(tinyc, ['OBJ'], [m.upper() + '.OBJ' for m in MODULES + LIBMODS_])
          and objs_in(tools, ['OBJ'], [os.path.splitext(os.path.basename(m))[0].upper() + '.OBJ'

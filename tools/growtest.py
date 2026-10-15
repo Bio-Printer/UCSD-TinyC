@@ -11,6 +11,7 @@ KRUNCH of a sub-volume, and GREP, LC and WC wildcards in sub-volumes, on the P-S
   SHRINK #5:A 42       they do not: krunched first, then 42
   SHRINK #5:A 30       its files take 40 blocks: refused
   GROW +10, COPY T1, DELETE T2; KRUNCH -y #5:/A    the gap squeezed out of the sub-volume
+  SHRINK #5:A          no size: no free blocks left in it (its directory and files only)
   MKDIR #5:P 60, P/Q 20, P/R 20, RMDIR P/Q: P's free blocks in two areas (20, 14)
   GROW #5:P/R +16      no area holds 36: P krunched first (R moves down), then in place
   GROW #5:P/R +100     no room: refused; GROW with a bad size, on a file: refused
@@ -61,7 +62,7 @@ def main():
              ('#5:shrink #5:A -20', 'exit status'), ('#5:shrink #5:A 42', 'exit status'),
              ('#5:shrink #5:A 30', 'exit status'),
              ('#5:grow #5:A +10', 'exit status'), ('copy #5:T1.TEXT #5:A', 'T1.TEXT'), ('delete #5:A/T2.TEXT', 'deleted'),
-             ('#5:krunch -y #5:/A', 'exit status'),
+             ('#5:krunch -y #5:/A', 'exit status'), ('#5:shrink #5:A', 'exit status'),
              ('mkdir #5:P 60', 'a sub-volume'), ('mkdir #5:P/Q 20', 'a sub-volume'), ('mkdir #5:P/R 20', 'a sub-volume'),
              ('rmdir #5:P/Q', 'removed'), ('#5:grow #5:P/R +16', 'exit status'), ('#5:grow #5:P/R +100', 'exit status'),
              ('#5:grow #5:A x10', 'exit status'), ('#5:shrink #5:T1.TEXT 10', 'exit status')]
@@ -86,10 +87,11 @@ def main():
         a_sizes = (ea[1] - ea[0], va.eov)
         a_tight = all(x[0] == y[1] for x, y in zip(sorted(va.entries)[1:], sorted(va.entries))) \
             and sorted(va.entries)[0][0] == 6
+        a_used = va.used()
         r_sizes = (er[1] - er[0], vr.eov, er[0])
         p_names = sorted(e[3] for e in vp.entries)
     except (Exception, SystemExit) as x:
-        a_names, a_files, a_sizes, a_tight, r_sizes, p_names = ['(%s)' % x], False, (), False, (), []
+        a_names, a_files, a_sizes, a_tight, r_sizes, p_names, a_used = ['(%s)' % x], False, (), False, (), [], 0
     g = part('#5:grep zebra #5:A/*.TEXT')
     gp = part('#5:grep -n zebra *.TEXT')
     w = part('#5:wc #5:A/*.TEXT')
@@ -110,14 +112,17 @@ def main():
                and 'BIG.DAT' in part('#5:shrink #5:A 42') and '#5:A: 42 blocks (it was 80)' in tr),
               ('SHRINK 30: its files take 40: refused', 'take 40 blocks: not 30' in part('#5:shrink #5:A 30')),
               ('KRUNCH -y #5:/A: the gap squeezed out', 'WORK:/A/ (#5) krunched' in part('#5:krunch -y #5:/A')),
+              ('SHRINK #5:A (no size): from 52 blocks to its directory and files', '(it was 52)' in part('#5:shrink #5:A')
+               and 'exit status 0' in part('#5:shrink #5:A')),
               ('GROW P/R +16: P krunched first, R 36 blocks', 'krunching the volume that holds #5:P/R first' in tr
                and '#5:P/R: 36 blocks (it was 20)' in tr),
               ('GROW P/R +100: no room', 'no room' in part('#5:grow #5:P/R +100')),
               ('a bad size, a file not a sub-volume: refused (status 1, 2)', 'the size is +N' in part('#5:grow #5:A x10')
                and 'exit status 1' in part('#5:grow #5:A x10') and 'is not a sub-volume' in part('#5:shrink #5:T1.TEXT 10')
                and 'exit status 2' in part('#5:shrink #5:T1.TEXT 10')),
-              ('on the host: A 52 blocks (its file and its volume), BIG.DAT and T1.TEXT the same bytes, one after another (%s %s)'
-               % (a_sizes, ' '.join(a_names)), a_sizes == (52, 52) and a_files and a_tight and a_names == ['BIG.DAT', 'T1.TEXT']),
+              ('on the host: A no bigger than its directory and files (its file and its volume: %s), BIG.DAT and T1.TEXT '
+               'the same bytes, one after another (%s)' % (a_sizes, ' '.join(a_names)),
+               a_sizes == (a_used, a_used) and a_used < 52 and a_files and a_tight and a_names == ['BIG.DAT', 'T1.TEXT']),
               ('on the host: P holds R only, R 36 blocks from block 6 (%s)' % (r_sizes,), p_names == ['R'] and r_sizes == (36, 36, 6))]
     bad = 0
     for what, good in checks:

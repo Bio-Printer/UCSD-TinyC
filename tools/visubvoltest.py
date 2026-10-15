@@ -34,7 +34,7 @@ def main():
     ps.put('VI.CODE', open(vi, 'rb').read())
     lines = []
     for i in range(300):
-        lines += ['; comment line %d' % i, '/Z /C MOD%d' % i]
+        lines += ['; comment line %d' % i, '-Z -C MOD%d' % i]
     ps.put('ALL.TEXT', '\n'.join(lines) + '\n')
     s = ['WAIT "Command:"', 'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "#5:SHELL\\r"', 'WAIT "shell> "']
     for c, w in (('mkdir #5:tmp 500', 'sub-volume'), ('mkdir #5:/tmp/src', 'sub-volume'),

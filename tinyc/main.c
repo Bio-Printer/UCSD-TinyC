@@ -7,26 +7,29 @@
  *            -z: calls through function pointers for the Z80 interpreter
  *            (see below); for Z80 mode every object linked, the library too,
  *            must be built with it.
- * P-System:  X(ecute CC, then answer "Compile what file?" with
+ * P-System:  X(ecute CC, then answer "Compile what file?" with (options start with -: a
+ *            path may start with /; -c and -C alike)
  *              NAME             compile NAME.C (or NAME.TEXT), link with TCLIB.OBJ -> NAME.CODE
- *              /C NAME          compile only -> NAME.OBJ
- *              /L OUT=A,B,...   link A.OBJ, B.OBJ ... and TCLIB.OBJ -> OUT.CODE
- *              /J OUT=A,B,...   join A.OBJ, B.OBJ ... into the library OUT.OBJ
- *              /Z NAME, /Z /C NAME   as above with -z (see below)
+ *              -C NAME          compile only -> NAME.OBJ
+ *              -L OUT=A,B,...   link A.OBJ, B.OBJ ... and TCLIB.OBJ -> OUT.CODE
+ *              -J OUT=A,B,...   join A.OBJ, B.OBJ ... into the library OUT.OBJ
+ *              -Z NAME, -Z -C NAME   as above with -z (see below)
+ *              -O DIR           the objects of the commands after it go into DIR
+ *                               (-L and -J look there first)
  *              @FILE            run the commands in FILE.TEXT, one per line
  *                               (blank lines and lines starting ';' skipped),
  *                               stopping at the first that fails
  *            or give the commands as arguments (from the shell, pexec):
- *              CC @BUILD @LIBS, CC /Z HANOI SIEVE: options and the word after
+ *              CC @TINY-C:/SRC/ALL, CC -Z HANOI SIEVE: options and the word after
  *              them make one command; they run in turn, no prompt
  *            A NAME may be a path into sub-volumes (A/X, #5:/A/B/X); after the
  *            shell's CD into one, names are looked for there first (pp.c
- *            findfile).  NAME.OBJ goes next to its source and NAME.CODE where
+ *            findfile).  NAME.OBJ goes where -O said, else next to its source; NAME.CODE where
  *            NAME says (a code file in a sub-volume runs there: pexec); the
  *            temporary files on the volume that holds the sub-volume.
  *
  * Calls through function pointers: by default they use CSP 138 (CALLI), which
- * the native P-Code engine implements and the Z80 interpreter does not. -z (/Z)
+ * the native P-Code engine implements and the Z80 interpreter does not. -z (-Z on the P-System)
  * generates the older sequence that stores the function value into the operands
  * of a CXP at run time, for programs that must run in Z80 mode (and, as the
  * library is linked into every program, a library built the same way).
@@ -222,12 +225,16 @@ static void onpathvol(char *out, char *name)
 }
 
 /* one command (see the top of this file); 0 = it failed */
-/* /L OUT=A,B,... or /J LIB=A,B,...: its own function, so that the objects'
+/* -L OUT=A,B,... or -J LIB=A,B,...: its own function, so that the objects'
    names (on the stack: gone with the command -- on the heap they outlived
    it and @ALL ran out of memory) take no room while a source compiles */
 #pragma segment LINK
-/* /O DIR: odir (40 bytes) becomes DIR, ending in / or : ("" none: next to the sources) */
-static int setodir(char *s, char *odir)
+/* -O DIR: where the objects of the commands after it go (and -L, -J look first), ending in / or
+   :; "" (none yet): next to their sources.  One copy, kept until the next -O (not one in each
+   batch file's frame: they are on the stack through every pass) */
+static char odir[40];
+
+static int setodir(char *s)
 {
     int n;
     while (*s == ' ')
@@ -253,10 +260,10 @@ static char *leaf(char *s)
     return p;
 }
 
-/* dir: the sub-volume of the @batch file the command is in ("" none), odir where /O put the
+/* dir: the sub-volume of the @batch file the command is in ("" none), odir where -O put the
    objects ("" next to their sources): the objects named without a volume are looked for in odir
    first, then beside the batch file */
-static int linkcmd(char *s, char *lib, int from, char *dir, char *odir)
+static int linkcmd(char *s, char *lib, int from, char *dir)
 {
     char *objs[MAXFILES];
     char names[640];                    /* (paths into sub-volumes: TINY-C:/SRC/LIB/STDIO.OBJ) */
@@ -270,14 +277,14 @@ static int linkcmd(char *s, char *lib, int from, char *dir, char *odir)
     int joining;
     nobjs = 0;
     used = 0;
-    /* /L OUT=A,B,...  or  /J OUT=A,B,... */
+    /* -L OUT=A,B,...  or  -J OUT=A,B,... */
     joining = s[1] == 'J';
     s = s + 2;
     while (*s == ' ')
         s++;
     t = strchr(s, '=');
     if (!t) {
-        say("use: /L OUT=A,B,...  or  /J LIB=A,B,...\n");
+        say("use: -L OUT=A,B,...  or  -J LIB=A,B,...\n");
         return 0;
     }
     *t++ = 0;
@@ -300,7 +307,7 @@ static int linkcmd(char *s, char *lib, int from, char *dir, char *odir)
         if (nobjs >= MAXFILES - 1)
             break;
         /* NAME.OBJ: with a volume or path there, else where findfile says
-           (the shell's path, the batch file's disk, where /C put it, or
+           (the shell's path, the batch file's disk, where -C put it, or
            the prefix) */
         if (strlen(s) > 56)
             continue;
@@ -310,7 +317,7 @@ static int linkcmd(char *s, char *lib, int from, char *dir, char *odir)
             strcpy(obj, odir);
             strcat(obj, leaf(src));
             if (exists(obj))
-                strcpy(src, obj);       /* (where /O put it) */
+                strcpy(src, obj);       /* (where -O put it) */
         }
 #ifdef __TINYC__
         inbatch(src, dir, "", "");      /* (beside the batch file, if it is there) */
@@ -354,8 +361,8 @@ static int linkcmd(char *s, char *lib, int from, char *dir, char *odir)
 
 /* from: the unit of the @batch file the command is in (0: typed); dir: its sub-volume ("" not
    in one), where a source named without a volume is looked for first; odir: where the objects
-   go ("" next to their sources; /O DIR sets it, for the rest of the batch file) */
-static int command(char *s, char *lib, int from, char *dir, char *odir)
+   go ("" next to their sources; -O DIR sets it, for the rest of the batch file) */
+static int command(char *s, char *lib, int from, char *dir)
 {
     char *objs[2];                      /* the object and the library */
     char src[64];                       /* a name, or a path into sub-volumes */
@@ -368,22 +375,22 @@ static int command(char *s, char *lib, int from, char *dir, char *odir)
     int n;
     int conly;
     nobjs = 0;
-    z80calls = 0;                       /* /Z applies to this command only */
+    z80calls = 0;                       /* -Z applies to this command only */
     while (*s == ' ')
         s++;
-    if (s[0] == '/' && s[1] == 'Z') {
+    if (s[0] == '-' && s[1] == 'Z') {
         z80calls = 1;
         s = s + 2;
         while (*s == ' ')
             s++;
     }
-    if (s[0] == '/' && s[1] == 'O')
-        return setodir(s + 2, odir);    /* /O DIR: the objects go into DIR */
-    if (s[0] == '/' && (s[1] == 'L' || s[1] == 'J'))
-        return linkcmd(s, lib, from, dir, odir);
+    if (s[0] == '-' && s[1] == 'O')
+        return setodir(s + 2);          /* -O DIR: the objects go into DIR */
+    if (s[0] == '-' && (s[1] == 'L' || s[1] == 'J'))
+        return linkcmd(s, lib, from, dir);
     {
         conly = 0;
-        if (s[0] == '/' && s[1] == 'C') {
+        if (s[0] == '-' && s[1] == 'C') {
             conly = 1;
             s = s + 2;
             while (*s == ' ')
@@ -425,7 +432,7 @@ static int command(char *s, char *lib, int from, char *dir, char *odir)
             if (n < 0)
                 return 0;               /* on several disks: findfile said so */
         }
-        /* NAME.OBJ goes where /O said, else next to its source; NAME.CODE where NAME
+        /* NAME.OBJ goes where -O said, else next to its source; NAME.CODE where NAME
            says (a volume or path in it, else the shell's path or the prefix) */
         obj[0] = 0;
         t = strchr(src, ':');
@@ -463,7 +470,7 @@ static int command(char *s, char *lib, int from, char *dir, char *odir)
    afresh for each line anyway); the sources and objects its commands
    name are looked for on its own disk first. */
 #define BATCHLINE 150
-static int batch(char *name, char *lib, char *line, char *podir)
+static int batch(char *name, char *lib, char *line)
 {
     FILE *f;
     char path[64];
@@ -472,7 +479,6 @@ static int batch(char *name, char *lib, char *line, char *podir)
     int n;
     char found[64];
     char dir[64];
-    char odir[40];                      /* /O: the objects' sub-volume (the caller's, until a /O) */
     char *p;
     int from;
     if (strlen(name) > 56) {
@@ -495,7 +501,6 @@ static int batch(char *name, char *lib, char *line, char *podir)
         if (n > 0)
             strcpy(path, found);
     }
-    strcpy(odir, podir);
     strcpy(dir, path);                  /* its sub-volume: VOL:/A/ ("" none) */
     p = strrchr(dir, '/');
     if (p)
@@ -531,13 +536,13 @@ static int batch(char *name, char *lib, char *line, char *podir)
         say(line);
         say("\n");
         if (line[0] == '@') {               /* another batch file, then on with this one */
-            if (!batch(line + 1, lib, line, odir)) {
+            if (!batch(line + 1, lib, line)) {
                 say("Stopped.\n");
                 return 0;
             }
             continue;
         }
-        if (!command(line, lib, from, dir, odir)) {
+        if (!command(line, lib, from, dir)) {
             say("Stopped.\n");
             return 0;
         }
@@ -551,9 +556,8 @@ int main(int argc, char **argv)
     int nobjs;
 #ifdef __TINYC__
     /* UCSD file names are short: small buffers save 1 KB of stack; the
-       command line (e.g. /L CC2=MAIN,UTIL,...) needs more */
+       command line (e.g. -L CC2=MAIN,UTIL,...) needs more */
     char out[30]; char src[30]; char tmpi[30]; char tmpr[30]; char obj[30]; char lib[30]; char line[BATCHLINE];
-    char odir[40];                      /* /O: where the objects go ("" next to their sources) */
 #else
     char out[200]; char src[200]; char tmpi[200]; char tmpr[200]; char obj[200]; char lib[200]; char line[200];
 #endif
@@ -568,7 +572,6 @@ int main(int argc, char **argv)
     out[0] = 0;
     lib[0] = 0;
 #ifdef __TINYC__
-    odir[0] = 0;
     svwhere();                          /* the shell's path, if any (pp.c) */
     strcpy(lib, "TCLIB.OBJ");
     if (!exists(lib))
@@ -579,7 +582,7 @@ int main(int argc, char **argv)
         lib[0] = 0;
     if (argc > 1) {
         /* the commands as arguments (from the shell: CC @BUILD @LIBS,
-           CC /Z HANOI SIEVE): each is its options (/Z, /C, /L, /J) and the
+           CC -Z HANOI SIEVE): each is its options (-Z, -C, -L, -J, -O) and the
            word after them; they run in turn, the first that fails stops */
         i = 1;
         while (i < argc) {
@@ -591,7 +594,7 @@ int main(int argc, char **argv)
                 }
                 strcat(line, argv[i]);
                 strcat(line, " ");
-                if (argv[i++][0] != '/')
+                if (argv[i++][0] != '-')
                     break;
             }
             n = strlen(line);
@@ -600,7 +603,7 @@ int main(int argc, char **argv)
             say("> ");
             say(line);
             say("\n");
-            if (!(line[0] == '@' ? batch(line + 1, lib, line, odir) : command(line, lib, 0, "", odir)))
+            if (!(line[0] == '@' ? batch(line + 1, lib, line) : command(line, lib, 0, "")))
                 return 1;
         }
         say("Done.\n");
@@ -619,9 +622,9 @@ int main(int argc, char **argv)
     if (!*s)
         return 1;
     if (*s == '@')
-        n = batch(s + 1, lib, line, odir);
+        n = batch(s + 1, lib, line);
     else
-        n = command(s, lib, 0, "", odir);
+        n = command(s, lib, 0, "");
     if (!n)
         return 1;
     say("Done.\n");

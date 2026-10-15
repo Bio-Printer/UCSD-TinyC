@@ -36,7 +36,7 @@ def compile_on_psystem(src_files, main_name, tc_code=None, timeout=1800, blocks=
     script = ['WAIT "Command:"', 'TYPE "F"', 'WAIT "Filer:"', 'TYPE "P"', 'WAIT "Prefix"',
               'TYPE "#5:\\r"', 'WAIT "Filer:"', 'TYPE "Q"', 'WAIT "Command:"',
               'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TC\\r"',
-              'WAIT "Compile what file?"', 'TYPE "%s%s\\r"' % ('/Z ' if z80calls() else '', main_name), 'WAIT "Command:"']
+              'WAIT "Compile what file?"', 'TYPE "%s%s\\r"' % ('-Z ' if z80calls() else '', main_name), 'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', timeout)
     return ok, tr, ps, info
 

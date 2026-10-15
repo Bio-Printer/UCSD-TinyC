@@ -6,8 +6,8 @@ size of the blocks its permanent pool takes from the heap).
 
 For each size it builds CC.CODE with that PCHUNK (util.c is put back
 afterwards), then runs on the P-System, one X(ecute TINY-C:CC each, every
-command of @BUILD and @LIBS: /C of each compiler module, /L CC2=..., /Z /C
-of each library module, /J TCLIB2=....  The emulator tracks the least free
+command of @BUILD and @LIBS: -C of each compiler module, -L CC2=..., -Z -C
+of each library module, -J TCLIB2=....  The emulator tracks the least free
 memory (SP - NP at every P-code instruction, VERIFY_LOWWATER; emulator 1.97
 or later) of each command.  Printed: the worst over all commands, and the
 commands within 300 words of it.
@@ -29,9 +29,9 @@ from voltest import prefix
 
 UTIL = os.path.join(ROOT, 'tinyc', 'util.c')
 LIBMODS = sorted(f[:-2].upper() for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c'))
-COMMANDS = (['/C ' + m.upper() for m in buildtc.MODULES] +
-            ['/L CC2=' + ','.join(m.upper() for m in buildtc.MODULES)] +
-            ['/Z /C ' + m for m in LIBMODS] + ['/J TCLIB2=' + ','.join(LIBMODS)])
+COMMANDS = (['-C ' + m.upper() for m in buildtc.MODULES] +
+            ['-L CC2=' + ','.join(m.upper() for m in buildtc.MODULES)] +
+            ['-Z -C ' + m for m in LIBMODS] + ['-J TCLIB2=' + ','.join(LIBMODS)])
 
 
 def build(size, work):

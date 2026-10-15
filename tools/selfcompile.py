@@ -28,10 +28,10 @@ def main(mods):
               'TYPE "#5:\\r"', 'WAIT "Filer:"', 'TYPE "Q"', 'WAIT "Command:"']
     for m in todo:
         script += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "CC\\r"',
-                   'WAIT "Compile what file?"', 'TYPE "/C %s\\r"' % m.upper(), 'WAIT "Command:"']
+                   'WAIT "Compile what file?"', 'TYPE "-C %s\\r"' % m.upper(), 'WAIT "Command:"']
     if not mods:
         script += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "CC\\r"',
-                   'WAIT "Compile what file?"', 'TYPE "/L CC2=%s\\r"' % ','.join(m.upper() for m in MODULES),
+                   'WAIT "Compile what file?"', 'TYPE "-L CC2=%s\\r"' % ','.join(m.upper() for m in MODULES),
                    'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 3000)
     for l in tr.split('\n'):

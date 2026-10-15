@@ -85,7 +85,7 @@ def script():
         keys = open(keys_path, newline='').read() if os.path.exists(keys_path) else ''
         L.append('# ---- test %s (expected output: TCEXPCT:%s.EXPECT)' % (name, name))
         L += prefix(vol)
-        compile_step(L, 'TINY-C:CC', '/Z ' + name)      # /Z: runs in Z80 mode too
+        compile_step(L, 'TINY-C:CC', '-Z ' + name)      # /Z: runs in Z80 mode too
         # NAME.wait: the texts to wait for instead of NAME.expect (for output
         # with cursor addressing, whose raw bytes the transcript shows differently)
         wait = os.path.join(TESTS, t + '.wait')
@@ -99,7 +99,7 @@ def script():
           'WAIT "IDENTICAL"', 'WAIT "Command:"']
     L.append('# ---- and the compiler it built works')
     L += prefix('TCEXTRA')
-    compile_step(L, 'TINY-C:CC2', '/Z HANOI')
+    compile_step(L, 'TINY-C:CC2', '-Z HANOI')
     run_program(L, 'TCEXTRA:HANOI', open(os.path.join(TESTS, 'hanoi.expect')).read())
     return '\n'.join(L) + '\n'
 
@@ -112,7 +112,7 @@ copied.  Mount: #5 TINY-C:, #10 TCTESTS:, #11 TCEXTRA:, #12 TCVERIF:
 
 VERIFY.SCRIPT   a Verify P-System keyboard script (WAIT / TYPE): for every
                 test set the prefix to its volume, compile it (X TINY-C:CC,
-                /Z NAME), run it, wait for each line of TCEXPCT:NAME.EXPECT
+                -Z NAME), run it, wait for each line of TCEXPCT:NAME.EXPECT
                 in order, remove NAME.OBJ (RMFILES; a directory holds 77
                 files); then @TINY-C:/SRC/CC/BUILD, CMPCODE: TINY-C:CC2.CODE is
                 IDENTICAL to CC.CODE, and CC2 compiles and runs HANOI.
