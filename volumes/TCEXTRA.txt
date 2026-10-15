@@ -28,6 +28,6 @@ TCEXTRA:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   MEMFREE.CODE                 13    (ready to run)
   MEMMARK.C                     6  the least free memory of another program
   MEMMARK.CODE                 21    (ready to run)
-  SHELL.C                      92  a mini-shell: runs programs with pexec() and comes back
+  SHELL.C                      94  a mini-shell: runs programs with pexec() and comes back
   SHELL.CODE                   60    (ready to run)
   FILES.TEXT                    8  this list

@@ -20,7 +20,7 @@
  *                               (blank lines and lines starting ';' skipped),
  *                               stopping at the first that fails
  *            or give the commands as arguments (from the shell, pexec):
- *              CC @TINY-C:/SRC/ALL, CC -Z HANOI SIEVE: options and the word after
+ *              CC @TINY-C:ALL, CC -Z HANOI SIEVE: options and the word after
  *              them make one command; they run in turn, no prompt
  *            A NAME may be a path into sub-volumes (A/X, #5:/A/B/X); after the
  *            shell's CD into one, names are looked for there first (pp.c

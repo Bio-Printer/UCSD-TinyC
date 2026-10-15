@@ -271,9 +271,9 @@ sub-volume file that was only read needs no directory (__svclose).  The
 compiler's fmtfix moved from its own segment (REFSCAN) into PARSE: a code
 file has at most ten segments, and CC's library part now has DIRS and SVAT.
 
-The volumes in sub-volumes (mkvolume.py).  TINY-C: holds CC.CODE and
-TCMSGS.TEXT at the top and the sub-volumes INCLUDE (the headers), LIB
-(TCLIB.OBJ) and SRC (ALL.TEXT; CC/ the compiler with BUILD.TEXT, LIB/ the
+The volumes in sub-volumes (mkvolume.py).  TINY-C: holds CC.CODE,
+TCMSGS.TEXT and ALL.TEXT (CC @TINY-C:ALL: everything) at the top and the
+sub-volumes INCLUDE (the headers), LIB (TCLIB.OBJ) and SRC (CC/ the compiler with BUILD.TEXT, LIB/ the
 library with LIBS.TEXT); TOOLS: holds the tools' code files and MAN.TEXT, and
 SRC/ with a sub-volume of sources for each tool and TOOLS.TEXT; each volume
 also has OBJ/, empty, where the batch files put the objects they make (CC's
@@ -288,7 +288,7 @@ sub-volumes' files too (SRC/CC/MAIN.C).  CC: `<x.h>` is taken from
 TINY-C:/INCLUDE first, `"x.h"` from the including file's sub-volume first and
 TINY-C:/INCLUDE last; TCLIB.OBJ from TINY-C:/LIB when the prefix and boot
 volumes have none; the names in a batch file in a sub-volume are looked for
-beside it first (main.c inbatch), so `CC @TINY-C:/SRC/ALL` works from
+beside it first (main.c inbatch), so `CC @TINY-C:ALL` works from
 anywhere.  A file in a sub-volume named with its volume is opened by the
 sub-volume's place (pp.c placeopen, svfopen: two places kept, found by
 dirplace a directory block at a time; the code in the SVAT segment, which

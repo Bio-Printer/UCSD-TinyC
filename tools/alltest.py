@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""alltest.py -- TINY-C:/SRC/ALL.TEXT on the P-System: one batch file that runs
+"""alltest.py -- TINY-C:ALL.TEXT on the P-System: one batch file that runs
 others.  With the prefix on SPARE: (an empty volume), X(ecute TINY-C:CC,
-@TINY-C:/SRC/ALL:
+@TINY-C:ALL:
 
   @TINY-C:/SRC/CC/BUILD   the compiler -> TINY-C:CC2.CODE: CMPCODE IDENTICAL
                           to CC.CODE
@@ -73,7 +73,7 @@ def results(d, r, tr, names):
     pos = [tr.find(w) for w in WAITS]
     checks = [
         ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
-        ('@TINY-C:/SRC/ALL ran BUILD, LIBS and TOOLS in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
+        ('@TINY-C:ALL ran BUILD, LIBS and TOOLS in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
         ('TINY-C:CC2.CODE and TINY-C:/LIB/TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
         ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
          and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
@@ -95,7 +95,7 @@ def main():
     names = prepare(d)
     L = ['WAIT "Command:"'] + prefix('SPARE:')
     L += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINY-C:CC\\r"', 'WAIT "Compile what file?"',
-          'TYPE "@TINY-C:/SRC/ALL\\r"'] + ['WAIT "%s"' % w for w in WAITS] + ['WAIT "Done."', 'WAIT "Command:"']
+          'TYPE "@TINY-C:ALL\\r"'] + ['WAIT "%s"' % w for w in WAITS] + ['WAIT "Done."', 'WAIT "Command:"']
     L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')
     L += cmpcode('TINY-C:/LIB/TCLIB.OBJ', 'TINY-C:/LIB/TCLIB2.OBJ')
     sp = os.path.join(d, 'alltest.script')

@@ -318,7 +318,7 @@ COMMANDS (upper or lower case)
                                name (else in the order of their blocks)
     TYPE [VOL: | #n:]NAME      a text file on the console (wildcards: each one)
     DELETE [VOL: | #n:]PAT     delete (with wildcards it lists them and asks, Y)
-    WHEREIS [VOL: | #n:]PAT    which disks have the file
+    WHEREIS [VOL: | #n:]PAT    which disks have the file, in which sub-volume
     VOLUMES                    every disk on line: unit, volume, files, blocks
     COPY SRC [DEST]            copy (DEST a volume, a sub-volume or, for one
                                file, a name; no DEST: here; a sub-volume

@@ -5,6 +5,7 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   CC.CODE                     132  the Tiny-C compiler: CC from the shell, X(ecute TINY-C:CC
   TCMSGS.TEXT                   8  the compiler's messages (line n = message n)
   README.TEXT                  14  how to use Tiny-C, and what is where
+  ALL.TEXT                      4  CC @TINY-C:ALL: rebuilds the compiler, the library and every tool
   INCLUDE/                    171  sub-volume: the headers (#include <stdio.h> finds them here)
   INCLUDE/ASSERT.H              4  assert()
   INCLUDE/CONIO.H               4  console: getch, putch, cputs, kbhit, gotoxy, clrscr
@@ -25,9 +26,8 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   INCLUDE/TCRT.H                6  runtime helpers the compiler calls (reference only)
   LIB/                        204  sub-volume: the C library
   LIB/TCLIB.OBJ                79  the C library (built with -Z), linked into every program
-  SRC/                       1140  sub-volume: the sources of the compiler and the library, and how to rebuild them
+  SRC/                       1135  sub-volume: the sources of the compiler and the library, and how to rebuild them
   SRC/README.TEXT               6  how to rebuild Tiny-C and the tools
-  SRC/ALL.TEXT                  4  CC @TINY-C:/SRC/ALL: the compiler, the library and every tool
   SRC/CC/                     741  sub-volume: the compiler: its modules and BUILD.TEXT
   SRC/CC/BUILD.TEXT             4  CC @TINY-C:/SRC/CC/BUILD: rebuilds the compiler -> TINY-C:CC2.CODE
   SRC/CC/OBJFORMAT.TEXT        24  the .OBJ file format: what CC writes, how the linker reads it

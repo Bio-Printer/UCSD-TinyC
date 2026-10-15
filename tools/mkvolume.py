@@ -3,7 +3,8 @@
 
   TINY-C:   Tiny-C: CC.CODE, TCMSGS.TEXT, README.TEXT, FILES.TEXT and the
             sub-volumes INCLUDE (the headers), LIB (TCLIB.OBJ) and SRC (the
-            sources: ALL.TEXT, CC/ with BUILD.TEXT, LIB/ with LIBS.TEXT).
+            sources: CC/ with BUILD.TEXT, LIB/ with LIBS.TEXT); ALL.TEXT at
+            the top rebuilds everything.
             The name TINY-C: is built into the compiler: it finds
             TCMSGS.TEXT, TINY-C:/LIB/TCLIB.OBJ and TINY-C:/INCLUDE there.
   TCEXTRA:  the demo programs (DEMOS), the mini-shell and its examples
@@ -41,11 +42,12 @@ README_TC = """TINY-C for UCSD Pascal II.0                        volume TINY-C:
 WHAT IS WHERE (FILES.TEXT lists every file):
     CC.CODE          the compiler
     TCMSGS.TEXT      its messages
+    ALL.TEXT         CC @TINY-C:ALL rebuilds the compiler, the library and
+                     every tool at once
     INCLUDE/         the headers: STDIO.H, STRING.H, PSYS.H ...
     LIB/             the C library, TCLIB.OBJ
     OBJ/             empty: the objects a rebuild makes (BUILD's and LIBS's -O)
-    SRC/             the sources, and the batch files that rebuild everything:
-      SRC/ALL.TEXT     the compiler, the library and the tools at once
+    SRC/             the sources, and the batch files that rebuild them:
       SRC/CC/          the compiler's modules, BUILD.TEXT
       SRC/LIB/         the library's modules, LIBS.TEXT
 The tools (VI, GREP, ...) are on TOOLS:, their sources in TOOLS:/SRC; the
@@ -69,7 +71,7 @@ Options start with - (a path may start with /); -c and -C are the same.
     @FILE                run the commands in FILE.TEXT, one per line
                          (blank lines and lines starting with ; skipped;
                          a line @OTHER runs OTHER.TEXT, then goes on)
-The same commands can be arguments instead: CC @TINY-C:/SRC/ALL, CC -Z
+The same commands can be arguments instead: CC @TINY-C:ALL, CC -Z
 HANOI SIEVE.  Options and the word after them make one command; they run
 in turn, no prompt, and the first that fails stops CC.
 X(ecute NAME runs a program.  WHICH DISK: a source, a #include file or
@@ -94,7 +96,7 @@ from TINY-C:/LIB and TINY-C:.
 
 REBUILDING (see SRC/README.TEXT):  CC @TINY-C:/SRC/CC/BUILD makes
 TINY-C:CC2.CODE, CC @TINY-C:/SRC/LIB/LIBS TINY-C:/LIB/TCLIB2.OBJ, CC
-@TINY-C:/SRC/ALL both and every tool.
+@TINY-C:ALL both and every tool.
 
 THE DEMO PROGRAMS are on TCEXTRA: (DEMOS.TEXT, @DEMOS), the test
 programs on TCTESTS: (TESTS.TEXT, @TESTS).
@@ -151,7 +153,7 @@ to TINY-C:/LIB/TCLIB.OBJ (check it with CMPCODE).  To use it, RENAME
 TINY-C:/LIB/TCLIB2.OBJ TCLIB.OBJ from the shell (after deleting the old
 one).
 
-EVERYTHING AT ONCE:  CC @TINY-C:/SRC/ALL (TOOLS: on line too): BUILD, LIBS,
+EVERYTHING AT ONCE:  CC @TINY-C:ALL (TOOLS: on line too): BUILD, LIBS,
 then TOOLS:/SRC/TOOLS (every tool linked onto TOOLS:).
 
 The names in a batch file are looked for beside it first, so these work
@@ -217,7 +219,8 @@ Its own commands:
   DELETE (or DEL) [VOL: or #5:]PATTERN   deletes the files that match;
         with wildcards it lists them and asks first (Y deletes).
   WHEREIS [VOL: or #5:]PATTERN   the files that match on every disk on
-        line (WHEREIS STDIO.H, WHEREIS *.C), or on the volume named.
+        line and in their sub-volumes (WHEREIS STDIO.H, WHEREIS *.C,
+        WHEREIS ALL*), or on the volume or in the sub-volume named.
   VOLUMES (or VOLS)              every disk on line: unit, volume,
         files, blocks used of its size; (boot) and (prefix) marked.
   COPY SOURCE DEST    SOURCE: [VOL: or #5: or a path]PATTERN; DEST: a
@@ -445,7 +448,7 @@ modules (VI/VIMAIN: found beside TOOLS.TEXT; -O TOOLS:/OBJ puts each
 NAME.OBJ into TOOLS:/OBJ) and links the tool straight onto TOOLS:
 (TOOLS:NAME.CODE, replacing the one there).
 
-EVERYTHING AT ONCE:  CC @TINY-C:/SRC/ALL: the compiler (TINY-C:CC2.CODE),
+EVERYTHING AT ONCE:  CC @TINY-C:ALL: the compiler (TINY-C:CC2.CODE),
 the library (TINY-C:/LIB/TCLIB2.OBJ), then TOOLS; a batch file can name
 other batch files (@NAME).
 
@@ -667,6 +670,7 @@ def tiny_c():
     t.binary('CC.CODE', open(code, 'rb').read(), 'the Tiny-C compiler: CC from the shell, X(ecute TINY-C:CC')
     t.textfile('TCMSGS.TEXT', os.path.join(INC, 'tcmsgs.txt'), "the compiler's messages (line n = message n)")
     t.text('README.TEXT', README_TC, 'how to use Tiny-C, and what is where')
+    t.text('ALL.TEXT', ALL, 'CC @TINY-C:ALL: rebuilds the compiler, the library and every tool')
     inc = t.sub('INCLUDE', 'the headers (#include <stdio.h> finds them here)')
     for f in sorted(os.listdir(INC)):
         if f.endswith('.h'):
@@ -676,7 +680,6 @@ def tiny_c():
     lib.binary('TCLIB.OBJ', tclib, 'the C library (built with -Z), linked into every program')
     src = t.sub('SRC', 'the sources of the compiler and the library, and how to rebuild them')
     src.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C and the tools')
-    src.text('ALL.TEXT', ALL, 'CC @TINY-C:/SRC/ALL: the compiler, the library and every tool')
     cc = src.sub('CC', 'the compiler: its modules and BUILD.TEXT')
     cc.text('BUILD.TEXT', BUILD, 'CC @TINY-C:/SRC/CC/BUILD: rebuilds the compiler -> TINY-C:CC2.CODE')
     cc.textfile('OBJFORMAT.TEXT', os.path.join(SRC, 'OBJFORMAT.TEXT'), 'the .OBJ file format: what CC writes, how the linker reads it')
@@ -733,7 +736,7 @@ def tests():
 
 
 ALL = """; ALL -- rebuild the compiler, the library and every tool (TOOLS: on line too):
-; CC @TINY-C:/SRC/ALL from the shell, or X(ecute TINY-C:CC and answer @TINY-C:/SRC/ALL
+; CC @TINY-C:ALL from the shell, or X(ecute TINY-C:CC and answer @TINY-C:ALL
 @TINY-C:/SRC/CC/BUILD
 @TINY-C:/SRC/LIB/LIBS
 @TOOLS:/SRC/TOOLS

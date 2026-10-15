@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """shellalltest.py -- a total system rebuild the way a user starts it: at the
-Command: prompt, S (the Tiny-C shell), then  cc @tiny-c:/src/all  (the
+Command: prompt, S (the Tiny-C shell), then  cc @tiny-c:all  (the
 compiler, the library and every tool), and the least free memory of it.
 
   @TINY-C:/SRC/CC/BUILD   the compiler -> TINY-C:CC2.CODE: CMPCODE IDENTICAL
@@ -51,7 +51,7 @@ def main():
     ensure_setup()
     d = tempfile.mkdtemp(prefix='shellall_')
     names = prepare(d)
-    L = ['WAIT "Command:"', 'TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @tiny-c:/src/all\\r"'] + \
+    L = ['WAIT "Command:"', 'TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @tiny-c:all\\r"'] + \
         ['WAIT "%s"' % w for w in WAITS] + \
         ['WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
     L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')

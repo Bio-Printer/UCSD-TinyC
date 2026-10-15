@@ -13,6 +13,7 @@ shell's MKDIR, CD PATH, DIR, TYPE, DELETE on paths), on the P-System.
   CD #5:/NONE, COPY on a path          refused
   MKDIR #5:C, #5:C/D; DIR c, CD c, CD d (names on the prefix, on the path); RMDIR: refused for the
   path the shell is in, the one that holds it, and a file; RMDIR d, RMDIR c
+  WHEREIS C3.TEXT, WHEREIS #5:A/C*.TEXT  found in #5:/A/B (every disk's sub-volumes, A's)
   COPY, MOVE, RENAME in and out of sub-volumes; refused: into itself, RENAME elsewhere, DELETE of a
   sub-volume, MOVE of the path; a sub-volume moved whole to #9, RMDIR of it with its files (asks: N, then Y)
 then on the host: A and B are data files whose blocks 2..5 hold their directories, and B's COPY.TEXT
@@ -66,6 +67,7 @@ def main():
                       ('copy #5:A/B/COPY.TEXT #9:', 'SPARE:COPY.TEXT'), ('copy #9:COPY.TEXT #5:A/C2.TEXT', 'C2.TEXT'),
                       ('copy #5:WC.CODE #5:A', 'WC.CODE'), ('move #5:A/C2.TEXT #5:A/B/', 'C2.TEXT'),
                       ('rename #5:A/B/C2.TEXT C3.TEXT', 'C3.TEXT'), ('type #5:A/B/C3.TEXT', 'blocks used'),
+                      ('whereis c3.text', 'volume'), ('whereis #5:A/c*.text', 'volume'),
                       ('copy #5:A #5:A/B/', 'not into itself'), ('rename #5:A/B/C3.TEXT #9:X.TEXT', 'MOVE'),
                       ('move #5:A/WC.CODE #5:', 'WC.CODE'), ('delete #5:A', 'RMDIR removes it'),
                       ('cd #5:/A/B', 'path is'), ('move #5:A #9:', 'CD .. first'), ('cd #5:', 'prefix is'),
@@ -128,6 +130,11 @@ def main():
                 and 'SPARE:COPY.TEXT -> WORK:/A/C2.TEXT' in tr and 'WORK:WC.CODE -> WORK:/A/WC.CODE' in tr),
                ('MOVE into a nested one, RENAME there, TYPE it', 'WORK:/A/C2.TEXT -> WORK:/A/B/C2.TEXT' in tr
                 and 'WORK:/A/B/C2.TEXT -> WORK:/A/B/C3.TEXT' in tr and 'blocks used' in seg('shell> type #5:A/B/C3', 'shell> ')),
+               ('WHEREIS c3.text: in WORK:/A/B/; WHEREIS #5:A/c*.text: C3.TEXT and COPY.TEXT there',
+                re.search(r'^#5  WORK:/A/B/ C3\.TEXT', seg('shell> whereis c3', 'shell> '), re.M) is not None
+                and '1 file on 1 volume' in seg('shell> whereis c3', 'shell> ')
+                and len(re.findall(r'^#5  WORK:/A/B/ C[O3]', seg('shell> whereis #5:A', 'shell> '), re.M)) == 2
+                and '2 files on 1 volume' in seg('shell> whereis #5:A', 'shell> ')),
                ('C3.TEXT (COPY.TEXT to #9: and back, MOVEd, RENAMEd): the same bytes and kind', same),
                ('MOVE out, onto an old file: replaced', 'WORK:/A/WC.CODE -> WORK:WC.CODE (replaced)' in tr),
                ('refused: a sub-volume into itself, RENAME to another place, DELETE of a sub-volume, MOVE of the path',

@@ -27,8 +27,9 @@
                              each file that matches, under its name)
      DELETE [VOL: | #n:]PAT  the files that match (with wildcards it lists
                              them and asks first, one key: Y deletes)
-     WHEREIS [VOL: | #n:]PAT the files that match on every disk on line
-                             (WHEREIS STDIO.H, WHEREIS *.C), or on one
+     WHEREIS [VOL: | #n:]PAT the files that match on every disk on line, in
+                             their sub-volumes too (WHEREIS STDIO.H,
+                             WHEREIS *.C), or on one
      VOLUMES                 every disk on line: unit, volume, files,
                              blocks used of its size
      COPY SRC [DEST]         SRC: [VOL: | #n: | PATH]PAT; DEST (none:
@@ -624,24 +625,61 @@ void dir(char *arg)
            shown, nf, used, unused, largest);
 }
 
-/* WHEREIS [VOL: | #n:]PAT: the matching files on every disk (or on one) */
+/* WHEREIS's files in the directory at block base of unit u (in dir; where: "VOL:" or
+   "VOL:/A/B/"), then in its sub-volumes, theirs ...: dir read again after each; 0 if ESC stopped it */
+int wherein(int u, int base, char *where, char *pat, int *dir, int *here, int *lines)
+{
+    char sub[80];
+    int i, n, first;
+    for (i = 1; i <= dir[8]; i++) {
+        direntname(dir, i, sub);
+        if (*pat && !wildmatch(pat, sub))
+            continue;
+        printf("#%-2d %-8s ", u, where);
+        fileline(dir, i, 0, 0);
+        ++*here;
+        if (!more(lines))
+            return 0;
+    }
+    for (i = 1; i <= dir[8]; i++) {
+        if (!issub(u, base, dir, i))
+            continue;
+        n = strlen(where);
+        if (n > 62)                     /* (a path that long: not looked into) */
+            continue;
+        strcpy(sub, where);
+        if (sub[n - 1] == ':')
+            strcat(sub, "/");
+        direntname(dir, i, sub + strlen(sub));
+        strcat(sub, "/");
+        first = base + dir[13 * i];
+        if (dirreadat(u, first, dir) && !wherein(u, first, sub, pat, dir, here, lines))
+            return 0;
+        dirreadat(u, base, dir);
+    }
+    return 1;
+}
+
+/* WHEREIS [VOL: | #n:]PAT: the matching files on every disk (or on one), in
+   their sub-volumes too */
 void whereis(char *arg)
 {
     int dir[1024];
     char vol[80];
-    char name[16];
     char *pat;
-    int k, u, one, i, found, vols, lines, here;
+    int k, u, one, base, found, vols, lines, here;
     if (!*arg) {
         printf("whereis: which files? (WHEREIS STDIO.H, WHEREIS *.C)\n");
         return;
     }
     one = 0;
+    base = 0;
     pat = arg;
     if (strchr(arg, ':') || strchr(arg, '/') || arg[0] == '#') {
         one = target("whereis", arg, dir, vol, &pat);     /* a volume or a path given: there only */
         if (!one)
             return;
+        base = tbase;
     }
     found = vols = 0;
     lines = 0;
@@ -654,16 +692,8 @@ void whereis(char *arg)
             strcat(vol, ":");
         }
         here = 0;
-        for (i = 1; i <= dir[8]; i++) {
-            direntname(dir, i, name);
-            if (*pat && !wildmatch(pat, name))
-                continue;
-            printf("#%-2d %-8s ", u, vol);
-            fileline(dir, i, 0, 0);
-            here++;
-            if (!more(&lines))
-                return;
-        }
+        if (!wherein(u, base, vol, pat, dir, &here, &lines))
+            return;
         found += here;
         vols += here > 0;
     }
