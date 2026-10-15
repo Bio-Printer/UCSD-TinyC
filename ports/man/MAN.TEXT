@@ -494,7 +494,7 @@ SEE ALSO
 NAME
     KRUNCH - move a disk's files down: its free blocks in one area
 SYNOPSIS
-    KRUNCH [-y] [VOL: | #n | PATH]
+    KRUNCH [-y] [-r] [VOL: | #n | PATH]
 DESCRIPTION
     The unused blocks between the files of a disk (left by files deleted,
     or shorter than the room they had) become one area at the end of the
@@ -511,9 +511,15 @@ DESCRIPTION
     files moved so far stay moved, the others where they were).
 OPTIONS
     -y   no question: krunch at once
+    -r   every sub-volume in it too, at any depth (each one before the
+         volume that holds it), and no question; KRUNCH -r * krunches every
+         disk on line and all their sub-volumes (without -r, * is the
+         system volume).  The exit status is the worst of them
 EXAMPLES
     KRUNCH                  the prefix volume, after Y
     KRUNCH -y #5            unit 5, at once
+    KRUNCH -r TINY-C:       TINY-C: and every sub-volume in it
+    KRUNCH -r *             every disk on line, every sub-volume
     KRUNCH #5:/A            the sub-volume A on unit 5
     DIR -E #5:              the unused areas, before and after
 SEE ALSO

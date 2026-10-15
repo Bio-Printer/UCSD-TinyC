@@ -14,14 +14,14 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   DIFF.CODE                    36  diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2
   WC.CODE                      29  wc: WC [-clmwL] [FILE ...] lines, words and bytes
   LC.CODE                      28  lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns
-  KRUNCH.CODE                  26  krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area
+  KRUNCH.CODE                  27  krunch: KRUNCH [-y] [-r] [VOL: | #n | PATH] the files moved down, the free blocks in one area
   GROW.CODE                    28  grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)
   SHRINK.CODE                  28  shrink: SHRINK NAME [-N | +N | N] a sub-volume smaller (no size: no free blocks left)
   PATCH.CODE                   39  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
   MAN.CODE                     26  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
   BINDERC.CODE                 29  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
   MAN.TEXT                     66  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
-  SRC/                       1739  sub-volume: the tools' sources (a sub-volume each) and TOOLS.TEXT
+  SRC/                       1744  sub-volume: the tools' sources (a sub-volume each) and TOOLS.TEXT
   SRC/README.TEXT               8  how to rebuild the tools
   SRC/TOOLS.TEXT                6  CC @TOOLS:/SRC/TOOLS: rebuilds every tool
   SRC/VI/                     491  sub-volume: vi's source
@@ -57,8 +57,8 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/WC/WC.C                  16  WC [-clmwL] [FILE ...]: the lines, words and bytes of ...
   SRC/LC/                      66  sub-volume: lc's source
   SRC/LC/LC.C                  16  LC [-1xFsrSC] [VOL: | #n: | PATH][PATTERN ...]: the ...
-  SRC/KRUNCH/                  58  sub-volume: krunch's source
-  SRC/KRUNCH/KRUNCH.C          10  KRUNCH [-y] [VOL: | #n | PATH]: move the files of a ...
+  SRC/KRUNCH/                  63  sub-volume: krunch's source
+  SRC/KRUNCH/KRUNCH.C          14  KRUNCH [-y] [-r] [VOL: | #n | PATH]: move the files of ...
   SRC/GROW/                    53  sub-volume: grow's source
   SRC/GROW/GROW.C               6  GROW NAME SIZE: the sub-volume NAME (a path: A, #5:A ...
   SRC/SHRINK/                  53  sub-volume: shrink's source
@@ -69,5 +69,5 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/MAN/MAN.C                14  MAN [-k WORD] [-l] [NAME ...]: the manual pages of the ...
   SRC/BINDERC/                 66  sub-volume: binderc's source
   SRC/BINDERC/BINDERC.C        16  BINDERC [FILE]: the Pascal System Binder, in Tiny-C
-  OBJ/                        692  sub-volume: empty: the objects TOOLS.TEXT makes (-O TOOLS:/OBJ)
+  OBJ/                        696  sub-volume: empty: the objects TOOLS.TEXT makes (-O TOOLS:/OBJ)
   FILES.TEXT                   14  this list

@@ -288,7 +288,7 @@ TOOLS = [
     ('DIFF', ['ports/diff/diff.c'], [], 'diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2'),
     ('WC', ['ports/wc/wc.c'], [], 'wc: WC [-clmwL] [FILE ...] lines, words and bytes'),
     ('LC', ['ports/lc/lc.c'], [], 'lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns'),
-    ('KRUNCH', ['ports/krunch/krunch.c'], [], 'krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area'),
+    ('KRUNCH', ['ports/krunch/krunch.c'], [], 'krunch: KRUNCH [-y] [-r] [VOL: | #n | PATH] the files moved down, the free blocks in one area'),
     ('GROW', ['ports/grow/grow.c'], [], 'grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)'),
     ('SHRINK', ['ports/shrink/shrink.c'], [], 'shrink: SHRINK NAME [-N | +N | N] a sub-volume smaller (no size: no free blocks left)'),
     ('PATCH', ['ports/patch/patch.c'], [], 'patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]'),
@@ -404,11 +404,12 @@ LC      LC [-1xFsrSC] [VOL: | #n: | PATH][PATTERN ...]  from the shell: the
         across), -F marks CODE files, -s shows the sizes; one name to a line
         when the output goes to a file or a pipe.
 
-KRUNCH  KRUNCH [-y] [VOL: | #n | PATH]  from the shell: moves the files of
-        a disk (or of a sub-volume: KRUNCH #5:/A) down so that its unused
+KRUNCH  KRUNCH [-y] [-r] [VOL: | #n | PATH]  from the shell: moves the files
+        of a disk (or of a sub-volume: KRUNCH #5:/A) down so that its unused
         blocks become one area at its end (the Filer's K(runch); asks first
-        unless -y).  Running code files (SYSTEM.PASCAL, the shell) may move:
-        KRUNCH tells the OS.
+        unless -y).  -r: every sub-volume in it too, no question; KRUNCH -r *
+        every disk on line.  Running code files (SYSTEM.PASCAL, the shell)
+        may move: KRUNCH tells the OS.
 
 GROW    GROW NAME SIZE, SHRINK NAME [SIZE]  from the shell: the sub-volume NAME
 SHRINK  (MKDIR makes one) becomes SIZE blocks: +N (N more), -N (N fewer) or
