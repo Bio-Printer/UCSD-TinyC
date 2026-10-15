@@ -1,5 +1,5 @@
 /* dirs.c -- Tiny-C library: the disk units and their directories, and
-   sub-volumes (dirs.h): units[], dirread, dirwrite, direntname, volunit,
+   sub-volumes (dirs.h): units[], direntname, volunit,
    prefixvol, namesame, wildmatch, dirreadat, dirwriteat, pathdir, and
    stdio's __svopen, __svclose, __svremove.
 
@@ -45,18 +45,6 @@ int dirwriteat(int u, int base, int *dir)
     if (g)
         g[6] = 0;                       /* its volume name: no volume */
     return __cspi(34) == 0;
-}
-
-/* unit u's directory into dir: 0 if no disk is there */
-int dirread(int u, int *dir)
-{
-    return dirreadat(u, 0, dir);
-}
-
-/* dir back on unit u: 0 on a disk error */
-int dirwrite(int u, int *dir)
-{
-    return dirwriteat(u, 0, dir);
 }
 
 /* entry i's name (i = 0: the volume's) into s (16 bytes) */
@@ -270,14 +258,6 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf)
     return 1;
 }
 
-/* today's date (the boot disk's: the OS's THEDATE) */
-static int today(void)
-{
-    int blk[256];
-    __cspv(5, SYSCOM->sysunit, blk, 0, 512, 2, 0);
-    return __cspi(34) == 0 ? blk[10] : 0;
-}
-
 /* The record of an open file on a sub-volume, in f->fib (stdio's __blockio
    reads and writes through it):
    [0] unit  [1] its first block (on the disk)  [2] the blocks it may use
@@ -343,10 +323,11 @@ int __svclose(FILE *f)
     r = (int *)f->fib;
     if (!(f->flags & __F_NEW) && r[3] == r[5])
         return 1;                               /* (only read, or the same length) */
+    __cspv(5, SYSCOM->sysunit, dir, 0, 512, 2, 0);      /* today: the boot disk's date (THEDATE) */
+    date = __cspi(34) == 0 ? dir[10] : 0;
     if (!dirreadat(r[0], r[4], dir))
         return 0;
     first = r[1] - r[4];
-    date = today();
     i = findname(dir, (char *)(r + 7));
     if (f->flags & __F_NEW) {
         if (i) {                                /* the old file of that name goes */

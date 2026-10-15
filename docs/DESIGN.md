@@ -231,3 +231,16 @@ P-System compile `#5:SYSTEM` to a short name (`#5:OS`: the compiler stops with
 String overflow when the code file is named SYSTEM.PASCAL), then that code
 file is SYSTEM.PASCAL; compiled from v1.12 this way it is BIGGY 1.23's
 SYSTEM.PASCAL byte for byte.  Test: `tools/xsubvoltest.py`.
+
+The linker's memory (link.c).  The least free memory of CC linking itself was
+the linker's pass 2: a reference list for every procedure of every module it
+read, the library's unused ones too, besides the table of their names.  Now no
+reference lists are kept: markpass reads the object files again and again,
+each time linking what the procedures already linked use, until nothing more
+is; and once that is known, the table is given back and pass 1 runs again
+keeping only what is linked, so a library's unused procedures take no memory
+while the code is written.  A few more reads of the files; the code files are
+byte for byte as before.  CC's own link: 8238 words free at its least (5748
+with the old passes, 6731 before sub-volumes); the least of `cc @all` is now
+a compile, not a link.  The library folds small helpers into their callers
+(dirread and dirwrite are macros of dirreadat and dirwriteat).

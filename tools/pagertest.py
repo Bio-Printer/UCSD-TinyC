@@ -146,7 +146,8 @@ def main():
     checks.append(('less start: the status line', 'lines 1-44' in stat('less start')))
     checks.append(('less G: (END) in the status line', '(END)' in stat('less G') and '157-200/200' in stat('less G')))
     checks.append(('less n: the pattern is not found again', 'Pattern not found' in stat('less n') and top('less n') == 120))
-    checks.append(('less quit: back at the shell', any('shell>' in x for x in (screens.get('less quit') or []))))
+    prompt = lambda rows: any(re.match(r'\S+>( |$)', x) for x in (rows or []))     # the shell's prompt: WORK:> (where names are)
+    checks.append(('less quit: back at the shell', prompt(screens.get('less quit'))))
     checks.append(('less -N: line numbers', row('less N start', 0).startswith('     1 line 001')))
     checks.append(('less -N G', row('less N G', 0).startswith('   157 line 157') and '(END)' in stat('less N G')))
     checks.append(('less -S: a long line is cut', 'END' not in ''.join(screens.get('less S 120g') or []) and
@@ -163,7 +164,7 @@ def main():
     checks.append(('more: RETURN one more line', 'line 089' in row('more return', 43)))
     checks.append(('more: d half a screen', 'line 111' in row('more d', 43)))
     checks.append(('more: /text skips to the line', any('line 150' in x for x in (screens.get('more search') or []))))
-    checks.append(('more: q back at the shell, the prompt wiped out', any('shell>' in x for x in (screens.get('more quit') or []))
+    checks.append(('more: q back at the shell, the prompt wiped out', prompt(screens.get('more quit'))
                    and not any('--More--' in x for x in (screens.get('more quit') or []))))
     checks.append(('more -10: ten lines', 'line 010' in row('more10 start', 43) or 'line 010' in ''.join(screens.get('more10 start') or [])))
     if os.environ.get('SHOW'):

@@ -14,8 +14,6 @@ extern char __svpath[64];               /* the shell's path ("" none): VOL:/A/B 
    while one of them runs); the code after this header is in the main
    segment again */
 #pragma segment DIRS
-int dirread(int u, int *dir);           /* unit u's directory: 0 if no disk there */
-int dirwrite(int u, int *dir);          /* back on unit u (GDIRP forgotten): 0 on error */
 void direntname(int *dir, int i, char *s);  /* entry i's name, i = 0 the volume's */
 int volunit(char *vol, int *dir);       /* "#n", "n", "*", VOL[:]: its unit, 0 none */
 void prefixvol(char *s);                /* the prefix volume's name (8 bytes) */
@@ -26,7 +24,9 @@ int wildmatch(char *pat, char *name);   /* * or = any characters, ? any one */
    inside a file).  A path: VOL:A/B/NAME or VOL:/A/B/NAME, or without VOL: on
    the shell's path (CD) or the prefix volume; fopen and remove take them. */
 int dirreadat(int u, int base, int *dir);   /* a (sub-)volume's directory; base: its first block */
-int dirwriteat(int u, int base, int *dir);
+int dirwriteat(int u, int base, int *dir);  /* back (GDIRP forgotten): 0 on a disk error */
+#define dirread(u, dir) dirreadat(u, 0, dir)    /* unit u's directory: 0 if no disk there */
+#define dirwrite(u, dir) dirwriteat(u, 0, dir)
 int findname(int *dir, char *name);     /* the entry called name, 0 none */
 void slashes(char *s);                  /* every \ in s a / (paths as Windows write them) */
 int pathdir(char *path, int *dir, int *up, int *bp, char *leaf);    /* the directory path's file is in */

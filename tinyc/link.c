@@ -7,11 +7,15 @@
  *
  * The files are read sequentially several times (no seeks):
  *   1. names: procedures, variables, modules, segments
- *   2. relocations resolved to procedures/variables -> reference graph
+ *   2. what is linked: each pass marks what the procedures already linked
+ *      use (their relocations), until nothing more is (markpass); no
+ *      reference graph is kept in memory
  * Everything reachable from main (and exit) is kept: a module is linked
  * when any of its procedures or variables is used, and then its
  * initialisers run too.  Globals are laid out from word 3 of the startup
  * frame: each linked module's statics, then every used variable.
+ * Then pass 1 runs again and keeps only what is linked: the rest of a
+ * library takes no memory while the code is written.
  * Segments are numbered (main's is 1, the others 7..15), procedures
  * within them, and block 0 plus the segments are written in one go.
  *
@@ -26,12 +30,10 @@
 #define MAXMOD  64
 #define LHASH 128
 
-/* 12 bytes: the P-System links the compiler itself (more than 500 of these) */
+/* 10 bytes: the P-System links the compiler itself (more than 500 of these) */
 struct LProc {
     char *name;             /* a static one's without its MODULE' (LP_STATIC) */
     struct LProc *hnext;
-    int *rel;               /* what it uses: rel[0] how many, then each once:
-                               >= 0 procedure, <= -2 variable -2-k (0: none) */
     int codelen;
     unsigned char mod;
     unsigned char seg;      /* index into segnames */
@@ -77,13 +79,16 @@ static int nsegs;
 static int *segnum;             /* [24] segment index -> II.0 segment number */
 static int globalwords;
 static char **modnames;         /* [MAXMOD]: a static procedure's name is MODULE'name */
-static struct PMark relmark;
+/* the second pass 1 (see link): which procedures and variables to keep, by
+   their place in the files (bits), 0 in the first */
+static struct PMark p1mark;
+static unsigned char *plive;
+static unsigned char *dlive;
+static int nprecs;
 static FILE *lin;
 static unsigned char *lbuf;     /* the largest procedure (allocated after pass 1) */
 static int lbufsize;
-static int skipcode;            /* pass 2: the code of a procedure is read past, not kept */
-static int maxcode;             /* pass 1: the largest procedure, the most relocations */
-static int maxnrel;
+static int maxcode;             /* pass 1: the largest procedure */
 static char **objfiles;
 static int nobjfiles;
 static int curfilei;
@@ -255,7 +260,7 @@ static void record(int c, char *name, char *seg, int *flags, int *parmsz, int *r
     n = rdw();
     *codelen = n;
     *jtab = rdw();
-    if (!lbuf || skipcode) {            /* pass 1: only the sizes; pass 2: not the code */
+    if (!lbuf) {                        /* passes before the code is written: only the sizes */
         if (!lbuf && n > maxcode)
             maxcode = n;
         for (i = 0; i < n; i++)
@@ -289,7 +294,8 @@ static void pass1(void)
             if (curmod >= MAXMOD)
                 fatal(108 /* too many functions */, 0);
             modstatic[curmod] = 0;
-            modlive[curmod] = 0;
+            if (!plive)
+                modlive[curmod] = 0;
             modnames[curmod] = pstrdup(name);
             nmods = curmod + 1;
             continue;
@@ -333,18 +339,19 @@ static void pass1(void)
             rd();
             rds(rname);
         }
+        i = nprecs++;
+        if (plive && !(plive[i >> 3] & (1 << (i & 7))))
+            continue;                   /* (the second pass 1: not linked) */
         if (findproc(name))
             error(107 /* function defined twice */, name);
         if (nprocs >= MAXPROC)
             fatal(108 /* too many functions */, 0);
         if (nprocs % TBLK == 0)
             pblk[nprocs / TBLK] = (struct LProc **)palloc(TBLK * sizeof(struct LProc *));
-        if (n > maxnrel)
-            maxnrel = n;
         p = (struct LProc *)palloc(sizeof(struct LProc));
         p->mod = curmod;
         p->seg = segindex(seg);
-        p->bits = flags & LP_INIT;
+        p->bits = (flags & LP_INIT) | (plive ? LP_LIVE : 0);
         p->codelen = codelen;
         i = strlen(modnames[curmod]);
         if (strncmp(name, modnames[curmod], i) == 0 && name[i] == '\'') {
@@ -368,7 +375,14 @@ static void pass1(void)
     }
 }
 
-static void pass2(void)
+/* One pass over the files: what a linked procedure uses (its relocations)
+   is linked too, and so are the initialisers of a linked module and the
+   variables it uses ('U').  The first pass also finds what is undefined
+   (of every procedure) and collects the 'U' records.  Repeated until
+   nothing more is linked: no reference lists are kept (they took more
+   memory than anything else when the compiler links itself) -- a few more
+   reads of the files instead.  1 if something more was linked */
+static int markpass(int first)
 {
     char name[MAXNAME];
     char seg[MAXNAME];
@@ -383,20 +397,21 @@ static void pass2(void)
     int i;
     int k;
     int type;
-    int m;
-    int j;
-    int v;
-    int *tmp;
+    int live;
+    int changed;
     struct LProc *p;
     struct LProc *t;
     struct LData *d;
-    tmp = (int *)lbuf;              /* the code is not needed here */
     rewindobjs();
     k = 0;
-    nuses = 0;
+    changed = 0;
+    if (first)
+        nuses = 0;
     while ((c = nextrec()) != 0) {
         record(c, name, seg, &flags, &parmsz, &rw, &codelen, &jtab);
         if (c == 'U') {
+            if (!first)
+                continue;
             d = finddata(name);
             if (!d || d->mod < 0)
                 error(114 /* undefined variable */, name);
@@ -411,88 +426,53 @@ static void pass2(void)
             continue;
         p = PROC(k);
         k++;
+        if (!(p->bits & LP_LIVE) && (p->bits & LP_INIT) && modlive[p->mod]) {
+            p->bits = p->bits | LP_LIVE;
+            changed = 1;
+        }
+        live = p->bits & LP_LIVE;
+        if (live && !modlive[p->mod]) {
+            modlive[p->mod] = 1;
+            changed = 1;
+        }
         n = rdw();
-        m = 0;
         for (i = 0; i < n; i++) {
             rdw();
             type = rd();
             rds(rname);
-            v = -1;
+            if (!live && !first)
+                continue;
             if (type == 1 || type == 2 || type == 5) {
                 t = findproc(rname);
-                if (!t)
-                    error(109 /* undefined function */, rname);
-                else
-                    v = procindex(t);
+                if (!t) {
+                    if (first)
+                        error(109 /* undefined function */, rname);
+                } else if (live && !(t->bits & LP_LIVE)) {
+                    t->bits = t->bits | LP_LIVE;
+                    changed = 1;
+                }
             } else if (type == 4) {
                 d = finddata(rname);
-                if (!d || d->mod < 0)
-                    error(114 /* undefined variable */, rname);
-                else
-                    v = -2 - dataindex(d);
-            }
-            if (v == -1)
-                continue;
-            for (j = 0; j < m && tmp[j] != v; j++)
-                ;
-            if (j == m && m < lbufsize / (int)sizeof(int))
-                tmp[m++] = v;
-        }
-        p->rel = 0;
-        if (m) {
-            p->rel = (int *)palloc((m + 1) * sizeof(int));
-            p->rel[0] = m;
-            for (j = 0; j < m; j++)
-                p->rel[j + 1] = tmp[j];
-        }
-    }
-}
-
-/* mark everything reachable; linked modules bring their initialisers */
-static void markall(void)
-{
-    int changed;
-    int i;
-    int j;
-    int k;
-    struct LProc *p;
-    struct LData *d;
-    do {
-        changed = 0;
-        for (i = 0; i < nuses; i++) {
-            d = DATA(usedata[i]);
-            if (modlive[usemod[i]] && !d->live) {
-                d->live = 1;
-                modlive[d->mod] = 1;
-                changed = 1;
-            }
-        }
-        for (i = 0; i < nprocs; i++) {
-            p = PROC(i);
-            if (!(p->bits & LP_LIVE) && (p->bits & LP_INIT) && modlive[p->mod]) {
-                p->bits = p->bits | LP_LIVE;
-                changed = 1;
-            }
-            if (!(p->bits & LP_LIVE))
-                continue;
-            if (!modlive[p->mod]) {
-                modlive[p->mod] = 1;
-                changed = 1;
-            }
-            for (j = 1; p->rel && j <= p->rel[0]; j++) {
-                k = p->rel[j];
-                if (k >= 0 && !(PROC(k)->bits & LP_LIVE)) {
-                    PROC(k)->bits = PROC(k)->bits | LP_LIVE;
-                    changed = 1;
-                } else if (k <= -2 && !DATA(-2 - k)->live) {
-                    d = DATA(-2 - k);
+                if (!d || d->mod < 0) {
+                    if (first)
+                        error(114 /* undefined variable */, rname);
+                } else if (live && !d->live) {
                     d->live = 1;
                     modlive[d->mod] = 1;
                     changed = 1;
                 }
             }
         }
-    } while (changed);
+    }
+    for (i = 0; i < nuses; i++) {
+        d = DATA(usedata[i]);
+        if (modlive[usemod[i]] && !d->live) {
+            d->live = 1;
+            modlive[d->mod] = 1;
+            changed = 1;
+        }
+    }
+    return changed;
 }
 
 static void put16(unsigned char *b, int pos, int v)
@@ -655,12 +635,13 @@ int link(char **objs, int nobjs, char *code, char *progname)
     int c;
     int rpos;
     int rtype;
+    int r;
     int *jt;
+    unsigned char *keep;
     objfiles = objs;
     nobjfiles = nobjs;
     lbuf = 0;
     maxcode = 0;
-    maxnrel = 0;
     lhash = (struct LProc **)calloc(LHASH, sizeof(struct LProc *));
     dhash = (struct LData **)calloc(LHASH, sizeof(struct LData *));
     modstatic = (int *)malloc(MAXMOD * sizeof(int));
@@ -680,6 +661,14 @@ int link(char **objs, int nobjs, char *code, char *progname)
         fatal(2 /* out of memory */, 0);
     nsegs = 0;
     segindex("");
+    plive = (unsigned char *)calloc((MAXPROC + 7) / 8 + (MAXDATA + 7) / 8, 1);
+    if (!plive)
+        fatal(2 /* out of memory */, 0);
+    dlive = plive + (MAXPROC + 7) / 8;
+    keep = plive;
+    plive = 0;
+    pmark(&p1mark);                     /* (pass 1's tables: made again with only what is linked) */
+    nprecs = 0;
     pass1();
     /* the reference lists (pass 2) are needed only to find what to link:
        given back before the code is written, and so is the buffer pass 2
@@ -687,14 +676,6 @@ int link(char **objs, int nobjs, char *code, char *progname)
        largest procedure, comes after: it, and the 600 bytes of the entry
        code, took about 1,000 words of the memory in which the linker opens
        the object files, its least free memory. */
-    pmark(&relmark);
-    lbufsize = maxnrel * (int)sizeof(int) + 16;
-    lbuf = (unsigned char *)malloc(lbufsize);
-    if (!lbuf)
-        fatal(2 /* out of memory */, 0);
-    skipcode = 1;
-    pass2();
-    skipcode = 0;
     if (nerrors)
         return 0;
     mainp = findproc("main");
@@ -712,10 +693,36 @@ int link(char **objs, int nobjs, char *code, char *progname)
     exitp = findproc("exit");
     if (exitp)
         exitp->bits = exitp->bits | LP_LIVE;
-    markall();
-    prelease(&relmark);
+    i = 1;
+    while (markpass(i) && !nerrors)     /* (the first pass reports what is undefined) */
+        i = 0;
+    if (nerrors)
+        return 0;
+    /* what is linked, by place in the files; then pass 1 again with that
+       only: the tables of the procedures not linked (most of a library)
+       are given back before the code is written */
     for (i = 0; i < nprocs; i++)
-        PROC(i)->rel = 0;
+        if (PROC(i)->bits & LP_LIVE)
+            keep[i >> 3] = keep[i >> 3] | (1 << (i & 7));
+    for (i = 0; i < ndatas; i++)
+        if (DATA(i)->live)
+            dlive[i >> 3] = dlive[i >> 3] | (1 << (i & 7));
+    prelease(&p1mark);
+    memset(lhash, 0, LHASH * sizeof(struct LProc *));
+    memset(dhash, 0, LHASH * sizeof(struct LData *));
+    nprocs = 0;
+    ndatas = 0;
+    nsegs = 1;                          /* ("" stays: before the mark) */
+    nprecs = 0;
+    lbuf = 0;
+    maxcode = 0;
+    plive = keep;
+    pass1();
+    for (i = 0; i < ndatas; i++)
+        DATA(i)->live = (dlive[i >> 3] >> (i & 7)) & 1;
+    mainp = findproc("main");
+    callmp = mainparmsz >= 4 ? findproc("__callmain") : 0;
+    exitp = findproc("exit");
     /* globals: the linked modules' statics, then the used variables */
     globalwords = 3;
     for (i = 0; i < nmods; i++) {
@@ -776,8 +783,6 @@ int link(char **objs, int nobjs, char *code, char *progname)
     if (!out)
         fatal(24 /* cannot create */, code);
     lbufsize = maxcode;
-    if (lbufsize < maxnrel * (int)sizeof(int))
-        lbufsize = maxnrel * (int)sizeof(int);
     lbufsize = lbufsize + 16;
     lbuf = (unsigned char *)malloc(lbufsize);
     if (!lbuf)
@@ -811,21 +816,26 @@ int link(char **objs, int nobjs, char *code, char *progname)
         }
         rewindobjs();
         i = 0;
+        r = 0;
         while ((c = nextrec()) != 0) {
             record(c, name, seg, &flags, &parmsz, &rw, &codelen, &jtab);
             if (c != 'P')
                 continue;
-            p = PROC(i);
-            i++;
+            p = 0;
+            if (plive[r >> 3] & (1 << (r & 7))) {
+                p = PROC(i);            /* (the table holds only what is linked) */
+                i++;
+            }
+            r++;
             n = rdw();
             for (j = 0; j < n; j++) {
                 rpos = rdw();
                 rtype = rd();
                 rds(rname);
-                if ((p->bits & LP_LIVE) && p->seg == s)
+                if (p && p->seg == s)
                     patchproc(p, rpos, rtype, rname);
             }
-            if (!(p->bits & LP_LIVE) || p->seg != s)
+            if (!p || p->seg != s)
                 continue;
             lbuf[jtab] = p->procnum;
 #ifndef __TINYC__

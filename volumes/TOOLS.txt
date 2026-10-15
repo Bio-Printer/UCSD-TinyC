@@ -5,20 +5,20 @@ TOOLS:  20 files  (a UCSD directory holds 77)
   README.TEXT         18  what is on this volume
   VI.CODE             78  vi, the screen editor: VI NAME.C from the shell
   GREP.CODE           32  grep: GREP [-i] [-n] PATTERN FILES from the shell
-  CAT.CODE            26  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
-  HEXDUMP.CODE        25  hexdump: HEXDUMP [-i] [FILE ...] from the shell
-  OBJCOPY.CODE        27  objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file
-  MORE.CODE           29  more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time
-  LESS.CODE           37  less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards
+  CAT.CODE            25  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
+  HEXDUMP.CODE        24  hexdump: HEXDUMP [-i] [FILE ...] from the shell
+  OBJCOPY.CODE        26  objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file
+  MORE.CODE           28  more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time
+  LESS.CODE           36  less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards
   SED.CODE            52  sed: SED [-nEsur] [-i[SUF]] [-e S] [-f F] [S] [FILE ...] a stream editor
-  DIFF.CODE           36  diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2
+  DIFF.CODE           35  diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2
   WC.CODE             28  wc: WC [-clmwL] [FILE ...] lines, words and bytes
   LC.CODE             27  lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns
-  KRUNCH.CODE         26  krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area
-  GROW.CODE           28  grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)
-  SHRINK.CODE         28  shrink: SHRINK NAME -N | +N | N a sub-volume smaller (krunched first if it must be)
+  KRUNCH.CODE         25  krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area
+  GROW.CODE           27  grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)
+  SHRINK.CODE         27  shrink: SHRINK NAME -N | +N | N a sub-volume smaller (krunched first if it must be)
   PATCH.CODE          38  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
-  MAN.CODE            26  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
-  BINDERC.CODE        29  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
+  MAN.CODE            25  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
+  BINDERC.CODE        28  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
   MAN.TEXT            66  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
   FILES.TEXT           6  this list

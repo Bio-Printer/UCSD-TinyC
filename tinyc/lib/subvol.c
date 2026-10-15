@@ -107,45 +107,28 @@ int fileson(int u)
     return 0;
 }
 
-/* blocks first..last-1 of unit u went down by d: the OS's segment table
-   and the shell's place to come back to (pexec) follow them */
-static void follow(int u, int first, int last, int d)
-{
-    int s;
-    int *e;
-    for (s = 0; s < 16; s++)
-        if (SYSCOM->segtable[s].codeunit == u && SYSCOM->segtable[s].diskaddr >= first
-         && SYSCOM->segtable[s].diskaddr < last)
-            SYSCOM->segtable[s].diskaddr -= d;
-    e = SYSCOM->expansion;
-    if (e[0] == PX_CHILD && e[3] == u && e[4] >= first && e[4] < last)
-        e[4] -= d;
-}
-
 /* len blocks of unit u from block from to block to (down, or to a place
-   apart: the first blocks first), buf nb blocks; 0 on a disk error */
-static int moveblocks(int u, int from, int to, int len, char *buf, int nb)
+   apart: the first blocks first), through a buffer of as many blocks as
+   memory allows (32 at most): 1, 0 on a disk error, -1 with no memory */
+static int moveblocks(int u, int from, int to, int len)
 {
-    int k, n;
+    char *buf;
+    int nb, k, n;
+    for (nb = 32; (buf = (char *)malloc(nb * 512)) == NULL; nb = nb / 2)
+        if (nb == 1)
+            return -1;
     for (k = 0; k < len; k = k + n) {
         n = len - k < nb ? len - k : nb;
         __cspv(5, u, buf, 0, n * 512, from + k, 0);     /* UNITREAD */
         if (__cspi(34) == 0)
             __cspv(6, u, buf, 0, n * 512, to + k, 0);   /* UNITWRITE */
-        if (__cspi(34) != 0)
+        if (__cspi(34) != 0) {
+            free(buf);
             return 0;
+        }
     }
+    free(buf);
     return 1;
-}
-
-/* a buffer of as many blocks as memory allows (up to 32): *nb of them */
-static char *blockbuf(int *nb)
-{
-    char *buf;
-    for (*nb = 32; *nb >= 1; *nb = *nb / 2)
-        if ((buf = (char *)malloc(*nb * 512)) != NULL)
-            return buf;
-    return NULL;
 }
 
 /* The files of the directory at block base of unit u (read into dir) moved
@@ -158,9 +141,8 @@ static char *blockbuf(int *nb)
 int dirkrunch(int u, int base, int *dir, int show)
 {
     char name[16];
-    char *buf;
     int *e;
-    int i, nb, next, from, len, moves;
+    int i, k, next, from, len, moves;
     next = dir[1];
     for (i = 1; i <= dir[8]; i++) {
         e = dir + 13 * i;
@@ -168,8 +150,6 @@ int dirkrunch(int u, int base, int *dir, int show)
             return -3;
         next = e[1];
     }
-    if ((buf = blockbuf(&nb)) == NULL)
-        return -2;
     moves = 0;
     next = dir[1];
     for (i = 1; i <= dir[8]; i++) {
@@ -178,17 +158,26 @@ int dirkrunch(int u, int base, int *dir, int show)
         len = e[1] - e[0];
         if (from > next) {
             direntname(dir, i, name);
-            if (!moveblocks(u, base + from, base + next, len, buf, nb)) {
+            k = moveblocks(u, base + from, base + next, len);
+            if (k < 0)
+                return -2;
+            if (k == 0) {
                 fprintf(stderr, "disk error %d moving %s (block %d)\n", __cspi(34), name, from);
-                free(buf);
                 return -1;
             }
             e[0] = next;
             e[1] = next + len;
-            follow(u, base + from, base + from + len, from - next);
+            /* the OS's segment table and the shell's place to come back to
+               (pexec) follow a code file that runs */
+            for (k = 0; k < 16; k++)
+                if (SYSCOM->segtable[k].codeunit == u && SYSCOM->segtable[k].diskaddr >= base + from
+                 && SYSCOM->segtable[k].diskaddr < base + from + len)
+                    SYSCOM->segtable[k].diskaddr -= from - next;
+            k = SYSCOM->expansion[0] == PX_CHILD && SYSCOM->expansion[3] == u;
+            if (k && SYSCOM->expansion[4] >= base + from && SYSCOM->expansion[4] < base + from + len)
+                SYSCOM->expansion[4] -= from - next;
             if (!dirwriteat(u, base, dir)) {
                 fprintf(stderr, "disk error %d writing the directory\n", __cspi(34));
-                free(buf);
                 return -1;
             }
             if (show)
@@ -197,31 +186,20 @@ int dirkrunch(int u, int base, int *dir, int show)
         }
         next = e[1];
     }
-    free(buf);
     return moves;
 }
 
 /* the blocks the files of dir use, the directory's own with them (where a
-   krunch would leave the free area) */
-static int usedblocks(int *dir)
+   krunch would leave the free area); *last: the block after the last file
+   (the directory's end if none) */
+static int used(int *dir, int *last)
 {
     int i, n;
     n = dir[1];
     for (i = 1; i <= dir[8]; i++)
         n = n + dir[13 * i + 1] - dir[13 * i];
+    *last = dir[8] > 0 ? dir[13 * dir[8] + 1] : dir[1];
     return n;
-}
-
-/* the last block + 1 that dir's files reach (the directory's end if none) */
-static int lastused(int *dir)
-{
-    return dir[8] > 0 ? dir[13 * dir[8] + 1] : dir[1];
-}
-
-/* the blocks entry i of dir may reach: up to the next file (or the end) */
-static int roomof(int *dir, int i)
-{
-    return (i < dir[8] ? dir[13 * (i + 1)] : dir[7]) - dir[13 * i];
 }
 
 /* GROW and SHRINK (cmd: their name, for the messages): the sub-volume at
@@ -238,9 +216,8 @@ int svresize(char *path, char *size, char *cmd)
     int sdir[1024];                     /* its own */
     char leaf[16];
     char *p;
-    char *buf;
     int *e;
-    int u, pb, i, j, sb, len, cur, want, n, need, at, nb, k;
+    int u, pb, i, j, sb, len, cur, want, n, at, k, last;
     p = size;
     if (*p == '+' || *p == '-')
         p++;
@@ -276,9 +253,10 @@ int svresize(char *path, char *size, char *cmd)
         return 0;
     }
     /* smaller: its files must end before the new end (a krunch if they do not) */
-    if (want < lastused(sdir)) {
-        if (usedblocks(sdir) > want) {
-            fprintf(stderr, "%s: %s: its files and directory take %d blocks: not %d\n", cmd, path, usedblocks(sdir), want);
+    n = used(sdir, &last);
+    if (want < last) {
+        if (n > want) {
+            fprintf(stderr, "%s: %s: its files and directory take %d blocks: not %d\n", cmd, path, n, want);
             return 3;
         }
         printf("krunching %s first:\n", path);
@@ -288,12 +266,14 @@ int svresize(char *path, char *size, char *cmd)
         }
     }
     /* bigger: room after it, or a place that holds it */
-    if (want > len && roomof(pdir, i) < want) {
+    k = i < pdir[8] ? pdir[13 * (i + 1)] : pdir[7];     /* how far it may reach: the next file, the end */
+    if (want > len && k - e[0] < want) {
         at = dirfree(pdir, want);
         if (at == 0) {
-            if (pdir[7] - usedblocks(pdir) < want - len) {
+            n = pdir[7] - used(pdir, &last);
+            if (n < want - len) {
                 fprintf(stderr, "%s: %s: no room: %d blocks free where it is, %d more needed\n", cmd, path,
-                        pdir[7] - usedblocks(pdir), want - len);
+                        n, want - len);
                 return 3;
             }
             printf("krunching the volume that holds %s first:\n", path);
@@ -304,21 +284,17 @@ int svresize(char *path, char *size, char *cmd)
             i = findname(pdir, leaf);
             e = pdir + 13 * i;
             sb = pb + e[0];
-            at = roomof(pdir, i) >= want ? e[0] : dirfree(pdir, want);
+            k = i < pdir[8] ? pdir[13 * (i + 1)] : pdir[7];
+            at = k - e[0] >= want ? e[0] : dirfree(pdir, want);
         }
         if (at == 0) {
             fprintf(stderr, "%s: %s: no free area of %d blocks where it is\n", cmd, path, want);
             return 3;
         }
         if (at != e[0]) {                       /* it moves there, whole */
-            if ((buf = blockbuf(&nb)) == NULL) {
-                fprintf(stderr, "%s: no memory\n", cmd);
-                return 3;
-            }
-            k = moveblocks(u, sb, pb + at, len, buf, nb);
-            free(buf);
-            if (!k) {
-                fprintf(stderr, "%s: disk error %d moving %s\n", cmd, __cspi(34), path);
+            k = moveblocks(u, sb, pb + at, len);
+            if (k <= 0) {
+                fprintf(stderr, k < 0 ? "%s: no memory\n" : "%s: disk error moving %s\n", cmd, path);
                 return 3;
             }
             memcpy(sdir, e, 26);                /* (its entry, while the others close up) */
