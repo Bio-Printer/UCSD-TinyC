@@ -102,7 +102,8 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
     remove(tmpi);
     remove(tmpr);
     say("Preprocessing ");
-    sayw(src, 18);                      /* the passes' figures line up in columns */
+    sayw(src, 29);                      /* the passes' figures line up in columns (a path in */
+    say(" ");                           /* a sub-volume: TOOLS:/SRC/BINDERC/BINDERC.C, 28) */
     passbegin(8000);
     if (!preprocess(src, tmpi))
         return 0;
