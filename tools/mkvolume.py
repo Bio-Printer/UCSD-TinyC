@@ -289,8 +289,9 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         Z80 mode, 12 KB in P-Code mode, 30 KB with the Harvard layout) and
         the rest in VI.SWAP, a temporary file on the prefix volume (the
         file's size and 25 KB; deleted when vi ends; on the prefix volume
-        even after a CD into a sub-volume -- a file in one is edited with a
-        window 5 KB smaller; in Z80 mode there is no such room: vi says so).  Moving, searching (/ ? n N go on through the whole
+        even after a CD into a sub-volume -- a file in one is found once, at
+        the start, and read and saved by where it is, its window 1 KB
+        smaller: in Z80 mode about 2.7 KB).  Moving, searching (/ ? n N go on through the whole
         file), G and :N move the window; files up to about 185 KB.  A
         command on more lines than fit in the window at once (500dd,
         :1,$s/a/b/ on a big file) is refused with a message.

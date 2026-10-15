@@ -231,7 +231,9 @@ int init_text_buffer(char *fn)
 		text_size = pg_cap;
 		text = xzalloc(text_size + 1);
 	}
-	memset(text, 0, text_size);
+#ifndef __UCSD__
+	memset(text, 0, text_size);	// (the P-System's: in pg_load, after the open)
+#endif
 	pg_reset();
 	screenbegin = dot = end = text;
 
@@ -326,14 +328,14 @@ static void edit_file(char *fn)
 		do_cmd(c);		// execute the user command
 	}
 	//-------------------------------------------------------------------
+	refresh();
 #ifdef __UCSD__
 	if (!file_modified && current_filename) {	// saved, or not changed: where it was left, for next time
-		ucsd_unreserve();
+		ucsd_unreserve();			// (after the last refresh: in a sub-volume the window holds the directory)
 		hdr_write(current_filename, ABSLINE(dot), dot - begin_line(dot));
 		ucsd_reserve();
 	}
 #endif
-	refresh();
 	gracefulExit();
 #undef cur_line
 }

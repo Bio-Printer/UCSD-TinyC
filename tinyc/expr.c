@@ -1171,8 +1171,6 @@ int fmtfam(char *name)
     return 0;
 }
 
-#pragma segment REFSCAN
-
 /* printf/scanf families with a literal format: a double argument meeting
    %f %e %g (no l or L) gets the l inserted, as C prints a double with %g
    (here %g is a float: floats are not widened); printf's %lf with a float
@@ -1252,5 +1250,3 @@ void fmtfix(int fam, struct Node *args)
         pa = &a->next;
     }
 }
-
-#pragma segment PARSE

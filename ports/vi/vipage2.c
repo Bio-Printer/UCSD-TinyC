@@ -2,7 +2,6 @@
    loading and saving (vipage.c has the window's moves; split to compile in less memory) */
 #include "vi.h"
 
-static void pg_abandon(const char *fn, const char *why);
 static int pg_scan(struct pgchunk *c, int next, const char *pat, int dir, int *line, int *col);
 
 /* Absolute line li (1 .. the last) into the window; its start.  Far away:
@@ -305,11 +304,11 @@ void pg_close(void)
 	}
 }
 
-/* everything for paging, once: the stores, VI.SWAP, the window (text) as
-   big as memory allows; without VI.SWAP the window is the whole file */
-void pg_init(const char *fn)
+/* everything for paging, once: the stores, VI.SWAP (a code segment of its own: it is not in
+   memory when the window is sized, pg_init) */
+#pragma segment VISTART
+void pg_start(const char *fn)
 {
-	long cap;
 	pg_used = (unsigned char *)xzalloc(PG_MAXSLOT / 8);
 	pg_buf = (char *)xzalloc(PG_SLOT + 3);
 	pg_maxch = PG_MAXCH;
@@ -319,8 +318,7 @@ void pg_init(const char *fn)
 	   25 KB for what is typed in, and the chunk table no more than its slots (every chunk has one;
 	   the memory goes to the window: in Z80 mode it is small).  A file in a sub-volume: its place
 	   first, while there is the memory (viucsd.c) */
-	if (ucsd_place(fn) < 0)
-		pg_abandon(fn, "no memory in a sub-volume");
+	ucsd_place(fn);
 	hdr_read(fn);
 	if (hdr_blocks / 2 + 25 < pg_slots)
 		pg_slots = hdr_blocks / 2 + 25;
@@ -339,6 +337,17 @@ void pg_init(const char *fn)
 		fclose(pg_f);
 		pg_f = fopen(PG_SWAP, "r+b");
 	}
+#endif
+}
+#pragma segment MAIN
+
+/* ... and the window (text) as big as memory allows; without VI.SWAP the window is the whole
+   file */
+void pg_init(const char *fn)
+{
+	long cap;
+	pg_start(fn);
+#ifdef __UCSD__
 	/* MEMAVAIL words, less malloc's room for the stack and some for yanks; for a file in a
 	   sub-volume also the library's SVAT segment its load and save bring in, and its stack */
 	cap = 2L * __cspi(40) - 600 - PG_RESERVE;
@@ -371,7 +380,7 @@ void pg_reset(void)
 }
 
 /* a load that cannot be finished: vi stops, the file untouched */
-static void pg_abandon(const char *fn, const char *why)
+void pg_abandon(const char *fn, const char *why)
 {
 	gracefulExit();
 	pg_close();
@@ -487,11 +496,10 @@ int pg_load(const char *fn)
 	pg_reset();
 	end = dot = screenbegin = text;
 #ifdef __UCSD__
-	if (ucsd_place(fn) < 0)			/* (:e of another file in a sub-volume) */
-		pg_abandon(fn, "no memory in a sub-volume");
+	ucsd_place(fn);				/* (:e of another file in a sub-volume) */
 	ucsd_unreserve();
-	f = ucsd_fopen(fn, "r", text, text + 1024);	/* (the empty window: the directory, by the place) */
-	memset(text, 0, 2048);
+	f = ucsd_fopen(fn, "r", text);		/* (in a sub-volume: the empty window holds its directory) */
+	memset(text, 0, text_size);
 	ucsd_reserve();
 #else
 	f = fopen(fn, "r");
@@ -528,6 +536,16 @@ static int pg_put(char *b, int len, FILE *f)
 	return 1;
 }
 
+#ifdef __UCSD__
+/* The first 2 KB of the window into VI.SWAP's last two slots (park), or back: while a file in a
+   sub-volume is opened and closed by its place, its directory is there (viucsd.c).  Only the
+   bytes move: the window, and every pointer into it, stay as they are.  0 if it cannot be */
+static int pg_stash(int park)
+{
+	return !pg_io(pg_slots - 2, text, 1024, park) && !pg_io(pg_slots - 1, text + 1024, 1024, park);
+}
+#endif
+
 /* the whole file: before, window, after; 1 if written, -1 if it cannot be
    opened, 0 if writing failed */
 int pg_save(const char *fn)
@@ -535,6 +553,9 @@ int pg_save(const char *fn)
 	FILE *f;
 	int i;
 	int ok;
+#ifdef __UCSD__
+	char *d;
+#endif
 	pg_complete();
 	if (pg_bad) {
 		status_line_bold("Not written: the file was not loaded to its end");
@@ -542,7 +563,10 @@ int pg_save(const char *fn)
 	}
 #ifdef __UCSD__
 	ucsd_unreserve();
-	f = ucsd_fopen(fn, "w", pg_buf, NULL);	/* (by the place: the directory into pg_buf and f's page) */
+	d = ucsd_isat(fn) && pg_stash(1) ? text : NULL;	/* (the file being edited, in a sub-volume: the window holds its directory) */
+	f = ucsd_fopen(fn, "w", d);
+	if (d)
+		pg_stash(0);
 #else
 	f = fopen(fn, "w");
 #endif
@@ -560,8 +584,17 @@ int pg_save(const char *fn)
 	for (i = 0; ok && i < pg_na; i++)
 		ok = !pg_io(PGA(i).slot, pg_buf, PGA(i).len, 0) && pg_put(pg_buf, PGA(i).len, f);
 #ifdef __UCSD__
-	if (ucsd_fclose(f) == EOF)
+	if (d && !pg_stash(1)) {		/* (not parked: the directory is not changed, the old file stays) */
+		f->flags = f->flags | __F_ERR;
+		d = NULL;
 		ok = 0;
+	}
+	__svat = d ? ucsd_at : NULL;		/* (by the place: the directory into the window again) */
+	if (fclose(f) == EOF)
+		ok = 0;
+	__svat = NULL;
+	if (d)
+		pg_stash(0);
 	ucsd_reserve();
 #else
 	if (fclose(f) == EOF)

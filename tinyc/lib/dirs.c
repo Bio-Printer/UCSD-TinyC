@@ -235,21 +235,23 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf)
     return 1;
 }
 
-/* the place of path's file (dirs.h): its sub-volume, its first block and blocks (first 0: no
-   file of that name yet); 0 if the sub-volume is not there */
+/* the place's kind for a new file of its name: Text, Code, else Data */
+static void svkind(struct svat *at)
+{
+    char *s;
+    s = at->name + strlen(at->name);
+    at->kind = 5;
+    if (s - at->name > 5)
+        at->kind = namesame(s - 5, ".TEXT") ? 3 : namesame(s - 5, ".CODE") ? 2 : 5;
+}
+
+/* the place of path's file (dirs.h); 0 if its sub-volume is not there */
 int __svplace(char *path, struct svat *at)
 {
     int dir[1024];
-    int *e;
-    int i;
     if (!pathdir(path, dir, &at->unit, &at->base, at->name) || !at->name[0])
         return 0;
-    at->first = at->blocks = 0;
-    if ((i = findname(dir, at->name)) != 0) {
-        e = dir + 13 * i;
-        at->first = at->base + e[0];
-        at->blocks = e[1] - e[0];
-    }
+    svkind(at);
     return 1;
 }
 
@@ -260,6 +262,7 @@ int __svopen(FILE *f, char *name, char *mode)
     struct svat at;
     if (!pathdir(name, dir, &at.unit, &at.base, at.name) || !at.name[0])
         return 0;
+    svkind(&at);
     at.dir = dir;
     return __svopenat(f, mode, &at);
 }
@@ -322,7 +325,6 @@ int __svopenat(FILE *f, char *mode, struct svat *at)
     int *r;
     int *e;
     int i, k, a, room, last, n;
-    char *s;
     dir = at->dir;
     r = (int *)f->fib;
     __cspv(5, at->unit, dir, 0, 2048, at->base + 2, 0);    /* UNITREAD */
@@ -359,15 +361,13 @@ int __svopenat(FILE *f, char *mode, struct svat *at)
     r[1] = at->base + a;
     r[2] = room;
     r[3] = r[5] = 0;
-    s = at->name + strlen(at->name);            /* (not namesame: that is DIRS) */
-    r[6] = __istext(at->name) ? 3 : s - at->name > 5 && s[-5] == '.' && toupper(s[-4]) == 'C'
-        && toupper(s[-3]) == 'O' && toupper(s[-2]) == 'D' && toupper(s[-1]) == 'E' ? 2 : 5;
+    r[6] = at->kind;
     return 1;
 }
 
-/* the directory after f is written (stdio: when it is new or its length changed), read into
-   at->dir: a new file's entry (an old one of its name goes), an old file's new length;
-   at->first and blocks the file's then.  0 if it cannot be */
+/* the directory after f is written (when it is new or its length changed), read into
+   at->dir: a new file's entry (an old one of its name goes), an old file's new length.  0 if
+   it cannot be */
 int __svcloseat(FILE *f, struct svat *at)
 {
     int *dir;
@@ -414,18 +414,24 @@ int __svcloseat(FILE *f, struct svat *at)
     e[1] = first + r[3];
     e[11] = 512;
     e[12] = date;
-    if (!dirwriteat(r[0], r[4], dir))
-        return 0;
-    at->first = r[1];
-    at->blocks = r[3];
-    return 1;
+    return dirwriteat(r[0], r[4], dir);
 }
 
-/* stdio's fclose of a file in a sub-volume (no place): a 2 KB directory of its own */
-int __svclose(FILE *f)
+/* ... with a 2 KB directory of its own */
+static int svclose(FILE *f)
 {
     int dir[1024];
     struct svat at;
     at.dir = dir;
     return __svcloseat(f, &at);
+}
+
+/* stdio's fclose of a file in a sub-volume (no place): its directory entry when it is new or of
+   a new length (not for one only read: no directory then, as a program whose memory is taken
+   can close it) */
+int __svclose(FILE *f)
+{
+    int *r;
+    r = (int *)f->fib;
+    return !(f->flags & __F_NEW) && r[3] == r[5] || svclose(f);
 }

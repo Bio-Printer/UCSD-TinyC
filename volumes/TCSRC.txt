@@ -21,12 +21,12 @@ TCSRC:  41 files  (a UCSD directory holds 77)
   GENX.C              48  compiler: pass 3: P-code for expressions, calls, switch
   LINK.C              50  compiler: the linker: object files -> code file
   TC.H                30  compiler: shared declarations (every module)
-  PARSE.H             14  compiler: the parser modules' shared declarations
+  PARSE.H             12  compiler: the parser modules' shared declarations
   GEN.H                8  compiler: gen.c and genx.c's shared declarations
   ASSERT.C             4  library: <assert.h>
   CONIO.C              4  library: <conio.h>
   CTYPE.C              4  library: <ctype.h>
-  DIRS.C              24  library: units[], dirread, dirwrite, volunit, wildmatch ...: disks and directories (<psys.h>)
+  DIRS.C              28  library: units[], dirread, dirwrite, volunit, wildmatch ...: disks and directories (<psys.h>)
   FLTFMT.C             8  library: printf's %f %e %g (linked only when floats are used)
   IO.C                 6  library: <io.h>
   MATH.C               6  library: <math.h>
@@ -34,7 +34,7 @@ TCSRC:  41 files  (a UCSD directory holds 77)
   PEXEC.C             14  library: pexec, main(argc, argv) (<psys.h>)
   REDIRECT.C           6  library: freopen; >NAME and <NAME on the command line
   SETJMP.C             8  library: <setjmp.h>
-  STDIO.C             48  library: <stdio.h>
+  STDIO.C             50  library: <stdio.h>
   STDIOBLK.C          10  library: <stdioblk.h>
   STDLIB.C            14  library: <stdlib.h>
   STRING.C             8  library: <string.h>

@@ -150,7 +150,6 @@ void statement(int brk, int cont);
 void funcdef(struct Sym *fs, int isstatic);
 void external(void);
 int fmtfam(char *name);
-#pragma segment REFSCAN
 void fmtfix(int fam, struct Node *args);
 #pragma segment CINIT
 void addref(char *name);

@@ -453,7 +453,6 @@ int fflush(FILE *f)
 int fclose(FILE *f)
 {
     int r;
-    int *p;
     if (!f || !f->flags)
         return EOF;
     if (f->flags & __F_CON) {
@@ -462,10 +461,8 @@ int fclose(FILE *f)
     }
     r = __flushbuf(f);
     if (f->flags & __F_SUB) {
-        p = (int *)f->fib;              /* its directory entry, when new or of a new length */
-        if (!(f->flags & __F_ERR) && ((f->flags & __F_NEW) || p[3] != p[5])
-         && !(__svat ? __svcloseat(f, __svat) : __svclose(f)))
-            r = EOF;
+        if (!(f->flags & __F_ERR) && !(__svat ? __svcloseat(f, __svat) : __svclose(f)))
+            r = EOF;                    /* its directory entry */
     } else {
         __cxp0v(6, f->fib, (f->flags & __F_NEW) ? 1 : 0);   /* FCLOSE, LOCK new files */
         if (__cspi(34) != 0)

@@ -206,75 +206,50 @@ void ucsd_unreserve(void)
    directory read into 2 KB of the window (pg_load, pg_save): only the library's small SVAT
    segment comes in.  Any other file in a sub-volume (:r, :w NAME) is opened only when DIRS and
    its directory still fit. */
-#define SV_NEED 2600			/* words: DIRS, a 2 KB directory, their stack */
+#define SV_NEED 2200			/* words: DIRS, a 2 KB directory, their stack */
 int __istext(char *name);
-static struct svat ucsd_at;
+struct svat *ucsd_at;			/* (allocated for the first file in a sub-volume) */
 static char *ucsd_atfn;			/* the file whose place it is */
-static FILE *ucsd_atf;			/* opened for writing by it */
 
-/* fn's place, unless it is the one found before (DIRS: while there is the memory): 0 if fn
-   is not in a sub-volume, -1 if there is no memory to look, else 1 */
-int ucsd_place(const char *fn)
+/* is fn the file whose place ucsd_at is */
+int ucsd_isat(const char *fn)
 {
-	if (!__svname((char *)fn))
-		return 0;
-	if (ucsd_atfn && !strcmp(fn, ucsd_atfn))
-		return 1;
+	return ucsd_atfn && !strncasecmp(fn, ucsd_atfn, 64);
+}
+
+/* fn's place, if it is in a sub-volume, unless it is the one found before (DIRS: while there
+   is the memory; without it vi stops, the file untouched) */
+void ucsd_place(const char *fn)
+{
+	if (!__svname((char *)fn) || ucsd_isat(fn))
+		return;
 	free(ucsd_atfn);
 	ucsd_atfn = NULL;
 	if (__cspi(40) < SV_NEED)
-		return -1;
-	if (__svplace((char *)fn, &ucsd_at))		/* (else: no such sub-volume, fopen says so) */
+		pg_abandon(fn, "no memory in a sub-volume");
+	if (!ucsd_at)
+		ucsd_at = xmalloc(sizeof(struct svat));
+	if (__svplace((char *)fn, ucsd_at))		/* (else: no such sub-volume, fopen says so) */
 		ucsd_atfn = xstrdup(fn);
-	return 1;
 }
 
 /* fopen: the file being edited by its place, its directory read into dir (2 KB), when dir is
-   given; another file in a sub-volume only if DIRS still fits (else NULL) */
+   given (its fclose: with __svat = ucsd_at, pg_save); another file in a sub-volume only if
+   DIRS still fits (else NULL) */
 FILE *ucsd_fopen(const char *fn, char *mode, char *dir)
 {
 	FILE *f;
-	if (!ucsd_atfn || strcmp(fn, ucsd_atfn))
+	if (!ucsd_isat(fn))
 		dir = NULL;
-	else if (!dir && *mode == 'w')
-		ucsd_at.first = 0;			/* (moved, not by the place: its header page is not known) */
 	if (!dir && __svname((char *)fn) && __cspi(40) < SV_NEED)
 		return NULL;
-	ucsd_at.dir = (int *)dir;
-	if (dir)
-		__svat = &ucsd_at;
+	if (dir) {
+		ucsd_at->dir = (int *)dir;
+		__svat = ucsd_at;
+	}
 	f = fopen((char *)fn, mode);
 	__svat = NULL;
-	if (dir && *mode == 'w')
-		ucsd_atf = f;
 	return f;
-}
-
-/* fclose; by the place what ucsd_fopen opened by it for writing (its directory into the same 2 KB) */
-int ucsd_fclose(FILE *f)
-{
-	int r;
-	if (f == ucsd_atf)
-		__svat = &ucsd_at;
-	r = fclose(f);
-	__svat = NULL;
-	ucsd_atf = NULL;
-	return r;
-}
-
-/* started from X(ecute): no arguments, so ask */
-char *ucsd_askname(void)
-{
-	static char name[40];
-	int n;
-	printf("Edit what file? ");
-	fflush(stdout);
-	if (!fgets(name, sizeof(name), stdin))
-		name[0] = 0;
-	n = strlen(name);
-	while (n > 0 && (name[n - 1] == '\n' || name[n - 1] == ' '))
-		name[--n] = 0;
-	return name;
 }
 
 /* The console is always "raw" for vi: getch() reads keys unechoed, one at
@@ -502,49 +477,72 @@ void clear_to_eos(void)
    window is the memory its code leaves.) */
 #define HDR_OFF 1000
 int hdr_line, hdr_col, hdr_blocks;
-void __ptitle(char *name, char *title);
 
-/* rd: the header page of the text file fn into pg_buf; else pg_buf into it; 1 if done */
+/* rd: the header page of the text file fn into pg_buf; else pg_buf into it; 1 if done.  The
+   file is opened to find its blocks (and their count, the chunk table's), then read and written
+   by them: in a sub-volume by its place, the directory into the window (when it is read the
+   window is not there yet; when it is written it is no longer needed) */
 static int hdr_io(const char *fn, int rd)
 {
-	char fib[80];
-	char title[32];
-	int n;
-	if (__svname((char *)fn)) {			/* in a sub-volume: the file being edited, by its place */
-		if (!ucsd_atfn || strcmp(fn, ucsd_atfn) || !ucsd_at.first)
-			return 0;
-		if (rd)
-			hdr_blocks = ucsd_at.blocks;
-		if (!__istext((char *)fn) || ucsd_at.blocks < 2)
-			return 0;
-		if (rd)
-			__cspv(5, ucsd_at.unit, pg_buf, 0, 1024, ucsd_at.first, 0);	/* UNITREAD */
-		else
-			__cspv(6, ucsd_at.unit, pg_buf, 0, 1024, ucsd_at.first, 0);	/* UNITWRITE */
-		return __cspi(34) == 0;
+	FILE *f;
+	int *r;
+	int u, b, n;
+	f = ucsd_fopen(fn, "r", text);
+	if (!f)
+		return 0;
+	r = (int *)f->fib;
+	if (f->flags & __F_SUB) {			/* (its record: dirs.c) */
+		u = r[0];
+		b = r[1];
+		n = r[3];
+	} else {					/* (FUNIT, FHEADER.DFIRSTBLK, DLASTBLK) */
+		u = r[7];
+		b = r[16];
+		n = r[17] - b;
 	}
-	__ptitle((char *)fn, title);
-	__cxp0v(3, fib, 0, -1);				/* FINIT(fib, NIL, untyped) */
-	__cxp0v(5, fib, title, 1, 0);			/* FOPEN, an old file */
-	if (__cspi(34) != 0)
+	fclose(f);
+	if (rd)
+		hdr_blocks = n;
+	if (!__istext((char *)fn) || n < 2)
 		return 0;
 	if (rd)
-		hdr_blocks = ((int *)fib)[17] - ((int *)fib)[16];	/* (its size: the chunk table's) */
-	n = __istext((char *)fn) && __cxp0i(28, fib, pg_buf, 0, 2, 0, rd, 0, 0) == 2 && __cspi(34) == 0;	/* FBLOCKIO, blocks 0 and 1 */
-	__cxp0v(6, fib, 0);				/* FCLOSE */
-	return n;
+		__cspv(5, u, pg_buf, 0, 1024, b, 0);	/* UNITREAD */
+	else
+		__cspv(6, u, pg_buf, 0, 1024, b, 0);	/* UNITWRITE */
+	return __cspi(34) == 0;
 }
 
+#pragma segment VISTART
 void hdr_read(const char *fn)
 {
 	unsigned char *r;
+	int n;
 	r = (unsigned char *)pg_buf + HDR_OFF;
 	hdr_line = hdr_col = hdr_blocks = 0;
-	if (hdr_io(fn, 1) && r[0] == 'V' && r[1] == 'I' && r[2] == 1) {
+	ucsd_unreserve();			/* (its open takes the reserve's blocks, and gives them back) */
+	n = hdr_io(fn, 1);
+	ucsd_reserve();
+	if (n && r[0] == 'V' && r[1] == 'I' && r[2] == 1) {
 		hdr_col = r[3];
 		hdr_line = r[4] + 256 * r[5];
 	}
 }
+
+/* started from X(ecute): no arguments, so ask */
+char *ucsd_askname(void)
+{
+	static char name[40];
+	int n;
+	printf("Edit what file? ");
+	fflush(stdout);
+	if (!fgets(name, sizeof(name), stdin))
+		name[0] = 0;
+	n = strlen(name);
+	while (n > 0 && (name[n - 1] == '\n' || name[n - 1] == ' '))
+		name[--n] = 0;
+	return name;
+}
+#pragma segment MAIN
 
 void hdr_write(const char *fn, int line, int col)
 {

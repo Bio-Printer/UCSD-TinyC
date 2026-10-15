@@ -97,6 +97,10 @@ char *pg_search(const char *pat, int dir, int far);
 int pg_find_line(const char *pat);
 void pg_close(void);
 void pg_init(const char *fn);
+#pragma segment VISTART
+void pg_start(const char *fn);
+#pragma segment MAIN
 void pg_reset(void);
+void pg_abandon(const char *fn, const char *why);
 int pg_load(const char *fn);
 int pg_save(const char *fn);

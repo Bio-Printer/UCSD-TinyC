@@ -244,3 +244,27 @@ byte for byte as before.  CC's own link: 8238 words free at its least (5748
 with the old passes, 6731 before sub-volumes); the least of `cc @all` is now
 a compile, not a link.  The library folds small helpers into their callers
 (dirread and dirwrite are macros of dirreadat and dirwriteat).
+
+A file in a sub-volume edited in Z80 mode (vi; dirs.c's SVAT segment).  Opening
+or saving one by its path takes DIRS (the path code, 1.8 KB) and a 2 KB
+directory on the stack: more than vi's Z80 window leaves, and freeing memory
+does not help -- `free` gives a block back to malloc's list, but code segments
+and stack frames load into the gap between the heap and the stack.  So the path
+is followed once, when vi starts and the memory is still free (`__svplace`: the
+file's place, `struct svat`: its unit, its sub-volume's first block, its name
+and the kind a new file of that name gets).  After that `__svat` pointing to the place makes
+stdio's fopen and fclose open and commit the file by it (`__svopenat`,
+`__svcloseat`), with the directory read into 2 KB the program has: the window,
+empty when a file is loaded; for the save its first 2 KB are parked in
+VI.SWAP's last two slots (kept for it) and brought back (only the bytes move,
+so every pointer into the window stays good).  Only SVAT (890 bytes; dirwriteat and findname
+live there too) comes into the gap.  vi's start-up code (pg_start, hdr_read,
+ucsd_askname) is a segment of its own (VISTART), gone before the window is
+sized.  The header page that keeps the place a file was left is read and
+written at the blocks fopen finds (in a sub-volume by the place, at the end
+when the window is no longer needed).  The window in Z80 mode: 3842 bytes for
+a text file on a volume (3876 before), 2988 for a 146 KB listing (3022), 2728
+for a text file in a sub-volume (before: none, vi refused).  Closing a
+sub-volume file that was only read needs no directory (__svclose).  The
+compiler's fmtfix moved from its own segment (REFSCAN) into PARSE: a code
+file has at most ten segments, and CC's library part now has DIRS and SVAT.

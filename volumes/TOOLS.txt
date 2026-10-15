@@ -3,7 +3,7 @@ TOOLS:  20 files  (a UCSD directory holds 77)
   FILE            BLOCKS  WHAT
 
   README.TEXT         20  what is on this volume
-  VI.CODE             78  vi, the screen editor: VI NAME.C from the shell
+  VI.CODE             79  vi, the screen editor: VI NAME.C from the shell
   GREP.CODE           32  grep: GREP [-i] [-n] PATTERN FILES from the shell
   CAT.CODE            25  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
   HEXDUMP.CODE        24  hexdump: HEXDUMP [-i] [FILE ...] from the shell

@@ -43,7 +43,7 @@ int pg_fill_top(void);
 int pg_slot(void)
 {
 	int i;
-	for (i = 0; i < pg_slots; i++)
+	for (i = 0; i < pg_slots - 2; i++)	/* (the last two: pg_stash's) */
 		if (!(pg_used[i >> 3] & (1 << (i & 7)))) {
 			pg_used[i >> 3] |= 1 << (i & 7);
 			return i;

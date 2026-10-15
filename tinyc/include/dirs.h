@@ -38,8 +38,7 @@ struct svat {
     int unit;                           /* the sub-volume's disk */
     int base;                           /* its first block (0: the volume's own directory) */
     char name[16];                      /* the file's name in it */
-    int first;                          /* the file's first block on the disk (0: none yet) */
-    int blocks;                         /* ... and its blocks */
+    int kind;                           /* a new file's kind (by its name) */
     int *dir;                           /* 2 KB for the directory, while it is read */
 };
 extern struct svat *__svat;             /* (stdio) */
@@ -57,7 +56,7 @@ int svresize(char *path, char *size, char *cmd);        /* GROW, SHRINK: +N, -N 
 int dirwriteat(int u, int base, int *dir);  /* a directory back (GDIRP forgotten): 0 on a disk error */
 int findname(int *dir, char *name);     /* the entry called name, 0 none */
 int __svopenat(FILE *f, char *mode, struct svat *at);   /* f opened (its record set) in at's sub-volume */
-int __svcloseat(FILE *f, struct svat *at);  /* f's directory entry after it is written; at->first, blocks */
+int __svcloseat(FILE *f, struct svat *at);  /* f's directory entry after it is written */
 int __svclose(FILE *f);                 /* the same, with a 2 KB directory of its own */
 #pragma segment MAIN
 int __svname(char *name);               /* (stdio) a path into a sub-volume, or a name on the shell's path */

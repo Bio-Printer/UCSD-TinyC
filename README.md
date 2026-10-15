@@ -70,7 +70,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `growtest.py` | GROW and SHRINK (the library's `svresize`): a sub-volume grown where there is no room after it (moved, whole), in place, shrunk without and with the krunch it needs, refused below its files; GROW of one inside another that krunches the outer one first; no room, a bad size, a file; KRUNCH of a sub-volume; GREP, LC and WC wildcards in sub-volumes and on the shell's path; on the host the sizes and the files byte for byte (both modes) |
 | `ccsubvoltest.py` | CC with sub-volumes: on the shell's path (CD) the source, its includes, objects (/C, /L) and an @batch file from the sub-volume, a path (`CC #9:A/PROG2`) whose `"y.h"` comes from its own sub-volume, a big source (GREP.C); the .OBJ files next to their sources, the .CODE files on the volume that holds the sub-volume, no TCTEMP left; copies of the files outside the sub-volume are syntax errors |
 | `xsubvoltest.py` | X(ecute at the Command: prompt with a path into sub-volumes (BIGGY 1.26's OS, U134.4_OS_SOURCE_v1.13): `#5:A/HELLO`, `#5:/A/B/HELLO2`, `#5:\a\b\hello2`, `A/HELLO` on the prefix, an exact name, a name without a path as before; No file, not code (both modes) |
-| `visubvoltest.py` | vi on a file in a sub-volume inside a sub-volume (CD): dd dd ZZ saves it, the place kept in its header page (vi opens there again), VI.SWAP on the prefix volume and gone afterwards; in Z80 mode vi says there is not enough memory, the file untouched (both modes) |
+| `visubvoltest.py` | vi on a file in a sub-volume inside a sub-volume (CD): dd dd ZZ saves it, the place kept in its header page (vi opens there again), VI.SWAP on the prefix volume and gone afterwards; the file (600 lines) is bigger than the Z80 window: loaded lazily and saved by its place (the library's SVAT segment; both modes) |
 | `quicktest.py` | the normal regression test, one shell session: `cc @libs \| grep Joining` (IDENTICAL), `hexdump -i system.list \| grep -n :10` (its 3 non-data lines), `lc \| wc`, `wc`, `cat \| grep -n \| wc`, `diff -u` + `patch`, vi `dd` `:w` `ZZ` (12 s; Z80 mode 5 min) |
 | `keytest.py` | the emulator's keys in both modes: the keys-waiting count (2.04), the break key (2.05), ^S / ^Q (2.06) |
 | `difftest.py` | DIFF: every output form for 16 pairs of files, simple ones equal to the host's diff, all of them applied by the host's patch to make FILE2; -i -w -b -B -q -s, binary files, the exit status |
@@ -192,7 +192,9 @@ docs/DESIGN.md for how.
     variadic function, which loaded the 2.3 KB segment REALLIT just to
     find that the name was not printf: at the deepest point of an
     expression that was the least free memory of most vi modules.
-    `fmtfam` says first (in PARSE); fmtfix is in the small segment REFSCAN.
+    `fmtfam` says first (in PARSE); fmtfix is in PARSE too (530 bytes: it was
+    the small segment REFSCAN until the library's SVAT took the last of the
+    ten segments a code file may have).
   - the case labels of a switch were two tables in the parser's heap that
     doubled at 64 cases (vi's do_cmd has 100+).  They go to the intermediate
     file as they come (record C) and the code generator collects them for
