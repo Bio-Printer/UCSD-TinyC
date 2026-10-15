@@ -199,6 +199,68 @@ void ucsd_unreserve(void)
 	ucsd_res[0] = ucsd_res[1] = NULL;
 }
 
+/* ---- a file in a sub-volume ----
+   The DIRS segment that finds a path and the 2 KB directory it reads take 5 KB: in Z80 mode
+   more than the window leaves.  So the file being edited is found once, before the window
+   takes the memory (its place: ucsd_place), and then read and saved by that place, its
+   directory read into 2 KB of the window (pg_load, pg_save): only the library's small SVAT
+   segment comes in.  Any other file in a sub-volume (:r, :w NAME) is opened only when DIRS and
+   its directory still fit. */
+#define SV_NEED 2600			/* words: DIRS, a 2 KB directory, their stack */
+int __istext(char *name);
+static struct svat ucsd_at;
+static char *ucsd_atfn;			/* the file whose place it is */
+static FILE *ucsd_atf;			/* opened for writing by it */
+
+/* fn's place, unless it is the one found before (DIRS: while there is the memory): 0 if fn
+   is not in a sub-volume, -1 if there is no memory to look, else 1 */
+int ucsd_place(const char *fn)
+{
+	if (!__svname((char *)fn))
+		return 0;
+	if (ucsd_atfn && !strcmp(fn, ucsd_atfn))
+		return 1;
+	free(ucsd_atfn);
+	ucsd_atfn = NULL;
+	if (__cspi(40) < SV_NEED)
+		return -1;
+	if (__svplace((char *)fn, &ucsd_at))		/* (else: no such sub-volume, fopen says so) */
+		ucsd_atfn = xstrdup(fn);
+	return 1;
+}
+
+/* fopen: the file being edited by its place, its directory read into dir (2 KB), when dir is
+   given; another file in a sub-volume only if DIRS still fits (else NULL) */
+FILE *ucsd_fopen(const char *fn, char *mode, char *dir)
+{
+	FILE *f;
+	if (!ucsd_atfn || strcmp(fn, ucsd_atfn))
+		dir = NULL;
+	else if (!dir && *mode == 'w')
+		ucsd_at.first = 0;			/* (moved, not by the place: its header page is not known) */
+	if (!dir && __svname((char *)fn) && __cspi(40) < SV_NEED)
+		return NULL;
+	ucsd_at.dir = (int *)dir;
+	if (dir)
+		__svat = &ucsd_at;
+	f = fopen((char *)fn, mode);
+	__svat = NULL;
+	if (dir && *mode == 'w')
+		ucsd_atf = f;
+	return f;
+}
+
+/* fclose; by the place what ucsd_fopen opened by it for writing (its directory into the same 2 KB) */
+int ucsd_fclose(FILE *f)
+{
+	int r;
+	if (f == ucsd_atf)
+		__svat = &ucsd_at;
+	r = fclose(f);
+	__svat = NULL;
+	ucsd_atf = NULL;
+	return r;
+}
 
 /* started from X(ecute): no arguments, so ask */
 char *ucsd_askname(void)
@@ -330,7 +392,7 @@ int file_size(const char *fn)
 	if (!fn || !fn[0])
 		return -1;
 	ucsd_unreserve();
-	f = fopen(fn, "r");
+	f = ucsd_fopen(fn, "r", NULL);
 	n = 0;
 	if (f) {
 		while ((c = getc(f)) != EOF)
@@ -362,7 +424,7 @@ int file_insert(const char *fn, char *p, int update_ro_status)
 	if (!p)
 		return -1;
 	ucsd_unreserve();
-	f = fopen(fn, "r");
+	f = ucsd_fopen(fn, "r", NULL);
 	cnt = 0;
 	if (f) {
 		for (; cnt < size && (c = getc(f)) != EOF; cnt++)
@@ -393,7 +455,7 @@ int file_write(char *fn, char *first, char *last)
 		return cnt < 0 ? -1 : cnt ? last - first + 1 : 0;
 	}
 	ucsd_unreserve();
-	f = fopen(fn, "w");
+	f = ucsd_fopen(fn, "w", NULL);
 	if (!f) {
 		ucsd_reserve();
 		return -1;
@@ -440,7 +502,6 @@ void clear_to_eos(void)
    window is the memory its code leaves.) */
 #define HDR_OFF 1000
 int hdr_line, hdr_col, hdr_blocks;
-int __istext(char *name);
 void __ptitle(char *name, char *title);
 
 /* rd: the header page of the text file fn into pg_buf; else pg_buf into it; 1 if done */
@@ -449,8 +510,19 @@ static int hdr_io(const char *fn, int rd)
 	char fib[80];
 	char title[32];
 	int n;
-	if (__svname((char *)fn))			/* in a sub-volume: by the blocks' place (dirs.c) */
-		return __svio((char *)fn, pg_buf, __istext((char *)fn) ? 2 : 0, rd, &hdr_blocks);
+	if (__svname((char *)fn)) {			/* in a sub-volume: the file being edited, by its place */
+		if (!ucsd_atfn || strcmp(fn, ucsd_atfn) || !ucsd_at.first)
+			return 0;
+		if (rd)
+			hdr_blocks = ucsd_at.blocks;
+		if (!__istext((char *)fn) || ucsd_at.blocks < 2)
+			return 0;
+		if (rd)
+			__cspv(5, ucsd_at.unit, pg_buf, 0, 1024, ucsd_at.first, 0);	/* UNITREAD */
+		else
+			__cspv(6, ucsd_at.unit, pg_buf, 0, 1024, ucsd_at.first, 0);	/* UNITWRITE */
+		return __cspi(34) == 0;
+	}
 	__ptitle((char *)fn, title);
 	__cxp0v(3, fib, 0, -1);				/* FINIT(fib, NIL, untyped) */
 	__cxp0v(5, fib, title, 1, 0);			/* FOPEN, an old file */

@@ -317,7 +317,10 @@ void pg_init(const char *fn)
 #ifdef __UCSD__
 	/* the file: the place it was left (its header page) and its size.  VI.SWAP holds the file and
 	   25 KB for what is typed in, and the chunk table no more than its slots (every chunk has one;
-	   the memory goes to the window: in Z80 mode it is small) */
+	   the memory goes to the window: in Z80 mode it is small).  A file in a sub-volume: its place
+	   first, while there is the memory (viucsd.c) */
+	if (ucsd_place(fn) < 0)
+		pg_abandon(fn, "no memory in a sub-volume");
 	hdr_read(fn);
 	if (hdr_blocks / 2 + 25 < pg_slots)
 		pg_slots = hdr_blocks / 2 + 25;
@@ -337,12 +340,11 @@ void pg_init(const char *fn)
 		pg_f = fopen(PG_SWAP, "r+b");
 	}
 	/* MEMAVAIL words, less malloc's room for the stack and some for yanks; for a file in a
-	   sub-volume also what its opens and the save take: the library's DIRS segment, a 2 KB
-	   directory and their stack */
+	   sub-volume also the library's SVAT segment its load and save bring in, and its stack */
 	cap = 2L * __cspi(40) - 600 - PG_RESERVE;
 	if (__svname((char *)fn)) {
-		cap = cap - 5200;
-		if (cap < PG_SLOT + 2 * PG_ROOM)	/* (Z80 mode: the window would be gone) */
+		cap = cap - PG_SVAT;
+		if (cap < PG_SLOT + 2 * PG_ROOM)	/* (the window would be gone) */
 			pg_abandon(fn, "no memory in a sub-volume");
 	}
 #else
@@ -485,11 +487,14 @@ int pg_load(const char *fn)
 	pg_reset();
 	end = dot = screenbegin = text;
 #ifdef __UCSD__
+	if (ucsd_place(fn) < 0)			/* (:e of another file in a sub-volume) */
+		pg_abandon(fn, "no memory in a sub-volume");
 	ucsd_unreserve();
-#endif
-	f = fopen(fn, "r");
-#ifdef __UCSD__
+	f = ucsd_fopen(fn, "r", text, text + 1024);	/* (the empty window: the directory, by the place) */
+	memset(text, 0, 2048);
 	ucsd_reserve();
+#else
+	f = fopen(fn, "r");
 #endif
 	if (!f)
 		return -1;
@@ -537,8 +542,10 @@ int pg_save(const char *fn)
 	}
 #ifdef __UCSD__
 	ucsd_unreserve();
-#endif
+	f = ucsd_fopen(fn, "w", pg_buf, NULL);	/* (by the place: the directory into pg_buf and f's page) */
+#else
 	f = fopen(fn, "w");
+#endif
 	if (!f) {
 #ifdef __UCSD__
 		ucsd_reserve();
@@ -552,10 +559,13 @@ int pg_save(const char *fn)
 		ok = pg_put(text, end - text, f);
 	for (i = 0; ok && i < pg_na; i++)
 		ok = !pg_io(PGA(i).slot, pg_buf, PGA(i).len, 0) && pg_put(pg_buf, PGA(i).len, f);
+#ifdef __UCSD__
+	if (ucsd_fclose(f) == EOF)
+		ok = 0;
+	ucsd_reserve();
+#else
 	if (fclose(f) == EOF)
 		ok = 0;
-#ifdef __UCSD__
-	ucsd_reserve();
 #endif
 	return ok;
 }
