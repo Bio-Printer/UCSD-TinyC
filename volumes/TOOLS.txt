@@ -1,24 +1,72 @@
-TOOLS:  20 files  (a UCSD directory holds 77)
+TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
 
-  FILE            BLOCKS  WHAT
+  FILE                     BLOCKS  WHAT
 
-  README.TEXT         20  what is on this volume
-  VI.CODE             79  vi, the screen editor: VI NAME.C from the shell
-  GREP.CODE           32  grep: GREP [-i] [-n] PATTERN FILES from the shell
-  CAT.CODE            25  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
-  HEXDUMP.CODE        24  hexdump: HEXDUMP [-i] [FILE ...] from the shell
-  OBJCOPY.CODE        26  objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file
-  MORE.CODE           28  more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time
-  LESS.CODE           36  less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards
-  SED.CODE            52  sed: SED [-nEsur] [-i[SUF]] [-e S] [-f F] [S] [FILE ...] a stream editor
-  DIFF.CODE           35  diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2
-  WC.CODE             28  wc: WC [-clmwL] [FILE ...] lines, words and bytes
-  LC.CODE             27  lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns
-  KRUNCH.CODE         25  krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area
-  GROW.CODE           27  grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)
-  SHRINK.CODE         27  shrink: SHRINK NAME -N | +N | N a sub-volume smaller (krunched first if it must be)
-  PATCH.CODE          38  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
-  MAN.CODE            25  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
-  BINDERC.CODE        28  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
-  MAN.TEXT            66  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
-  FILES.TEXT           6  this list
+  README.TEXT                  20  what is on this volume
+  VI.CODE                      80  vi, the screen editor: VI NAME.C from the shell
+  GREP.CODE                    33  grep: GREP [-i] [-n] PATTERN FILES from the shell
+  CAT.CODE                     26  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
+  HEXDUMP.CODE                 25  hexdump: HEXDUMP [-i] [FILE ...] from the shell
+  OBJCOPY.CODE                 27  objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file
+  MORE.CODE                    29  more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time
+  LESS.CODE                    37  less: LESS [-NSiF] [+N] [FILE ...] forwards and backwards
+  SED.CODE                     53  sed: SED [-nEsur] [-i[SUF]] [-e S] [-f F] [S] [FILE ...] a stream editor
+  DIFF.CODE                    36  diff: DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2
+  WC.CODE                      29  wc: WC [-clmwL] [FILE ...] lines, words and bytes
+  LC.CODE                      28  lc: LC [-1xFsrSC] [VOL: | #n:][PATTERN ...] the file names in columns
+  KRUNCH.CODE                  26  krunch: KRUNCH [-y] [VOL: | #n | PATH] the files moved down, the free blocks in one area
+  GROW.CODE                    28  grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)
+  SHRINK.CODE                  28  shrink: SHRINK NAME -N | +N | N a sub-volume smaller (krunched first if it must be)
+  PATCH.CODE                   39  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
+  MAN.CODE                     26  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
+  BINDERC.CODE                 29  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
+  MAN.TEXT                     66  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
+  SRC/                       2288  sub-volume: the tools' sources (a sub-volume each) and TOOLS.TEXT
+  SRC/README.TEXT               8  how to rebuild the tools
+  SRC/TOOLS.TEXT                6  CC @TOOLS:/SRC/TOOLS: rebuilds every tool
+  SRC/VI/                     758  sub-volume: vi's source
+  SRC/VI/VIMAIN.C              36  vi: start, main loop, keys, files, the terminal (Linux)
+  SRC/VI/VISCREEN.C            48  vi: the screen, the status line, the cursor
+  SRC/VI/VITEXT.C              40  vi: moving in and changing the text, searching ...
+  SRC/VI/VICOLON.C             34  vi: the : commands
+  SRC/VI/VICMD.C               52  vi: the vi commands
+  SRC/VI/VIPAGE.C              28  vi: a window into big files (see vipage.h)
+  SRC/VI/VIPAGE2.C             36  vi: the rest of the window into big files: jumps ...
+  SRC/VI/VIUCSD.C              30  vi on UCSD Pascal II.0 with Tiny-C: the routines that
+  SRC/VI/VI.H                  38  vi's modules share this: configuration, globals
+  SRC/VI/VIPAGE.H              14  vi's window into big files (VI.SWAP)
+  SRC/GREP/                    94  sub-volume: grep's source
+  SRC/GREP/GREP.C              24  GREP [-i] [-n] PATTERN [VOL: | #n: | PATH]FILES  ...
+  SRC/CAT/                     70  sub-volume: cat's source
+  SRC/CAT/CAT.C                12  CAT [-AbeEnstTuv] [FILE ...]: the files, one after the ...
+  SRC/HEXDUMP/                 70  sub-volume: hexdump's source
+  SRC/HEXDUMP/HEXDUMP.C        12  HEXDUMP [-i] [FILE ...]: the bytes of the files (one ...
+  SRC/OBJCOPY/                 74  sub-volume: objcopy's source
+  SRC/OBJCOPY/OBJCOPY.C        14  OBJCOPY [-I ihex|hexdump] [-O binary] [INFILE ...
+  SRC/MORE/                    82  sub-volume: more's source
+  SRC/MORE/MORE.C              18  MORE [-N] [-s] [-i] [+N] [FILE ...]: the files a screen ...
+  SRC/LESS/                   126  sub-volume: less's source
+  SRC/LESS/LESS.C              40  LESS [-NSiF] [+N] [FILE ...]: the files a screen at a ...
+  SRC/SED/                    214  sub-volume: sed's source
+  SRC/SED/SED.C                50  SED [-nEsur] [-i[SUFFIX]] [-e SCRIPT] [-f SCRIPTFILE] ...
+  SRC/SED/SEDRE.C              30  SED's regular expressions: POSIX basic (BRE) and ...
+  SRC/SED/SED.H                 4  what SED.C and SEDRE.C share: the regular expression ...
+  SRC/DIFF/                   110  sub-volume: diff's source
+  SRC/DIFF/DIFF.C              32  DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2: what ...
+  SRC/WC/                      78  sub-volume: wc's source
+  SRC/WC/WC.C                  16  WC [-clmwL] [FILE ...]: the lines, words and bytes of ...
+  SRC/LC/                      78  sub-volume: lc's source
+  SRC/LC/LC.C                  16  LC [-1xFsrSC] [VOL: | #n: | PATH][PATTERN ...]: the ...
+  SRC/KRUNCH/                  66  sub-volume: krunch's source
+  SRC/KRUNCH/KRUNCH.C          10  KRUNCH [-y] [VOL: | #n | PATH]: move the files of a ...
+  SRC/GROW/                    58  sub-volume: grow's source
+  SRC/GROW/GROW.C               6  GROW NAME SIZE: the sub-volume NAME (a path: A, #5:A ...
+  SRC/SHRINK/                  54  sub-volume: shrink's source
+  SRC/SHRINK/SHRINK.C           4  SHRINK NAME SIZE: the sub-volume NAME (a path: A, #5:A
+  SRC/PATCH/                  130  sub-volume: patch's source
+  SRC/PATCH/PATCH.C            42  PATCH [-RsbClN] [-F N] [-pN] [-o OUTFILE] [-i ...
+  SRC/MAN/                     74  sub-volume: man's source
+  SRC/MAN/MAN.C                14  MAN [-k WORD] [-l] [NAME ...]: the manual pages of the ...
+  SRC/BINDERC/                 78  sub-volume: binderc's source
+  SRC/BINDERC/BINDERC.C        16  BINDERC [FILE]: the Pascal System Binder, in Tiny-C
+  FILES.TEXT                   14  this list

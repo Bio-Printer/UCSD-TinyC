@@ -13,8 +13,9 @@ or later) of each command.  Printed: the worst over all commands, and the
 commands within 300 words of it.
 
 P-Code mode without reclaimed memory: the same layout, and the same
-figures, as Z80 mode, many times faster.  Needs build/TINY-C.BLK and
-build/TCSRC.BLK (mkvolume.py).  The least depends on how each file's
+figures, as Z80 mode, many times faster.  Needs build/TINY-C.BLK
+(mkvolume.py); the sources of TINY-C:/SRC/CC and /SRC/LIB are put on one
+volume of their own, SRC: (the prefix), as the commands name them.  The least depends on how each file's
 declarations fill the blocks, so it jumps about from size to size; prefer
 a small size near the best to the best by a few words.
 """
@@ -46,12 +47,18 @@ def build(size, work):
 def measure(cc, work):
     """the least free memory (words) of each command, and whether all were Done"""
     d = tempfile.mkdtemp(prefix='run_', dir=work)
-    for v in ('TINY-C', 'TCSRC'):
-        shutil.copy(os.path.join(ROOT, 'build', v + '.BLK'), d)
+    shutil.copy(os.path.join(ROOT, 'build', 'TINY-C.BLK'), d)
     vol = ucsdvol.Volume(os.path.join(d, 'TINY-C.BLK'))
     vol.write('CC.CODE', open(cc, 'rb').read(), 2)
     vol.save()
-    L = ['WAIT "Command:"'] + prefix('TCSRC:')
+    ucsdvol.main(['new', os.path.join(d, 'SRC.BLK'), 'SRC', '2000'])
+    s = ucsdvol.Volume(os.path.join(d, 'SRC.BLK'))
+    for sub in ('CC', 'LIB'):
+        v = vol.sub('SRC').sub(sub)
+        for e in v.entries:
+            s.write(e[3], *v.read(e[3]))
+    s.save()
+    L = ['WAIT "Command:"'] + prefix('SRC:')
     first = len(L) + 1                  # the first step of the first command
     for c in COMMANDS:
         L += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINY-C:CC\\r"',
@@ -59,7 +66,7 @@ def measure(cc, work):
     sp = os.path.join(d, 'script')
     open(sp, 'w').write('\n'.join(L) + '\n')
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'), os.path.join(d, 'TINY-C.BLK'),
-                        os.path.join(d, 'TCSRC.BLK'), sp, 'native', os.path.join(d, 'out'), '', '1800'],
+                        os.path.join(d, 'SRC.BLK'), sp, 'native', os.path.join(d, 'out'), '', '1800'],
                        capture_output=True, text=True, env=dict(os.environ, VERIFY_LOWWATER='2'))
     steps = dict((int(a), int(b)) for a, b in re.findall(r'low water: step (\d+): (-?\d+) words', r.stdout))
     tr = open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read()

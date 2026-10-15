@@ -18,10 +18,36 @@ KIND = {0: 'untyped', 1: 'baddisk', 2: 'code', 3: 'text', 4: 'info', 5: 'data', 
 
 
 class Volume:
-    def __init__(self, path):
+    def __init__(self, path, data=None):
         self.path = path
-        self.data = bytearray(open(path, 'rb').read())
+        self.data = bytearray(open(path, 'rb').read() if data is None else data)
         self.read_dir()
+
+    @classmethod
+    def new(cls, name, blocks, date=0):
+        """a fresh, empty volume in memory (no file: image() gives its bytes).  A sub-volume (the
+        shell's MKDIR) is one written onto another as a data file: its volume name is its file
+        name's first 7 characters before a '.'"""
+        d = bytearray(blocks * BLK)
+        vn = name.upper().split('.')[0][:7].encode('latin1')
+        struct.pack_into('<HHHB', d, 2 * BLK, 0, 6, 0, len(vn))
+        d[2 * BLK + 7: 2 * BLK + 7 + len(vn)] = vn
+        struct.pack_into('<HHHH', d, 2 * BLK + 14, blocks, 0, 0, date)
+        return cls(None, d)
+
+    def image(self):
+        """the volume's bytes, its directory written"""
+        self.write_dir()
+        return bytes(self.data)
+
+    def sub(self, name):
+        """the sub-volume NAME (a data file holding a volume) as a Volume in memory: put it back
+        with write(NAME, sub.image(), 5)"""
+        return Volume(None, self.read(name)[0])
+
+    def used(self):
+        """the blocks up to the end of the last file"""
+        return max([self.dirlast] + [e[1] for e in self.entries])
 
     def read_dir(self):
         d = self.data[2 * BLK: 6 * BLK]

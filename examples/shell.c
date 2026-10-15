@@ -19,7 +19,7 @@
                              path), or of VOL, unit n or a sub-volume
                              (DIR A, DIR #5:/A/B/*.C), whose names match PAT: * or =
                              any characters, ? any one (DIR #5, DIR *.C,
-                             DIR TOOLSRC:VI*.C, DIR #9:?.TEXT); /E adds
+                             DIR TOOLS:/SRC/VI/*.C, DIR #9:?.TEXT); /E adds
                              each file's first block and the bytes in its
                              last block, and the unused areas
      TYPE [VOL: | #n:]NAME   a text file on the console (with wildcards:

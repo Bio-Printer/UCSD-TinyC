@@ -314,16 +314,17 @@ void pg_start(const char *fn)
 	pg_maxch = PG_MAXCH;
 	pg_slots = PG_MAXSLOT;
 #ifdef __UCSD__
-	/* the file: the place it was left (its header page) and its size.  VI.SWAP holds the file and
-	   25 KB for what is typed in, and the chunk table no more than its slots (every chunk has one;
-	   the memory goes to the window: in Z80 mode it is small).  A file in a sub-volume: its place
+	/* the file: the place it was left (its header page) and its size.  VI.SWAP holds the file,
+	   32 KB for what is typed in and the 2 slots a save parks the window in (pg_stash), and the
+	   chunk table no more than the slots chunks may have (every chunk has one; the memory goes to
+	   the window: in Z80 mode it is small).  A file in a sub-volume: its place
 	   first, while there is the memory (viucsd.c) */
 	ucsd_place(fn);
 	hdr_read(fn);
-	if (hdr_blocks / 2 + 25 < pg_slots)
-		pg_slots = hdr_blocks / 2 + 25;
-	if (pg_slots < pg_maxch)
-		pg_maxch = pg_slots;
+	if (hdr_blocks / 2 + 34 < pg_slots)
+		pg_slots = hdr_blocks / 2 + 34;
+	if (pg_slots - 2 < pg_maxch)
+		pg_maxch = pg_slots - 2;
 #endif
 	pg_ch = (struct pgchunk *)xzalloc(pg_maxch * sizeof(struct pgchunk));
 	pg_f = fopen(PG_SWAP, "w+b");
@@ -496,10 +497,13 @@ int pg_load(const char *fn)
 	pg_reset();
 	end = dot = screenbegin = text;
 #ifdef __UCSD__
-	ucsd_place(fn);				/* (:e of another file in a sub-volume) */
+	if (__svname((char *)fn) && !ucsd_isat(fn)) {	/* (:e of another file in a sub-volume) */
+		if (__cspi(40) < SV_NEED)
+			pg_abandon(fn, "no memory in a sub-volume");
+		ucsd_place(fn);
+	}
 	ucsd_unreserve();
-	f = ucsd_fopen(fn, "r", text);		/* (in a sub-volume: the empty window holds its directory) */
-	memset(text, 0, text_size);
+	f = ucsd_fopen(fn, "r", NULL);		/* (in a sub-volume: by its place) */
 	ucsd_reserve();
 #else
 	f = fopen(fn, "r");

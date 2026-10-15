@@ -1,26 +1,72 @@
-TINY-C:  22 files  (a UCSD directory holds 77)
+TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
 
-  FILE            BLOCKS  WHAT
+  FILE                     BLOCKS  WHAT
 
-  CC.CODE            129  the Tiny-C compiler: X(ecute CC
-  TCLIB.OBJ           78  the C library (built with /Z), linked into every program
-  TCMSGS.TEXT          8  the compiler's messages (line n = message n)
-  README.TEXT         12  how to use Tiny-C
-  ASSERT.H             4  header: assert()
-  CONIO.H              4  header: console: getch, putch, cputs, kbhit, gotoxy, clrscr
-  CTYPE.H              4  header: isdigit, isalpha, toupper, ...
-  DIRS.H              12  header: the disks and their directories: units[], dirread, volunit, wildmatch ...
-  FCNTL.H              4  header: open()'s flags: O_RDONLY, O_CREAT, ...
-  FLOAT.H              4  header: FLT_MAX, FLT_EPSILON, ... (32-bit reals)
-  IO.H                 4  header: open, read, write, lseek, close, unlink
-  LIMITS.H             4  header: INT_MAX, LONG_MAX, ... (16-bit int, 32-bit long)
-  MATH.H               4  header: sqrt, sin, cos, atan, exp, log, pow, fabs, ...
-  PSYS.H              18  header: SYSCOM: the P-System's SYSCOM record (SYSCOM->memtop, ...)
-  SETJMP.H             4  header: setjmp, longjmp: back to an earlier point, out of any calls
-  STDARG.H             4  header: va_list, va_start, va_arg, va_end
-  STDDEF.H             4  header: size_t, NULL, offsetof
-  STDIO.H             10  header: printf, scanf, FILE, fopen, fgets, fprintf, ...
-  STDLIB.H             6  header: malloc, free, atoi, rand, qsort, exit, ...
-  STRING.H             4  header: strcpy, strcmp, strlen, memcpy, memset, ...
-  TCRT.H               6  header: runtime helpers the compiler calls (reference only)
-  FILES.TEXT           6  this list
+  CC.CODE                     131  the Tiny-C compiler: CC from the shell, X(ecute TINY-C:CC
+  TCMSGS.TEXT                   8  the compiler's messages (line n = message n)
+  README.TEXT                  14  how to use Tiny-C, and what is where
+  INCLUDE/                    246  sub-volume: the headers (#include <stdio.h> finds them here)
+  INCLUDE/ASSERT.H              4  assert()
+  INCLUDE/CONIO.H               4  console: getch, putch, cputs, kbhit, gotoxy, clrscr
+  INCLUDE/CTYPE.H               4  isdigit, isalpha, toupper, ...
+  INCLUDE/DIRS.H               12  disks, directories and sub-volumes: volunit, pathdir, wildmatch ...
+  INCLUDE/FCNTL.H               4  open()'s flags: O_RDONLY, O_CREAT, ...
+  INCLUDE/FLOAT.H               4  FLT_MAX, FLT_EPSILON, ... (32-bit reals)
+  INCLUDE/IO.H                  4  open, read, write, lseek, close, unlink
+  INCLUDE/LIMITS.H              4  INT_MAX, LONG_MAX, ... (16-bit int, 32-bit long)
+  INCLUDE/MATH.H                4  sqrt, sin, cos, atan, exp, log, pow, fabs, ...
+  INCLUDE/PSYS.H               18  SYSCOM: the P-System's SYSCOM record (SYSCOM->memtop, ...)
+  INCLUDE/SETJMP.H              4  setjmp, longjmp: back to an earlier point, out of any calls
+  INCLUDE/STDARG.H              4  va_list, va_start, va_arg, va_end
+  INCLUDE/STDDEF.H              4  size_t, NULL, offsetof
+  INCLUDE/STDIO.H              10  printf, scanf, FILE, fopen, fgets, fprintf, ...
+  INCLUDE/STDLIB.H              6  malloc, free, atoi, rand, qsort, exit, ...
+  INCLUDE/STRING.H              4  strcpy, strcmp, strlen, memcpy, memset, ...
+  INCLUDE/TCRT.H                6  runtime helpers the compiler calls (reference only)
+  LIB/                        204  sub-volume: the C library
+  LIB/TCLIB.OBJ                79  the C library (built with /Z), linked into every program
+  SRC/                       1734  sub-volume: the sources of the compiler and the library, and how to rebuild them
+  SRC/README.TEXT               6  how to rebuild Tiny-C and the tools
+  SRC/ALL.TEXT                  4  CC @TINY-C:/SRC/ALL: the compiler, the library and every tool
+  SRC/CC/                    1150  sub-volume: the compiler: its modules and BUILD.TEXT
+  SRC/CC/BUILD.TEXT             4  CC @TINY-C:/SRC/CC/BUILD: rebuilds the compiler -> TINY-C:CC2.CODE
+  SRC/CC/OBJFORMAT.TEXT        24  the .OBJ file format: what CC writes, how the linker reads it
+  SRC/CC/MAIN.C                38  the driver: commands, @FILE, the passes
+  SRC/CC/UTIL.C                16  messages, output helpers, memory pools
+  SRC/CC/TYPES.C                6  type predicates
+  SRC/CC/PP.C                  78  pass 1: the preprocessor
+  SRC/CC/LEX.C                 36  pass 2: the tokenizer
+  SRC/CC/PSYM.C                20  parser: types and symbols
+  SRC/CC/EXPR.C                64  parser: expressions
+  SRC/CC/DECL.C                22  parser: declarations and initializers
+  SRC/CC/STMT.C                34  parser: statements, functions, declarations
+  SRC/CC/COMPILE.C             10  parser: the pass, helpers' and #pragma declarations
+  SRC/CC/IR.C                  28  the intermediate file between parser and code generator
+  SRC/CC/GEN.C                 24  pass 3: P-code generation: emitter, object files
+  SRC/CC/GENX.C                48  pass 3: P-code for expressions, calls, switch
+  SRC/CC/LINK.C                50  the linker: object files -> code file
+  SRC/CC/TC.H                  30  shared declarations (every module)
+  SRC/CC/PARSE.H               12  the parser modules' shared declarations
+  SRC/CC/GEN.H                  8  gen.c and genx.c's shared declarations
+  SRC/LIB/                    518  sub-volume: the library: its modules and LIBS.TEXT
+  SRC/LIB/LIBS.TEXT             4  CC @TINY-C:/SRC/LIB/LIBS: rebuilds the library -> TINY-C:/LIB/TCLIB2.OBJ
+  SRC/LIB/ASSERT.C              4  <assert.h>
+  SRC/LIB/CONIO.C               4  <conio.h>
+  SRC/LIB/CTYPE.C               4  <ctype.h>
+  SRC/LIB/DIRS.C               30  volunit, pathdir, wildmatch, opens by a place ...: disks, directories, sub-volumes (<dirs.h>)
+  SRC/LIB/FLTFMT.C              8  printf's %f %e %g (linked only when floats are used)
+  SRC/LIB/IO.C                  6  <io.h>
+  SRC/LIB/MATH.C                6  <math.h>
+  SRC/LIB/MEMSCAN.C             6  memfill, memgap (<psys.h>)
+  SRC/LIB/PEXEC.C              14  pexec, main(argc, argv) (<psys.h>)
+  SRC/LIB/REDIRECT.C            6  freopen; >NAME and <NAME on the command line
+  SRC/LIB/SETJMP.C              8  <setjmp.h>
+  SRC/LIB/STDIO.C              50  <stdio.h>
+  SRC/LIB/STDIOBLK.C           10  <stdioblk.h>
+  SRC/LIB/STDLIB.C             14  <stdlib.h>
+  SRC/LIB/STRING.C              8  <string.h>
+  SRC/LIB/STRTOLD.C             4  strtold, atold (<stdlib.h>, P-Code mode)
+  SRC/LIB/SUBVOL.C             26  svcanon, dirfree, dirkrunch, svresize: KRUNCH, GROW, SHRINK (<dirs.h>)
+  SRC/LIB/TCRT.C               18  runtime helpers: C division, shifts, unsigned, longs
+  SRC/LIB/LIBINT.H              6  the library modules' shared declarations
+  FILES.TEXT                   14  this list

@@ -213,7 +213,7 @@ static int nextrec(void)
         curfilei++;
         if (curfilei >= nobjfiles)
             return 0;
-        lin = fopen(objfiles[curfilei], "rb");
+        lin = svfopen(objfiles[curfilei], "rb");
         if (!lin)
             fatal(25 /* cannot open */, objfiles[curfilei]);
         for (i = 0; i < 4; i++)
@@ -899,7 +899,7 @@ int join(char **objs, int nobjs, char *out)
     if (!o)
         fatal(24 /* cannot create */, out);
     for (i = 0; i < nobjs; i++) {
-        f = fopen(objs[i], "rb");
+        f = svfopen(objs[i], "rb");
         if (!f)
             fatal(25 /* cannot open */, objs[i]);
         zeros = 0;

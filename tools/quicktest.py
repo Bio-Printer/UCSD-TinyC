@@ -3,7 +3,9 @@
 BIGGY.BLK that tools/mkbiggy.py made, the volumes of build/) that uses the compiler, the linker, the
 shell's pipes and most of the tools together:
 
-  cc @libs | grep Joining          the library compiles itself (CMPCODE: TCLIB2.OBJ IDENTICAL to the host's)
+  cc @tiny-c:/src/lib/libs | grep Joining
+                                   the library compiles itself (CMPCODE: TINY-C:/LIB/TCLIB2.OBJ IDENTICAL to the
+                                   host's)
   hexdump -i system.list | grep -n :10
                                    the 3 lines that are not 16-byte data records: two 64 KB segment records and
                                    the end record (SYSTEM.LIST is 287 blocks)
@@ -38,16 +40,15 @@ def main():
     ensure_setup()
     mode = os.environ.get('PSYS_MODE', 'native')
     d = tempfile.mkdtemp(prefix='quick_')
-    for v in ('TINY-C', 'TCSRC', 'TCEXTRA', 'TOOLS'):
+    for v in ('TINY-C', 'TCEXTRA', 'TOOLS'):
         shutil.copy(os.path.join(BUILD, v + '.BLK'), d)
     data = os.path.join(d, 'data')                  # BIGGY as mkbiggy.py made it is the boot disk
     os.makedirs(data)
     for f in os.listdir(os.path.join(BUILD, 'data')):
         shutil.copy(os.path.join(BUILD, 'data', f), data)
     shutil.copy(os.path.join(BUILD, 'BIGGY.BLK'), os.path.join(data, 'Big_Disk.BLK'))
-    tv = ucsdvol.Volume(os.path.join(d, 'TINY-C.BLK'))
-    tv.remove('TCLIB2.OBJ')
-    tv.save()
+    spare = os.path.join(d, 'SPARE.BLK')
+    ucsdvol.main(['new', spare, 'SPARE', '100'])
     work = os.path.join(d, 'WORK.BLK')
     ucsdvol.main(['new', work, 'WORK', '600'])
     w = ucsdvol.Volume(work)
@@ -62,17 +63,17 @@ def main():
             'patch -s -i #13:P.TEXT #13:A.TEXT',
             'diff #13:A.TEXT #13:B.TEXT',
             'cd #13']
-    L = ['WAIT "Command:"', 'TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @libs | grep Joining\\r"',
-         'WAIT "Joining TINY-C:TCLIB2.OBJ"', 'WAIT "shell> "']
+    L = ['WAIT "Command:"', 'TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @tiny-c:/src/lib/libs | grep Joining\\r"',
+         'WAIT "Joining TINY-C:/LIB/TCLIB2.OBJ"', 'WAIT "shell> "']
     for c in cmds:
         L += ['TYPE "%s\\r"' % c, 'WAIT "shell> "']
     L += ['TYPE "vi V.TEXT\\r"', 'WAIT "V.TEXT"', 'TYPE "dd:w\\rZZ"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
-    L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
+    L += cmpcode('TINY-C:/LIB/TCLIB.OBJ', 'TINY-C:/LIB/TCLIB2.OBJ')
     sp = os.path.join(d, 'quick.script')
     open(sp, 'w').write(shell_script('\n'.join(L) + '\n'))
     env = dict(os.environ, VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'), VERIFY_UNIT12=os.path.join(d, 'TCEXTRA.BLK'),
                VERIFY_UNIT13=work)
-    r = subprocess.run([os.path.join(BUILD, 'run_verify'), data, os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'),
+    r = subprocess.run([os.path.join(BUILD, 'run_verify'), data, os.path.join(d, 'TINY-C.BLK'), spare,
                         sp, mode, os.path.join(d, 'out'), '', '3000'], capture_output=True, text=True, env=env)
     tp = os.path.join(d, 'out', 'transcript.txt')
     tr = shell_transcript(open(tp, encoding='latin1').read()).replace('\r', '\n') if os.path.exists(tp) else ''
@@ -105,7 +106,7 @@ def main():
     hxl = [l for l in hx.split('\n') if l and not l.startswith('[exit')]
     checks = [
         ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
-        ('cc @libs | grep Joining: GREP found the join line', 'Joining TINY-C:TCLIB2.OBJ' in tr[tr.find('cc @libs'):]),
+        ('cc @tiny-c:/src/lib/libs | grep Joining: GREP found the join line', 'Joining TINY-C:/LIB/TCLIB2.OBJ' in tr[tr.find('cc @tiny-c'):]),
         ('TCLIB2.OBJ IDENTICAL to the host-built TCLIB.OBJ', 'IDENTICAL' in tr),
         ('hexdump -i system.list | grep -n :10: the %d lines that are not data records' % len(short), None not in short and hxl == short),
         ('lc -1 #11:*.CODE | wc -l: %d programs' % ncode, str(ncode) in (part(cmds[1]) or '').split()),

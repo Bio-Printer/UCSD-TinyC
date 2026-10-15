@@ -142,6 +142,37 @@ static int linkall(char **objs, int n, char *out)
 
 #pragma segment MAIN
 
+#ifdef __TINYC__
+#define LIBPATH "TINY-C:/LIB/TCLIB.OBJ"   /* (when it is not on the prefix or boot volume) */
+static int exists(char *name);
+
+#pragma segment LINK
+/* name (NAME, or A/NAME) beside the @batch file in the sub-volume dir, as NAME.C or NAME.TEXT
+   (ext2 "": ext1 only): then name becomes that path; 1 if it is there */
+int inbatch(char *name, char *dir, char *ext1, char *ext2)
+{
+    char p[64];
+    int n;
+    if (!dir[0] || strchr(name, ':') || name[0] == '*' || name[0] == '/' || strlen(dir) + strlen(name) > 55)
+        return 0;
+    strcpy(p, dir);
+    strcat(p, name);
+    n = strlen(p);
+    strcat(p, ext1);
+    if (!exists(p)) {
+        if (!ext2[0])
+            return 0;
+        strcpy(p + n, ext2);
+        if (!exists(p))
+            return 0;
+    }
+    p[n] = 0;
+    strcpy(name, p);
+    return 1;
+}
+#pragma segment MAIN
+#endif
+
 /* A file opened outside a pass is opened inside a heap mark of its own:
    fclose would put its buffer (about 300 words) on the free list below
    the next pass's mark, where it would stay unused through that pass. */
@@ -195,10 +226,12 @@ static void onpathvol(char *out, char *name)
    names (on the stack: gone with the command -- on the heap they outlived
    it and @ALL ran out of memory) take no room while a source compiles */
 #pragma segment LINK
-static int linkcmd(char *s, char *lib, int from)
+/* dir: the sub-volume of the @batch file the command is in ("" none): the objects named without
+   a volume are looked for there first */
+static int linkcmd(char *s, char *lib, int from, char *dir)
 {
     char *objs[MAXFILES];
-    char names[360];
+    char names[640];                    /* (paths into sub-volumes: TINY-C:/SRC/LIB/STDIO.OBJ) */
     char src[64];
     char obj[64];
     char out[64];
@@ -245,7 +278,10 @@ static int linkcmd(char *s, char *lib, int from)
             continue;
         strcpy(src, s);
         strcat(src, ".OBJ");
-        if (!strchr(s, ':') && !strchr(s, '/') && s[0] != '*' && strlen(src) <= 15) {
+#ifdef __TINYC__
+        inbatch(src, dir, "", "");      /* (beside the batch file, if it is there) */
+#endif
+        if (!strchr(src, ':') && !strchr(src, '/') && s[0] != '*' && strlen(src) <= 15) {
             n = findfile(src, "", from, obj, &n);
             if (n < 0)
                 return 0;           /* on several disks: findfile said so */
@@ -282,14 +318,14 @@ static int linkcmd(char *s, char *lib, int from)
 
 #pragma segment MAIN
 
-/* from: the unit of the @batch file the command is in (0: typed) */
-static int command(char *s, char *lib, int from)
+/* from: the unit of the @batch file the command is in (0: typed); dir: its sub-volume ("" not
+   in one), where a source named without a volume is looked for first */
+static int command(char *s, char *lib, int from, char *dir)
 {
     char *objs[2];                      /* the object and the library */
     char src[64];                       /* a name, or a path into sub-volumes */
     char alt[16];
     char obj[64];
-    char out[30];
     char ti[24];
     char tr[24];
     char *t;
@@ -307,7 +343,7 @@ static int command(char *s, char *lib, int from)
             s++;
     }
     if (s[0] == '/' && (s[1] == 'L' || s[1] == 'J'))
-        return linkcmd(s, lib, from);
+        return linkcmd(s, lib, from, dir);
     {
         conly = 0;
         if (s[0] == '/' && s[1] == 'C') {
@@ -330,6 +366,10 @@ static int command(char *s, char *lib, int from)
             s[n = n - 5] = 0;
         if (n > 2 && strcmp(s + n - 2, ".C") == 0)
             s[n - 2] = 0;
+#ifdef __TINYC__
+        if (inbatch(s, dir, ".C", ".TEXT"))
+            n = strlen(s);              /* beside the batch file: the name becomes that path */
+#endif
         strcpy(src, s);
         strcat(src, ".C");
         if (strchr(s, ':') || strchr(s, '/') || s[0] == '*') {
@@ -359,8 +399,6 @@ static int command(char *s, char *lib, int from)
         }
         strcat(obj, s);
         strcat(obj, ".OBJ");
-        strcpy(out, s);
-        strcat(out, ".CODE");
         onpathvol(ti, "TCTEMP.TEXT");
         onpathvol(tr, "TCTEMP.IR");
         if (!compileone(src, ti, tr, obj))
@@ -371,7 +409,9 @@ static int command(char *s, char *lib, int from)
     }
     if (lib[0])                         /* found once, at the start (see main) */
         objs[nobjs++] = lib;
-    return linkall(objs, nobjs, out);
+    strcpy(src, s);                     /* NAME.CODE (src is free again) */
+    strcat(src, ".CODE");
+    return linkall(objs, nobjs, src);
 }
 
 /* @FILE: the commands in FILE.TEXT.  The file is not kept open (its
@@ -392,6 +432,8 @@ static int batch(char *name, char *lib, char *line)
     int k;
     int n;
     char found[64];
+    char dir[64];
+    char *p;
     int from;
     if (strlen(name) > 56) {
         say("name too long\n");
@@ -413,6 +455,12 @@ static int batch(char *name, char *lib, char *line)
         if (n > 0)
             strcpy(path, found);
     }
+    strcpy(dir, path);                  /* its sub-volume: VOL:/A/ ("" none) */
+    p = strrchr(dir, '/');
+    if (p)
+        p[1] = 0;
+    else
+        dir[0] = 0;
     for (done = 0;; done++) {
         __heapsave();                       /* the file's buffer: see exists */
         f = fopen(path, "r");
@@ -448,7 +496,7 @@ static int batch(char *name, char *lib, char *line)
             }
             continue;
         }
-        if (!command(line, lib, from)) {
+        if (!command(line, lib, from, dir)) {
             say("Stopped.\n");
             return 0;
         }
@@ -483,7 +531,7 @@ int main(int argc, char **argv)
     if (!exists(lib))
         strcpy(lib, "*TCLIB.OBJ");
     if (!exists(lib))
-        strcpy(lib, "TINY-C:TCLIB.OBJ");
+        strcpy(lib, LIBPATH);
     if (!exists(lib))
         lib[0] = 0;
     if (argc > 1) {
@@ -509,7 +557,7 @@ int main(int argc, char **argv)
             say("> ");
             say(line);
             say("\n");
-            if (!(line[0] == '@' ? batch(line + 1, lib, line) : command(line, lib, 0)))
+            if (!(line[0] == '@' ? batch(line + 1, lib, line) : command(line, lib, 0, "")))
                 return 1;
         }
         say("Done.\n");
@@ -530,7 +578,7 @@ int main(int argc, char **argv)
     if (*s == '@')
         n = batch(s + 1, lib, line);
     else
-        n = command(s, lib, 0);
+        n = command(s, lib, 0, "");
     if (!n)
         return 1;
     say("Done.\n");

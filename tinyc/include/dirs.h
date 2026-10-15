@@ -32,14 +32,15 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf);    /* the direc
 
 /* A file in a sub-volume found once (__svplace, while there is the memory for DIRS and a 2 KB
    directory), then opened and closed by that place without them: only the small SVAT segment
-   comes in, the directory read into 2 KB the program has (vi: its window's, when the window
-   has the memory).  While __svat points to one, fopen and fclose of a sub-volume path are its file. */
+   comes in.  An open reads the directory a block at a time into the FILE's own buffer; closing
+   a file that was written reads it into 2 KB the program has (vi: its window's).  While __svat points to one, fopen and fclose of a sub-volume path are its file. */
 struct svat {
     int unit;                           /* the sub-volume's disk */
     int base;                           /* its first block (0: the volume's own directory) */
     char name[16];                      /* the file's name in it */
     int kind;                           /* a new file's kind (by its name) */
-    int *dir;                           /* 2 KB for the directory, while it is read */
+    int *dir;                           /* 2 KB for the directory while a file written is closed
+                                           (an open reads it a block at a time) */
 };
 extern struct svat *__svat;             /* (stdio) */
 int __svplace(char *path, struct svat *at); /* path's place; 0 if its sub-volume is not there */

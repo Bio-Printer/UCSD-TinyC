@@ -25,7 +25,7 @@ Build (host): each module `build/tc -c -z -I tinyc/include ports/vi/NAME.c -o NA
 then `build/tc -z -L tinyc/include/tclibz.obj vimain.obj ... viucsd.obj -o VI.CODE`
 (`-z` and `tclibz.obj` so that it also runs in Z80 mode; `compile_modules` in
 `tools/tcrun.py` does it); `tools/mkvolume.py` puts VI.CODE on TOOLS: and the sources
-on TOOLSRC:. On the P-System, `@TOOLS` on TOOLSRC: compiles each module (`/Z /C`)
+in TOOLS:/SRC/VI. On the P-System, `CC @TOOLS:/SRC/TOOLS` compiles each module (`/Z /C VI/VIMAIN`)
 and links them (`/L VI=...`): the same VI.CODE byte for byte, in Z80 mode and the
 normal layout too (`tools/vitest.py --build`). In one piece, vi.c needed P-Code mode
 with the Harvard layout, the only one with the memory to compile it.
@@ -98,7 +98,8 @@ window writes the lines leaving it at one edge onto that side's stack and reads 
 chunk of the other side's stack in; slots are reused. Every line is in exactly one
 place, so saving writes before + window + after (the file being edited is not kept
 open, and saving over it is safe). `VI.SWAP` is deleted when vi ends.
-It is the file's size and 25 KB for what is typed in: a new file takes the largest free
+It is the file's size and 32 KB for what is typed in (and 2 KB in which a save parks the
+window while it reads the directory of a file in a sub-volume): a new file takes the largest free
 area of the volume, so vi writes its last slot, closes it (the rest of that area is free
 again) and opens it again to read and write; a `:w` of a file on the same volume then finds
 room.
@@ -111,7 +112,7 @@ are dropped.
 When lines go out of the window onto a stack and fit, with the chunk on top of that stack,
 in one slot, they are joined to it (`pg_join`): no new slot and no new table entry.  Without
 that the chunks the window leaves behind as it moves are often part full, and VI.SWAP (the file
-and 25 KB) ran out of slots: on SYSTEM.LIST, 687G and some Up arrows and the lines above the
+and then 25 KB) ran out of slots: on SYSTEM.LIST, 687G and some Up arrows and the lines above the
 window no longer came in.  (Not while the file is still loading: `pg_buf` holds its carry.)
 
 In Z80 mode the window of a big listing holds not much more than a screen, and a full chunk

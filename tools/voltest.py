@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""voltest.py -- test the four volumes (build/TINY-C.BLK, TCSRC.BLK,
-TCEXTRA.BLK, TCTESTS.BLK, made by mkvolume.py) on the P-System: TINY-C: on
-unit #5, TCSRC: on #9, TCEXTRA: on #10, TCTESTS: on #11.
+"""voltest.py -- test the volumes (build/TINY-C.BLK, TCEXTRA.BLK, TCTESTS.BLK,
+made by mkvolume.py) on the P-System: TINY-C: on unit #5, an empty SPARE: on
+#9, TCEXTRA: on #10, TCTESTS: on #11.
 
-  @LIBS    on TCSRC: (X TINY-C:CC) -> TINY-C:TCLIB2.OBJ (/Z /C), CMPCODE:
-           IDENTICAL to TINY-C:TCLIB.OBJ
-  @BUILD   on TCSRC:, from the shell (S, cc @build: CC takes its commands
-           as arguments) -> TINY-C:CC2.CODE, CMPCODE: IDENTICAL to TINY-C:CC.CODE
+  @TINY-C:/SRC/LIB/LIBS   (X TINY-C:CC) -> TINY-C:/LIB/TCLIB2.OBJ (/Z /C),
+           CMPCODE: IDENTICAL to TINY-C:/LIB/TCLIB.OBJ
+  @TINY-C:/SRC/CC/BUILD   from the shell (S, cc @tiny-c:/src/cc/build: CC
+           takes its commands as arguments) -> TINY-C:CC2.CODE, CMPCODE:
+           IDENTICAL to TINY-C:CC.CODE
   @DEMOS   on TCEXTRA: (compiler and headers from TINY-C:), then QUEENS runs
   @TESTS   on TCTESTS: (likewise), then LONGS runs
 
@@ -21,6 +22,7 @@ import os, sys, re, shutil, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import ucsdvol
 from psys import ensure_setup, BUILD, shell_script, shell_transcript
 
 # the first line LONGS prints (tests/longs.expect)
@@ -45,10 +47,10 @@ def cmpcode(a, b):
 
 
 def script():
-    L = ['WAIT "Command:"'] + prefix('TCSRC:')
-    L += tinyc('TINY-C:CC', '@LIBS', ['> /Z /C ASSERT', '> /Z /C TCRT', 'Joining TINY-C:TCLIB2.OBJ'])
-    L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
-    L += ['TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @build\\r"', 'WAIT "> @BUILD"', 'WAIT "> /C MAIN"',
+    L = ['WAIT "Command:"'] + prefix('SPARE:')
+    L += tinyc('TINY-C:CC', '@TINY-C:/SRC/LIB/LIBS', ['> /Z /C ASSERT', '> /Z /C TCRT', 'Joining TINY-C:/LIB/TCLIB2.OBJ'])
+    L += cmpcode('TINY-C:/LIB/TCLIB.OBJ', 'TINY-C:/LIB/TCLIB2.OBJ')
+    L += ['TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @tiny-c:/src/cc/build\\r"', 'WAIT "> @TINY-C:/SRC/CC/BUILD"', 'WAIT "> /C MAIN"',
           'WAIT "> /L TINY-C:CC2="', 'WAIT "Done."', 'WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"',
           'WAIT "Command:"']
     L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')
@@ -64,8 +66,9 @@ def script():
 def main():
     ensure_setup()
     d = tempfile.mkdtemp(prefix='voltest_')
-    for v in ('TINY-C', 'TCSRC', 'TCEXTRA', 'TCTESTS'):
+    for v in ('TINY-C', 'TCEXTRA', 'TCTESTS'):
         shutil.copy(os.path.join(ROOT, 'build', v + '.BLK'), d)
+    ucsdvol.main(['new', os.path.join(d, 'SPARE.BLK'), 'SPARE', '400'])
     sp = os.path.join(d, 'voltest.script')
     open(sp, 'w').write(shell_script(script()))
     mode = os.environ.get('PSYS_MODE', 'native')
@@ -74,7 +77,7 @@ def main():
     if mode == 'native':
         env['VERIFY_RECLAIM'] = '1'
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
-                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), sp, mode,
+                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'SPARE.BLK'), sp, mode,
                         os.path.join(d, 'out'), '', '600' if mode == 'native' else '1800'], capture_output=True, text=True, env=env)
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout
     tr = shell_transcript(open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read())

@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
-"""mkvolume.py -- build the two Tiny-C volumes (volumes/*.zip):
+"""mkvolume.py -- build the Tiny-C volumes (volumes/*.zip):
 
-  TINY-C:   everything needed to use Tiny-C: CC.CODE, TCLIB.OBJ,
-            TCMSGS.TEXT, the headers, README.TEXT, FILES.TEXT (the name
-            TINY-C: is built into the compiler: it finds TCLIB.OBJ,
-            TCMSGS.TEXT and headers there)
-  TCSRC:    everything needed to rebuild it: the compiler's and the
-            library's sources, BUILD.TEXT (@BUILD), LIBS.TEXT (@LIBS),
-            README.TEXT, FILES.TEXT
+  TINY-C:   Tiny-C: CC.CODE, TCMSGS.TEXT, README.TEXT, FILES.TEXT and the
+            sub-volumes INCLUDE (the headers), LIB (TCLIB.OBJ) and SRC (the
+            sources: ALL.TEXT, CC/ with BUILD.TEXT, LIB/ with LIBS.TEXT).
+            The name TINY-C: is built into the compiler: it finds
+            TCMSGS.TEXT, TINY-C:/LIB/TCLIB.OBJ and TINY-C:/INCLUDE there.
   TCEXTRA:  the demo programs (DEMOS), the mini-shell and its examples
             (examples/), CMPCODE: sources and ready-to-run code files,
             README.TEXT, DEMOS.TEXT, FILES.TEXT
   TCTESTS:  the test programs (tests/ that are not demos): sources and
             ready-to-run code files, README.TEXT, TESTS.TEXT, FILES.TEXT
-  (Four volumes: a UCSD directory holds 77 files, and @BUILD, @LIBS,
-  @DEMOS and @TESTS leave a NAME.OBJ for every module or program.)
-  TOOLS:    tools written in Tiny-C, ready to run (VI.CODE), README.TEXT,
-            FILES.TEXT
-  TOOLSRC:  their sources (VI.H, VIMAIN.C, ...), README.TEXT, FILES.TEXT
+  TOOLS:    the tools written in Tiny-C, ready to run (VI.CODE ...),
+            MAN.TEXT, README.TEXT, FILES.TEXT and the sub-volume SRC: their
+            sources, a sub-volume each (SRC/VI, SRC/GREP ...), TOOLS.TEXT.
+  (A UCSD directory holds 77 files: the demos and tests are volumes of
+  their own, and @DEMOS and @TESTS leave a NAME.OBJ for every program.)
 
-FILES.TEXT lists every file on its volume with its size and what it is;
-the same listing is written next to the zips (volumes/NAME.txt).
+FILES.TEXT lists every file on its volume, those in its sub-volumes too
+(INCLUDE/STDIO.H), with its size and what it is; the same listing is
+written next to the zips (volumes/NAME.txt).
 """
 import os, sys, zipfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,8 +38,22 @@ LIBMODS = sorted(f[:-2] for f in os.listdir(LIB) if f.endswith('.c'))
 
 README_TC = """TINY-C for UCSD Pascal II.0                        volume TINY-C:
 
-Use: set the prefix to TINY-C: (F(iler, P(refix), then X(ecute CC and
-answer "Compile what file?" with
+WHAT IS WHERE (FILES.TEXT lists every file):
+    CC.CODE          the compiler
+    TCMSGS.TEXT      its messages
+    INCLUDE/         the headers: STDIO.H, STRING.H, PSYS.H ...
+    LIB/             the C library, TCLIB.OBJ
+    SRC/             the sources, and the batch files that rebuild everything:
+      SRC/ALL.TEXT     the compiler, the library and the tools at once
+      SRC/CC/          the compiler's modules, BUILD.TEXT
+      SRC/LIB/         the library's modules, LIBS.TEXT
+The tools (VI, GREP, ...) are on TOOLS:, their sources in TOOLS:/SRC; the
+demos on TCEXTRA:, the test programs on TCTESTS:.  INCLUDE, LIB and SRC are
+sub-volumes (the shell's MKDIR, CD, DIR: DIR TINY-C:/INCLUDE, CD
+TINY-C:/SRC/CC); the Filer sees each as one data file.
+
+Use: from the shell (S at the Command: prompt) type CC NAME, or
+X(ecute TINY-C:CC and answer "Compile what file?" with
     NAME                 compile NAME.C (or NAME.TEXT), link with
                          TCLIB.OBJ -> NAME.CODE  (NAME.C works too)
     /C NAME              compile only -> NAME.OBJ
@@ -51,30 +64,32 @@ answer "Compile what file?" with
     @FILE                run the commands in FILE.TEXT, one per line
                          (blank lines and lines starting with ; skipped;
                          a line @OTHER runs OTHER.TEXT, then goes on)
-The same commands can be arguments instead (from the shell: S at the
-Command: prompt): CC @BUILD @LIBS, CC /Z HANOI SIEVE.  Options and the
-word after them make one command; they run in turn, no prompt, and the
-first that fails stops CC.
+The same commands can be arguments instead: CC @TINY-C:/SRC/ALL, CC /Z
+HANOI SIEVE.  Options and the word after them make one command; they run
+in turn, no prompt, and the first that fails stops CC.
 X(ecute NAME runs a program.  WHICH DISK: a source, a #include file or
-an @FILE named with a volume (TOOLSRC:VI.H, #5:X.C) is taken from there
-only.  Named without one, CC looks on every disk: on one disk only, that
-one; on several, the one on the disk of the file that names it (the
+an @FILE named with a volume (TOOLS:/SRC/VI/VI.H, #5:X.C) is taken from
+there only.  Named without one, CC looks on every disk: on one disk only,
+that one; on several, the one on the disk of the file that names it (the
 including file, the @FILE), else the one on the prefix volume, else it
-lists the volumes and stops (name one).  SUB-VOLUMES: a path (CC
-A/X, CC #5:/A/B/X, #include "A/X.H", /L OUT=A/X,A/Y) is taken from
-there; after the shell's CD into a sub-volume CC looks in it first; and
-a file included from a sub-volume finds its "x.h" there first.  An
-object (NAME.OBJ) goes next to its source, and /L and /J find objects
-the same way as sources; the code file goes where NAME says (its volume
-or path, else the shell's path or the prefix volume) -- the shell runs a
-code file in a sub-volume where it is; the temporary files (TCTEMP.TEXT,
-TCTEMP.IR) go to the prefix volume, or to the volume that holds the
-shell's path; TCLIB.OBJ and
-TCMSGS.TEXT are found on TINY-C: when they are not on the prefix volume
-or the boot volume.
+lists the volumes and stops (name one).  HEADERS: <x.h> is taken from
+TINY-C:/INCLUDE first, "x.h" from the including file's sub-volume first,
+then as above, then from TINY-C:/INCLUDE.  SUB-VOLUMES: a path (CC A/X,
+CC #5:/A/B/X, #include "A/X.H", /L OUT=A/X,A/Y) is taken from there;
+after the shell's CD into a sub-volume CC looks in it first; the names in
+an @FILE in a sub-volume (SRC/CC/BUILD's MAIN, TOOLS:/SRC/TOOLS's VI/VIMAIN)
+are looked for beside it first.  An object (NAME.OBJ) goes next to its
+source, and /L and /J find objects the same way as sources; the code file
+goes where NAME says (its volume or path, else the shell's path or the
+prefix volume) -- the shell runs a code file in a sub-volume where it is;
+the temporary files (TCTEMP.TEXT, TCTEMP.IR) go to the prefix volume, or to
+the volume that holds the shell's path; TCLIB.OBJ and TCMSGS.TEXT are
+taken from the prefix volume or the boot volume when they are there, else
+from TINY-C:/LIB and TINY-C:.
 
-THE SOURCES of the compiler and the library, and the batch files that
-rebuild them (@BUILD, @LIBS), are on TCSRC: (see its README.TEXT).
+REBUILDING (see SRC/README.TEXT):  CC @TINY-C:/SRC/CC/BUILD makes
+TINY-C:CC2.CODE, CC @TINY-C:/SRC/LIB/LIBS TINY-C:/LIB/TCLIB2.OBJ, CC
+@TINY-C:/SRC/ALL both and every tool.
 
 THE DEMO PROGRAMS are on TCEXTRA: (DEMOS.TEXT, @DEMOS), the test
 programs on TCTESTS: (TESTS.TEXT, @TESTS).
@@ -113,33 +128,32 @@ Filer's T(ransfer copies a text file to such a name as it is.
 FILES.TEXT lists every file on this volume.
 """
 
-README_SRC = """TINY-C SOURCES                                    volume TCSRC:
+README_SRC = """TINY-C SOURCES                              TINY-C:/SRC
 
-The sources of the Tiny-C compiler (14 modules, TC.H, PARSE.H, GEN.H)
-and of its library (%d modules, LIBINT.H), and the batch files that
-rebuild them.
-Mount TINY-C: as well: the compiler, the headers, TCLIB.OBJ and
-TCMSGS.TEXT come from there.
+The sources of the Tiny-C compiler (CC/: 14 modules, TC.H, PARSE.H,
+GEN.H) and of its library (LIB/: %d modules, LIBINT.H), and the batch
+files that rebuild them; the tools' sources are in TOOLS:/SRC.
 
-REBUILDING EVERYTHING:  set the prefix to TCSRC:, then from the shell
-(S at the Command: prompt) type  CC @BUILD @LIBS.
+REBUILDING THE COMPILER:  from the shell, CC @TINY-C:/SRC/CC/BUILD (or
+X(ecute TINY-C:CC, answer @TINY-C:/SRC/CC/BUILD).  BUILD.TEXT compiles the
+compiler's modules and links TINY-C:CC2.CODE (next to the compiler),
+identical to TINY-C:CC.CODE apart from its name (check it with
+TCEXTRA:CMPCODE).  To use it, change its name to CC.CODE with the Filer.
 
-REBUILDING THE COMPILER:  set the prefix to TCSRC:, X(ecute
-TINY-C:CC, answer  @BUILD.  BUILD.TEXT compiles the compiler's modules
-and links TINY-C:CC2.CODE (next to the compiler), identical to
-TINY-C:CC.CODE apart from its name (check it with TCEXTRA:CMPCODE).  To
-use it, change its name to CC.CODE with the Filer.
+REBUILDING THE LIBRARY:  CC @TINY-C:/SRC/LIB/LIBS.  LIBS.TEXT compiles the
+library modules and joins them (/J) into TINY-C:/LIB/TCLIB2.OBJ, identical
+to TINY-C:/LIB/TCLIB.OBJ (check it with CMPCODE).  To use it, RENAME
+TINY-C:/LIB/TCLIB2.OBJ TCLIB.OBJ from the shell (after deleting the old
+one).
 
-REBUILDING THE LIBRARY:  set the prefix to TCSRC:, X(ecute TINY-C:CC,
-answer  @LIBS.  LIBS.TEXT compiles the library modules and joins them
-(/J) into TINY-C:TCLIB2.OBJ, identical to TINY-C:TCLIB.OBJ (check it
-with CMPCODE).  To use it, change its name to TCLIB.OBJ with the Filer.
+EVERYTHING AT ONCE:  CC @TINY-C:/SRC/ALL (TOOLS: on line too): BUILD, LIBS,
+then TOOLS:/SRC/TOOLS (every tool linked onto TOOLS:).
 
-Each module leaves a NAME.OBJ here; remove those with the Filer if you
-like.  OBJFORMAT.TEXT describes what is in a .OBJ file and how the
-linker reads it.
-
-FILES.TEXT lists every file on this volume.
+The names in a batch file are looked for beside it first, so these work
+from anywhere, and each module leaves its NAME.OBJ next to its source
+(DELETE them from the shell if you like: DELETE TINY-C:/SRC/CC/*.OBJ).
+CC/OBJFORMAT.TEXT describes what is in a .OBJ file and how the linker
+reads it.
 """
 
 README_SRC = README_SRC % len([f for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c')])
@@ -187,7 +201,7 @@ Its own commands:
         the shell's path is in).  DELETE leaves sub-volumes alone.
   DIR [/E] [VOL: or #5:][PATTERN]   the files of the prefix volume (or
         VOL:, or unit 5) whose names match: * or = any characters, ? any
-        one (DIR *.C, DIR #9:, DIR TOOLSRC:VI*.C); ESC stops a long list.
+        one (DIR *.C, DIR #9:, DIR TOOLS:/SRC/VI/*.C); ESC stops a long list.
         /E: each file's first block and bytes in its last block too, and
         the unused areas between the files.
   TYPE [VOL: or #5:]NAME         a text file on the console; with
@@ -199,7 +213,7 @@ Its own commands:
   VOLUMES (or VOLS)              every disk on line: unit, volume,
         files, blocks used of its size; (boot) and (prefix) marked.
   COPY SOURCE DEST    SOURCE: [VOL: or #5: or a path]PATTERN; DEST: a
-        volume or sub-volume (#9:, TOOLSRC:, A/, #5:/A/B/, or A when A is
+        volume or sub-volume (#9:, TOOLS:, A/, #5:/A/B/, or A when A is
         a sub-volume) keeps the names, or for one file a new name
         ([VOL:]NAME; no volume: the path or the prefix).  The copy keeps
         the kind (a .C stays a text file), the date and the length; a
@@ -226,9 +240,9 @@ F or S).  Only an estimate (see memgap in PSYS.H); the emulator's
 Options > Track Least Free Memory gives the exact figure.
 
 CMPCODE compares two files byte by byte (for .CODE files the program
-name in block 0 aside): after @BUILD on TCSRC:, compare
-TINY-C:CC.CODE with TINY-C:CC2.CODE, after @LIBS TINY-C:TCLIB.OBJ
-with TINY-C:TCLIB2.OBJ; it prints IDENTICAL.
+name in block 0 aside): after CC @TINY-C:/SRC/CC/BUILD, compare
+TINY-C:CC.CODE with TINY-C:CC2.CODE, after CC @TINY-C:/SRC/LIB/LIBS
+TINY-C:/LIB/TCLIB.OBJ with TINY-C:/LIB/TCLIB2.OBJ; it prints IDENTICAL.
 
 FILES.TEXT lists every file on this volume.
 """
@@ -247,7 +261,7 @@ leaves a NAME.OBJ as well; remove those with the Filer if you like).
 FILES.TEXT lists every file on this volume.
 """
 
-# the tools (TOOLS:, TOOLSRC:): name, its modules (compiled one by one, then
+# the tools (TOOLS:, their sources in TOOLS:/SRC): name, its modules (compiled one by one, then
 # linked), its headers, what it is
 VI_MODULES = ['ports/vi/%s.c' % m for m in
               ('vimain', 'viscreen', 'vitext', 'vicolon', 'vicmd', 'vipage', 'vipage2', 'viucsd')]
@@ -273,7 +287,8 @@ TOOLS = [
 
 README_TOOLS = """TOOLS                                               volume TOOLS:
 
-Tools written in Tiny-C, ready to run.  Their sources are on TOOLSRC:.
+Tools written in Tiny-C, ready to run.  Their sources are in TOOLS:/SRC, a
+sub-volume each (TOOLS:/SRC/VI, TOOLS:/SRC/GREP ...; SRC/README.TEXT).
 
 VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         VI NAME.C  (the name as typed; .C, .H and .TEXT files are text
@@ -288,10 +303,10 @@ VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         Big files: vi keeps a window of the file in memory (about 4 KB in
         Z80 mode, 12 KB in P-Code mode, 30 KB with the Harvard layout) and
         the rest in VI.SWAP, a temporary file on the prefix volume (the
-        file's size and 25 KB; deleted when vi ends; on the prefix volume
+        file's size and 32 KB; deleted when vi ends; on the prefix volume
         even after a CD into a sub-volume -- a file in one is found once, at
         the start, and read and saved by where it is, its window 1 KB
-        smaller: in Z80 mode about 2.7 KB).  Moving, searching (/ ? n N go on through the whole
+        smaller: in Z80 mode about 2.4 KB).  Moving, searching (/ ? n N go on through the whole
         file), G and :N move the window; files up to about 185 KB.  A
         command on more lines than fit in the window at once (500dd,
         :1,$s/a/b/ on a big file) is refused with a message.
@@ -306,7 +321,7 @@ GREP    GREP [-i] [-n] PATTERN [VOL: or #5:]FILES ...  from the shell: the
         * = ? wildcards and is looked for on every disk unless a volume
         is named.  PATTERN: * any characters (as in file names), . any
         one, [abc] [^abc] [a-z] a class, x+ x? x once or more / or not,
-        ^ $ the line's start and end, \c c itself (\*: a star), \s a
+        ^ $ the line's start and end, \\c c itself (\\*: a star), \\s a
         blank (the shell splits words at blanks).
         GREP printf *.C, GREP -i ^int #9:*.H, GREP vi*pageup *.C
 
@@ -410,19 +425,24 @@ BINDERC [FILE]  (or X(ecute TOOLS:BINDERC): the Pascal System's
 FILES.TEXT lists every file on this volume.
 """
 
-README_TOOLSRC = """TOOL SOURCES                                      volume TOOLSRC:
+README_TOOLS_SRC = """TOOL SOURCES                                TOOLS:/SRC
 
-The sources of the tools on TOOLS:.
+The sources of the tools on TOOLS:, a sub-volume each: SRC/VI holds vi's
+modules, SRC/GREP GREP.C, and so on.
 
-REBUILDING THEM:  set the prefix to TOOLSRC:, X(ecute TINY-C:CC, answer
-@TOOLS (TOOLS: on line too).  TOOLS.TEXT compiles every tool's modules
-(a NAME.OBJ here for each) and links the tool straight onto TOOLS:
-(TOOLS:NAME.CODE, replacing the one there).
+REBUILDING THEM:  from the shell, CC @TOOLS:/SRC/TOOLS (or X(ecute
+TINY-C:CC, answer @TOOLS:/SRC/TOOLS).  TOOLS.TEXT compiles every tool's
+modules (VI/VIMAIN: found beside TOOLS.TEXT; each leaves its NAME.OBJ next
+to its source) and links the tool straight onto TOOLS: (TOOLS:NAME.CODE,
+replacing the one there).
 
-EVERYTHING AT ONCE:  @ALL instead (TCSRC: and TINY-C: on line too).
-ALL.TEXT runs TCSRC:BUILD (the compiler -> TINY-C:CC2.CODE), TCSRC:LIBS
-(the library -> TINY-C:TCLIB2.OBJ) and TOOLS; a batch file can name
-other batch files (@NAME), and their objects stay on TCSRC:.
+EVERYTHING AT ONCE:  CC @TINY-C:/SRC/ALL: the compiler (TINY-C:CC2.CODE),
+the library (TINY-C:/LIB/TCLIB2.OBJ), then TOOLS; a batch file can name
+other batch files (@NAME).
+
+A NEW TOOL: MKDIR TOOLS:/SRC/NAME, its sources there, its lines in
+TOOLS.TEXT (/Z /C NAME/NAME, /L TOOLS:NAME=NAME/NAME) and a page in
+TOOLS:MAN.TEXT.
 
 VI      vi: the BusyBox "tiny vi" (GPL v2 or later, see VI.H), edited
         for Tiny-C, in modules: VI.H (what they share), VIMAIN.C (start,
@@ -466,13 +486,15 @@ FILES.TEXT lists every file on this volume.
 DEMOS = ('boxes', 'calc', 'demo', 'guess', 'hanoi', 'pi', 'queens', 'sieve')
 
 LIBMODS_ = sorted(f[:-2] for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c'))
-LIBS = """; LIBS -- rebuild the C library: prefix TCSRC:, X(ecute TINY-C:CC, answer @LIBS
-; Compiles every library module, then joins them into TCLIB2.OBJ.
+LIBS = """; LIBS -- rebuild the C library: CC @TINY-C:/SRC/LIB/LIBS from the shell
+; (or X(ecute TINY-C:CC and answer @TINY-C:/SRC/LIB/LIBS).  Compiles every library
+; module here (each leaves NAME.OBJ here), then joins them into TINY-C:/LIB/TCLIB2.OBJ.
 """ + ''.join('/Z /C %s\n' % m.upper() for m in LIBMODS_) + \
-    '/J TINY-C:TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
+    '/J TINY-C:/LIB/TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
 
-BUILD = """; BUILD -- rebuild the Tiny-C compiler: prefix TCSRC:, X(ecute TINY-C:CC, answer @BUILD
-; Compiles every module, then links them into CC2.CODE.
+BUILD = """; BUILD -- rebuild the Tiny-C compiler: CC @TINY-C:/SRC/CC/BUILD from the shell
+; (or X(ecute TINY-C:CC and answer @TINY-C:/SRC/CC/BUILD).  Compiles every module
+; here (each leaves NAME.OBJ here), then links them into TINY-C:CC2.CODE.
 """ + ''.join('/C %s\n' % m.upper() for m in MODULES) + \
     '/L TINY-C:CC2=%s\n' % ','.join(m.upper() for m in MODULES)
 
@@ -487,7 +509,7 @@ WHAT = {
     'limits.h': 'INT_MAX, LONG_MAX, ... (16-bit int, 32-bit long)',
     'math.h': 'sqrt, sin, cos, atan, exp, log, pow, fabs, ...',
     'psys.h': 'SYSCOM: the P-System\'s SYSCOM record (SYSCOM->memtop, ...)',
-    'dirs.h': 'the disks and their directories: units[], dirread, volunit, wildmatch ...',
+    'dirs.h': 'disks, directories and sub-volumes: volunit, pathdir, wildmatch ...',
     'setjmp.h': 'setjmp, longjmp: back to an earlier point, out of any calls',
     'stdarg.h': 'va_list, va_start, va_arg, va_end',
     'stddef.h': 'size_t, NULL, offsetof',
@@ -518,7 +540,7 @@ WHAT = {
     'pexec.c': 'pexec, main(argc, argv) (<psys.h>)',
     'redirect.c': 'freopen; >NAME and <NAME on the command line',
     'strtold.c': 'strtold, atold (<stdlib.h>, P-Code mode)',
-    'dirs.c': 'units[], dirread, dirwrite, volunit, wildmatch ...: disks and directories (<psys.h>)',
+    'dirs.c': 'volunit, pathdir, wildmatch, opens by a place ...: disks, directories, sub-volumes (<dirs.h>)',
     'subvol.c': 'svcanon, dirfree, dirkrunch, svresize: KRUNCH, GROW, SHRINK (<dirs.h>)',
     'tcrt.c': 'runtime helpers: C division, shifts, unsigned, longs',
     'vi.h': "vi's modules share this: configuration, globals",
@@ -543,44 +565,76 @@ def describe(path):
     return line
 
 
-class Vol:
-    def __init__(self, name, blocks):
-        self.name = name
-        self.path = os.path.join(ROOT, 'build', name + '.BLK')
-        ucsdvol.main(['new', self.path, name, str(blocks)])
-        self.v = ucsdvol.Volume(self.path)
-        self.desc = {}
+ROOM = 40                               # a sub-volume's least room to spare, in blocks
+
+
+class Dir:
+    """A volume being made (blocks given) or a sub-volume in it (blocks None: what it holds, and
+    room for as much again as its own files and ROOM blocks more, for the objects a rebuild
+    leaves, a new library beside the old one, and edits; GROW makes it bigger).  Its files with what they are; sub-volumes are made first, then written into it
+    as data files (ucsdvol.Volume.new: the shell's MKDIR)."""
+    def __init__(self, name, blocks=None):
+        self.name = name.upper()
+        self.blocks = blocks
+        self.items = []                 # [NAME, bytes or Dir, kind, what]
+        self.v = None
 
     def text(self, name, text, desc):
-        self.v.write(name, ucsdvol.text_to_ucsd(text), 3)
-        self.desc[name] = desc
+        self.items.append([name.upper(), ucsdvol.text_to_ucsd(text), 3, desc])
 
     def textfile(self, name, path, desc=None):
         self.text(name, open(path).read(), desc or describe(path))
 
     def binary(self, name, data, desc):
-        self.v.write(name, data, 2 if name.endswith('.CODE') else 5)
-        self.desc[name] = desc
+        self.items.append([name.upper(), data, 2 if name.upper().endswith('.CODE') else 5, desc])
+
+    def sub(self, name, desc):
+        d = Dir(name)
+        self.items.append([d.name, d, 5, desc])
+        return d
+
+    def made(self):
+        """the ucsdvol.Volume with everything written (once)"""
+        if not self.v:
+            parts = [(n, r.made().image() if isinstance(r, Dir) else r, k) for n, r, k, d in self.items]
+            need = 6 + sum(max(1, (len(r) + 511) // 512) for n, r, k in parts)
+            own = sum(max(1, (len(r) + 511) // 512) for n, r, k, d in self.items if not isinstance(r, Dir))
+            v = ucsdvol.Volume.new(self.name, self.blocks or need + own + ROOM)
+            for n, r, k in parts:
+                v.write(n, r, k)
+            self.v = v
+        return self.v
+
+    def listing(self, pre=''):
+        lines = []
+        for n, r, k, d in self.items:
+            if isinstance(r, Dir):
+                lines.append('  %-24s %6d  %s' % (pre + n + '/', r.made().eov, 'sub-volume: ' + d))
+                lines += r.listing(pre + n + '/')
+            else:
+                lines.append('  %-24s %6d  %s' % (pre + n, max(1, (len(r) + 511) // 512), d))
+        return lines
 
     def finish(self):
-        # FILES.TEXT: written once to learn its own size, then with it
-        self.text('FILES.TEXT', '', 'this list')
+        """FILES.TEXT (every file, the sub-volumes' too: written once to learn its own size, then
+        with it), the volume saved as build/NAME.BLK, volumes/NAME.zip and NAME.txt"""
+        for d in [r for n, r, k, d in self.items if isinstance(r, Dir)]:
+            d.made()
+        self.items.append(['FILES.TEXT', b'', 3, 'this list'])
         for _ in range(2):
-            listing = self.listing()
-            self.v.write('FILES.TEXT', ucsdvol.text_to_ucsd(listing), 3)
-        self.v.save()
+            listing = '\n'.join(['%s:  every file, the sub-volumes\' too (A/NAME: NAME in the sub-volume A)' % self.name, '',
+                                 '  %-24s %6s  %s' % ('FILE', 'BLOCKS', 'WHAT'), ''] + self.listing()) + '\n'
+            self.items[-1][1] = ucsdvol.text_to_ucsd(listing)
+        path = os.path.join(ROOT, 'build', self.name + '.BLK')
+        open(path, 'wb').write(self.made().image())
         os.makedirs(OUT, exist_ok=True)
         open(os.path.join(OUT, self.name + '.txt'), 'w').write(listing)
         with zipfile.ZipFile(os.path.join(OUT, self.name + '.zip'), 'w', zipfile.ZIP_DEFLATED) as z:
-            z.write(self.path, self.name + '.BLK')
-        print('%s: %d files' % (self.name, len(self.v.entries)))
+            z.write(path, self.name + '.BLK')
+        print('%s: %d files' % (self.name, len(self.listing())))
 
-    def listing(self):
-        lines = ['%s:  %d files  (a UCSD directory holds 77)' % (self.name, len(self.v.entries)), '',
-                 '  %-15s %6s  %s' % ('FILE', 'BLOCKS', 'WHAT'), '']
-        for first, last, kind, name, lastbyte, date in self.v.entries:
-            lines.append('  %-15s %6d  %s' % (name, last - first, self.desc.get(name, '')))
-        return '\n'.join(lines) + '\n'
+
+Vol = Dir
 
 
 def compiled(path):
@@ -595,35 +649,33 @@ def compiled(path):
 
 
 def tiny_c():
-    t = Vol('TINY-C', 4000)
+    """TINY-C: the compiler, its headers and library, and their sources"""
+    t = Dir('TINY-C', 4000)
     code, log = build()
-    t.binary('CC.CODE', open(code, 'rb').read(), 'the Tiny-C compiler: X(ecute CC')
-    t.binary('TCLIB.OBJ', open(build_lib(True), 'rb').read(), 'the C library (built with /Z), linked into every program')
+    t.binary('CC.CODE', open(code, 'rb').read(), 'the Tiny-C compiler: CC from the shell, X(ecute TINY-C:CC')
     t.textfile('TCMSGS.TEXT', os.path.join(INC, 'tcmsgs.txt'), "the compiler's messages (line n = message n)")
-    t.text('README.TEXT', README_TC, 'how to use Tiny-C')
+    t.text('README.TEXT', README_TC, 'how to use Tiny-C, and what is where')
+    inc = t.sub('INCLUDE', 'the headers (#include <stdio.h> finds them here)')
     for f in sorted(os.listdir(INC)):
         if f.endswith('.h'):
-            t.textfile(f.upper(), os.path.join(INC, f), 'header: ' + describe(os.path.join(INC, f)))
-    t.finish()
-
-
-def sources():
-    t = Vol('TCSRC', 4000)
-    t.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C')
-    t.text('BUILD.TEXT', BUILD, 'X TINY-C:CC, @BUILD: rebuilds the compiler -> TINY-C:CC2.CODE')
-    t.text('LIBS.TEXT', LIBS, 'X TINY-C:CC, @LIBS: rebuilds the library -> TINY-C:TCLIB2.OBJ')
-    t.textfile('OBJFORMAT.TEXT', os.path.join(SRC, 'OBJFORMAT.TEXT'), 'the .OBJ file format: what CC writes, how the linker reads it')
+            inc.textfile(f.upper(), os.path.join(INC, f), describe(os.path.join(INC, f)))
+    lib = t.sub('LIB', 'the C library')
+    lib.binary('TCLIB.OBJ', open(build_lib(True), 'rb').read(), 'the C library (built with /Z), linked into every program')
+    src = t.sub('SRC', 'the sources of the compiler and the library, and how to rebuild them')
+    src.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C and the tools')
+    src.text('ALL.TEXT', ALL, 'CC @TINY-C:/SRC/ALL: the compiler, the library and every tool')
+    cc = src.sub('CC', 'the compiler: its modules and BUILD.TEXT')
+    cc.text('BUILD.TEXT', BUILD, 'CC @TINY-C:/SRC/CC/BUILD: rebuilds the compiler -> TINY-C:CC2.CODE')
+    cc.textfile('OBJFORMAT.TEXT', os.path.join(SRC, 'OBJFORMAT.TEXT'), 'the .OBJ file format: what CC writes, how the linker reads it')
     for m in MODULES:
-        p = os.path.join(SRC, m + '.c')
-        t.textfile(m.upper() + '.C', p, 'compiler: ' + describe(p))
+        cc.textfile(m.upper() + '.C', os.path.join(SRC, m + '.c'))
     for h in ('tc.h', 'parse.h', 'gen.h'):
-        p = os.path.join(SRC, h)
-        t.textfile(h.upper(), p, 'compiler: ' + describe(p))
+        cc.textfile(h.upper(), os.path.join(SRC, h))
+    lb = src.sub('LIB', 'the library: its modules and LIBS.TEXT')
+    lb.text('LIBS.TEXT', LIBS, 'CC @TINY-C:/SRC/LIB/LIBS: rebuilds the library -> TINY-C:/LIB/TCLIB2.OBJ')
     for m in LIBMODS:
-        p = os.path.join(LIB, m + '.c')
-        t.textfile(m.upper() + '.C', p, 'library: ' + describe(p))
-    p = os.path.join(LIB, 'libint.h')
-    t.textfile('LIBINT.H', p, 'library: ' + describe(p))
+        lb.textfile(m.upper() + '.C', os.path.join(LIB, m + '.c'))
+    lb.textfile('LIBINT.H', os.path.join(LIB, 'libint.h'))
     t.finish()
 
 
@@ -657,22 +709,23 @@ def tests():
     t.finish()
 
 
-ALL = """; ALL -- rebuild the compiler, the library and every tool
-; prefix TOOLSRC:, X(ecute TINY-C:CC, answer @ALL (TCSRC:, TINY-C: and TOOLS: on line)
-@TCSRC:BUILD
-@TCSRC:LIBS
-@TOOLS
+ALL = """; ALL -- rebuild the compiler, the library and every tool (TOOLS: on line too):
+; CC @TINY-C:/SRC/ALL from the shell, or X(ecute TINY-C:CC and answer @TINY-C:/SRC/ALL
+@TINY-C:/SRC/CC/BUILD
+@TINY-C:/SRC/LIB/LIBS
+@TOOLS:/SRC/TOOLS
 """
 
 
 def tool_batch(name, mods):
-    """TOOLS.TEXT's lines for a tool: each module compiled (/Z /C), then linked"""
-    names = [os.path.splitext(os.path.basename(m))[0].upper() for m in mods]
+    """TOOLS.TEXT's lines for a tool: each module in its sub-volume compiled (/Z /C), then linked"""
+    names = ['%s/%s' % (name, os.path.splitext(os.path.basename(m))[0].upper()) for m in mods]
     return ''.join('/Z /C %s\n' % n for n in names) + '/L TOOLS:%s=%s\n' % (name, ','.join(names))
 
 
 def tools():
-    t = Vol('TOOLS', 4000)
+    """TOOLS: the tools ready to run, their manual pages, and their sources (a sub-volume each)"""
+    t = Dir('TOOLS', 4000)
     t.text('README.TEXT', README_TOOLS, 'what is on this volume')
     os.makedirs(TMP, exist_ok=True)
     for name, mods, hdrs, desc in TOOLS:
@@ -685,24 +738,21 @@ def tools():
     if missing:
         raise SystemExit('ports/man/MAN.TEXT has no page (%%%% NAME) for: %s' % ', '.join(missing))
     t.text('MAN.TEXT', man, 'the manual pages MAN shows (one %% NAME entry a program: edit and add here)')
-    t.finish()
-    s = Vol('TOOLSRC', 4000)
-    s.text('README.TEXT', README_TOOLSRC, 'what is on this volume')
-    s.text('TOOLS.TEXT', '; TOOLS -- compile and link every tool on TOOLSRC:\n'
-           '; prefix TOOLSRC:, X(ecute TINY-C:CC, answer @TOOLS\n' +
+    s = t.sub('SRC', "the tools' sources (a sub-volume each) and TOOLS.TEXT")
+    s.text('README.TEXT', README_TOOLS_SRC, "how to rebuild the tools")
+    s.text('TOOLS.TEXT', '; TOOLS -- compile and link every tool onto TOOLS:\n'
+           '; CC @TOOLS:/SRC/TOOLS from the shell, or X(ecute TINY-C:CC and answer @TOOLS:/SRC/TOOLS\n' +
            ''.join(tool_batch(name, mods) for name, mods, hdrs, desc in TOOLS),
-           'X TINY-C:CC, @TOOLS: rebuilds every tool here')
-    s.text('ALL.TEXT', ALL, 'X TINY-C:CC, @ALL: the compiler, the library and every tool')
+           'CC @TOOLS:/SRC/TOOLS: rebuilds every tool')
     for name, mods, hdrs, desc in TOOLS:
+        d = s.sub(name, name.lower() + "'s source")
         for f in mods + hdrs:
-            p = os.path.join(ROOT, f)
-            s.textfile(os.path.basename(f).upper(), p, '%s: %s' % (name.lower(), describe(p)))
-    s.finish()
+            d.textfile(os.path.basename(f).upper(), os.path.join(ROOT, f))
+    t.finish()
 
 
 def main():
     tiny_c()
-    sources()
     extras()
     tests()
     tools()

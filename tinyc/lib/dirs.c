@@ -255,7 +255,7 @@ int __svplace(char *path, struct svat *at)
     return 1;
 }
 
-/* stdio's fopen of a path: by its place, with this directory */
+/* stdio's fopen of a path: its place (pathdir), then opened by it */
 int __svopen(FILE *f, char *name, char *mode)
 {
     int dir[1024];
@@ -263,7 +263,6 @@ int __svopen(FILE *f, char *name, char *mode)
     if (!pathdir(name, dir, &at.unit, &at.base, at.name) || !at.name[0])
         return 0;
     svkind(&at);
-    at.dir = dir;
     return __svopenat(f, mode, &at);
 }
 
@@ -297,20 +296,50 @@ int dirwriteat(int u, int base, int *dir)
     return __cspi(34) == 0;
 }
 
-/* the entry called name (upper or lower case): its index, 0 if none */
+/* is the entry e (26 bytes) called name (upper or lower case) */
+static int entname(unsigned char *e, char *name)
+{
+    int k;
+    for (k = 0; name[k] && toupper(e[7 + k]) == toupper(name[k]); k++)
+        ;
+    return !name[k] && e[6] == k;
+}
+
+/* the entry called name: its index, 0 if none */
 int findname(int *dir, char *name)
 {
-    unsigned char *e;
-    int i, k, n;
-    n = strlen(name);
-    for (i = 1; i <= dir[8]; i++) {
-        e = (unsigned char *)(dir + 13 * i);
-        for (k = 0; k < n && toupper(e[7 + k]) == toupper(name[k]); k++)
-            ;
-        if (k == n && e[6] == n)
+    int i;
+    for (i = 1; i <= dir[8]; i++)
+        if (entname((unsigned char *)(dir + 13 * i), name))
             return i;
-    }
     return 0;
+}
+
+/* entry i of the directory of the sub-volume at block base on unit u into e (26 bytes), read a
+   block at a time into buf (512 bytes; *blk: the directory block it holds, -1 none): an open
+   needs no 2 KB of memory for the directory.  0 if it cannot be read */
+static int svent(char *buf, int *blk, int u, int base, int i, int *e)
+{
+    int o, b, n, k;
+    o = 26 * i;
+    for (b = 0; o >= 512; b++)
+        o = o - 512;                    /* (block b, offset o: no shifts, whose helpers are resident) */
+    for (k = 0; k < 26; k = k + n) {
+        if (*blk != b) {
+            *blk = -1;
+            __cspv(5, u, buf, 0, 512, base + 2 + b, 0);    /* UNITREAD */
+            if (__cspi(34) != 0)
+                return 0;
+            *blk = b;
+        }
+        n = 512 - o;
+        if (n > 26 - k)
+            n = 26 - k;
+        memcpy((char *)e + k, buf + o, n);
+        o = 0;
+        b++;
+    }
+    return 1;
 }
 
 /* The record of an open file on a sub-volume, in f->fib (stdio's __blockio
@@ -318,45 +347,57 @@ int findname(int *dir, char *name)
    [0] unit  [1] its first block (on the disk)  [2] the blocks it may use
    [3] the blocks it has  [4] the sub-volume's first block  [5] blocks it
    had when opened  [6] its kind  [7..14] its name.  The directory is read
-   into at->dir (it was found good when the place was).  0 if it cannot be. */
+   a block at a time into f's own buffer (it was found good when the
+   place was).  0 if it cannot be. */
 int __svopenat(FILE *f, char *mode, struct svat *at)
 {
-    int *dir;
+    int v[13];
+    int e[13];
     int *r;
-    int *e;
-    int i, k, a, room, last, n;
-    dir = at->dir;
+    char *buf;
+    int blk, i, k, nf, a, room, last, n, found;
     r = (int *)f->fib;
-    __cspv(5, at->unit, dir, 0, 2048, at->base + 2, 0);    /* UNITREAD */
-    if (__cspi(34) != 0)
+    buf = (char *)f->buf;
+    blk = -1;
+    if (!svent(buf, &blk, at->unit, at->base, 0, v))
         return 0;
-    i = findname(dir, at->name);
+    nf = v[8];
     r[0] = at->unit;
     r[4] = at->base;
     strcpy((char *)(r + 7), at->name);
-    if (mode[0] == 'r' || mode[0] == 'a') {     /* an old file */
-        if (!i)
+    found = 0;
+    for (i = 1; i <= nf && !found; i++) {      /* the entry of that name */
+        if (!svent(buf, &blk, at->unit, at->base, i, e))
             return 0;
-        e = dir + 13 * i;
-        r[1] = at->base + e[0];
-        r[3] = r[5] = e[1] - e[0];
-        r[2] = (i < dir[8] ? e[13] : dir[7]) - e[0];    /* and the room after it */
+        found = entname((unsigned char *)e, at->name);
+    }
+    if (mode[0] == 'r' || mode[0] == 'a') {     /* an old file */
+        if (!found)
+            return 0;
+        a = e[0];
+        r[1] = at->base + a;
+        r[3] = r[5] = e[1] - a;
         r[6] = e[2] & 15;
+        if (i <= nf && !svent(buf, &blk, at->unit, at->base, i, e))
+            return 0;
+        r[2] = (i <= nf ? e[0] : v[7]) - a;     /* and the room after it */
         return 1;
     }
     /* a new file: the largest free area, as the OS does */
     room = 0;
     a = 0;
-    last = dir[1];
-    for (k = 1; k <= dir[8] + 1; k++) {
-        n = (k <= dir[8] ? dir[13 * k] : dir[7]) - last;
+    last = v[1];
+    for (k = 1; k <= nf + 1; k++) {
+        if (k <= nf && !svent(buf, &blk, at->unit, at->base, k, e))
+            return 0;
+        n = (k <= nf ? e[0] : v[7]) - last;
         if (n > room) {
             room = n;
             a = last;
         }
-        last = dir[13 * k + 1];
+        last = e[1];
     }
-    if (room == 0 || dir[8] >= MAXDIR)
+    if (room == 0 || nf >= MAXDIR)
         return 0;
     r[1] = at->base + a;
     r[2] = room;

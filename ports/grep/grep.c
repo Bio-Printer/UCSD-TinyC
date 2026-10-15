@@ -20,7 +20,7 @@
                                              splits its words at blanks)
 
    Run it from the shell: GREP printf *.C, GREP -i ^int #9:*.H,
-   GREP vi*pageup TOOLSRC:=.C, GREP fopen\s?\( TOOLSRC:VI*.C */
+   GREP vi*pageup TOOLS:/SRC/VI/=.C, GREP fopen\s?\( TOOLS:/SRC/VI/VI*.C */
 #pragma segment MAIN	/* calls within the program: 2-byte CGPs, no NOP after them */
 #include <stdio.h>
 #include <stdlib.h>

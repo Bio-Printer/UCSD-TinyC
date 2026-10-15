@@ -495,7 +495,7 @@ int gencode(char *irname, char *obj)
     magic[4] = 0;
     if (strcmp(magic, "TCIR") != 0 || rb() != 'H')
         fatal(92 /* not an intermediate file */, irname);
-    objout = fopen(obj, "wb");
+    objout = svfopen(obj, "wb");
     if (!objout)
         fatal(24 /* cannot create */, obj);
     cstk = 0;

@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""alltest.py -- TOOLSRC:ALL.TEXT on the P-System: one batch file that runs
-others.  With the prefix on TOOLSRC:, X(ecute TINY-C:CC, @ALL:
+"""alltest.py -- TINY-C:/SRC/ALL.TEXT on the P-System: one batch file that runs
+others.  With the prefix on SPARE: (an empty volume), X(ecute TINY-C:CC,
+@TINY-C:/SRC/ALL:
 
-  @TCSRC:BUILD   the compiler -> TINY-C:CC2.CODE: CMPCODE IDENTICAL to CC.CODE
-  @TCSRC:LIBS    the library  -> TINY-C:TCLIB2.OBJ: IDENTICAL to TCLIB.OBJ
-  @TOOLS         every tool linked onto TOOLS: (its tools removed first):
-                 the same bytes as mkvolume's
-and the compiler's and the library's objects are on TCSRC: (their
-sources' volume), none on TOOLSRC: (the prefix).
+  @TINY-C:/SRC/CC/BUILD   the compiler -> TINY-C:CC2.CODE: CMPCODE IDENTICAL
+                          to CC.CODE
+  @TINY-C:/SRC/LIB/LIBS   the library  -> TINY-C:/LIB/TCLIB2.OBJ: IDENTICAL
+                          to TCLIB.OBJ
+  @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
+                          first): the same bytes as mkvolume's
+and every object is beside its source (TINY-C:/SRC/CC, TINY-C:/SRC/LIB,
+TOOLS:/SRC/VI ...: the names in a batch file are looked for beside it),
+none on the prefix volume.
 
-Disks: #5 TINY-C:, #9 TCSRC:, #10 TOOLSRC:, #11 TOOLS:, #12 TCEXTRA:
-(CMPCODE).  Uses the mode of PSYS_MODE (native or z80); about 25 minutes
-in Z80 mode.
+Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE).  Uses the
+mode of PSYS_MODE (native or z80); about 25 minutes in Z80 mode.
 """
 import os, sys, re, shutil, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -22,56 +25,82 @@ from psys import ensure_setup, BUILD
 from voltest import prefix, cmpcode
 from mkvolume import TOOLS, MODULES, LIBMODS_
 
+# what the run prints, in turn
+WAITS = ['> @TINY-C:/SRC/CC/BUILD', '> /L TINY-C:CC2=', '> @TINY-C:/SRC/LIB/LIBS',
+         'Joining TINY-C:/LIB/TCLIB2.OBJ', '> @TOOLS:/SRC/TOOLS', '> /L TOOLS:GREP=']
+
+
+def prepare(d):
+    """the disks in d: TINY-C, TOOLS (without its tools: @TOOLS makes them), TCEXTRA, an empty
+    SPARE; the names of the tools' code files"""
+    for v in ('TINY-C', 'TOOLS', 'TCEXTRA'):
+        shutil.copy(os.path.join(BUILD, v + '.BLK'), d)
+    ucsdvol.main(['new', os.path.join(d, 'SPARE.BLK'), 'SPARE', '400'])
+    names = [name + '.CODE' for name, mods, hdrs, desc in TOOLS]
+    tv = ucsdvol.Volume(os.path.join(d, 'TOOLS.BLK'))
+    for n in names:
+        tv.remove(n)
+    tv.save()
+    return names
+
+
+def results(d, r, tr, names):
+    """the checks of a run: the volumes as it left them (out/ has the first two units' images)"""
+    vols = {}
+    for f in [os.path.join(d, 'out', f) for f in os.listdir(os.path.join(d, 'out'))] + \
+             [os.path.join(d, v + '.BLK') for v in ('TOOLS',)]:
+        if f.endswith('.BLK'):
+            v = ucsdvol.Volume(f)
+            vols.setdefault(v.volname, v)
+    shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))
+    tools, tinyc, spare = vols.get('TOOLS'), vols.get('TINY-C'), vols.get('SPARE')
+
+    def objs_in(v, path, objs):
+        try:
+            for p in path:
+                v = v.sub(p)
+            return all(v.find(o) for o in objs)
+        except (Exception, SystemExit):
+            return False
+    pos = [tr.find(w) for w in WAITS]
+    checks = [
+        ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
+        ('@TINY-C:/SRC/ALL ran BUILD, LIBS and TOOLS in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
+        ('TINY-C:CC2.CODE and TINY-C:/LIB/TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
+        ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
+         and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
+        ('every object beside its source (TINY-C:/SRC/CC, /SRC/LIB, TOOLS:/SRC/VI ...), none on the prefix SPARE:',
+         tinyc is not None and tools is not None and spare is not None
+         and objs_in(tinyc, ['SRC', 'CC'], [m.upper() + '.OBJ' for m in MODULES])
+         and objs_in(tinyc, ['SRC', 'LIB'], [m.upper() + '.OBJ' for m in LIBMODS_])
+         and all(objs_in(tools, ['SRC', name], [os.path.splitext(os.path.basename(m))[0].upper() + '.OBJ' for m in mods])
+                 for name, mods, hdrs, desc in TOOLS)
+         and not any(e[3].endswith('.OBJ') for e in spare.entries)),
+    ]
+    return checks
+
 
 def main():
     ensure_setup()
     d = tempfile.mkdtemp(prefix='alltest_')
-    for v in ('TINY-C', 'TCSRC', 'TOOLSRC', 'TOOLS', 'TCEXTRA'):
-        shutil.copy(os.path.join(BUILD, v + '.BLK'), d)
-    names = [name + '.CODE' for name, mods, hdrs, desc in TOOLS]
-    tv = ucsdvol.Volume(os.path.join(d, 'TOOLS.BLK'))
-    for n in names:                     # what is there after the run, @TOOLS made
-        tv.remove(n)
-    tv.save()
-    L = ['WAIT "Command:"'] + prefix('TOOLSRC:')
+    names = prepare(d)
+    L = ['WAIT "Command:"'] + prefix('SPARE:')
     L += ['TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINY-C:CC\\r"', 'WAIT "Compile what file?"',
-          'TYPE "@ALL\\r"', 'WAIT "> @TCSRC:BUILD"', 'WAIT "> /L TINY-C:CC2="', 'WAIT "> @TCSRC:LIBS"',
-          'WAIT "Joining TINY-C:TCLIB2.OBJ"', 'WAIT "> @TOOLS"', 'WAIT "> /L TOOLS:GREP="', 'WAIT "Done."',
-          'WAIT "Command:"']
+          'TYPE "@TINY-C:/SRC/ALL\\r"'] + ['WAIT "%s"' % w for w in WAITS] + ['WAIT "Done."', 'WAIT "Command:"']
     L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')
-    L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
+    L += cmpcode('TINY-C:/LIB/TCLIB.OBJ', 'TINY-C:/LIB/TCLIB2.OBJ')
     sp = os.path.join(d, 'alltest.script')
     open(sp, 'w').write('\n'.join(L) + '\n')
     mode = os.environ.get('PSYS_MODE', 'native')
-    env = dict(os.environ, VERIFY_UNIT10=os.path.join(d, 'TOOLSRC.BLK'), VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'),
+    env = dict(os.environ, VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'),
                VERIFY_UNIT12=os.path.join(d, 'TCEXTRA.BLK'), VERIFY_LOWWATER='1')
     if mode == 'native':
         env['VERIFY_RECLAIM'] = '1'
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
-                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), sp, mode,
+                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'SPARE.BLK'), sp, mode,
                         os.path.join(d, 'out'), '', '3600'], capture_output=True, text=True, env=env)
-    vols = {}
-    for f in [os.path.join(d, 'out', f) for f in os.listdir(os.path.join(d, 'out'))] + \
-             [os.path.join(d, v + '.BLK') for v in ('TOOLSRC', 'TOOLS')]:
-        if f.endswith('.BLK'):
-            v = ucsdvol.Volume(f)
-            if v.volname not in vols or v.volname in ('TCSRC', 'TINY-C'):
-                vols.setdefault(v.volname, v)
-    shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))
-    tools = vols.get('TOOLS')
     tr = open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read()
-    objs = [m.upper() + '.OBJ' for m in MODULES + LIBMODS_]
-    tcsrc, toolsrc = vols.get('TCSRC'), vols.get('TOOLSRC')
-    checks = [
-        ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
-        ('@ALL ran BUILD, LIBS and TOOLS in turn', tr.find('> @TCSRC:BUILD') < tr.find('> @TCSRC:LIBS') < tr.find('> @TOOLS')
-         and 'Stopped' not in tr),
-        ('TINY-C:CC2.CODE and TINY-C:TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
-        ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
-         and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
-        ('the objects of BUILD and LIBS on TCSRC:, not on TOOLSRC:', tcsrc is not None and toolsrc is not None
-         and all(tcsrc.find(o) for o in objs) and not any(toolsrc.find(o) for o in objs)),
-    ]
+    checks = results(d, r, tr, names)
     lw = [l for l in r.stdout.split('\n') if l.startswith('least free memory')]
     print([l for l in r.stdout.split('\n') if 'VERIFY' in l][-1:])
     if lw:
@@ -79,6 +108,8 @@ def main():
     bad = [n for n, good in checks if not good]
     for n, good in checks:
         print('%-5s %s' % ('ok' if good else 'FAIL', n))
+    if bad:
+        print(re.sub(r'\n+', '\n', tr.replace('\r', '\n'))[-2000:])
     print('all test (%s): %s   (work: %s)' % (mode, 'FAILED' if bad else 'PASSED', d))
     return 1 if bad else 0
 

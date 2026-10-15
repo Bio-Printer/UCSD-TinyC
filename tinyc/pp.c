@@ -138,6 +138,10 @@ static char *skiplit(char *s)
 #define INCPATH 200
 #endif
 
+#ifdef __TINYC__
+#define INCDIR "TINY-C:/INCLUDE/"     /* where <x.h> is (placeopen) */
+#endif
+
 /* *unit: the disk unit it was found on (P-System; 0 not known); *many:
    on several disks and none chosen (findfile said so) */
 static FILE *openinc(char *name, int sys, int *unit, int *many)
@@ -148,11 +152,12 @@ static FILE *openinc(char *name, int sys, int *unit, int *many)
 #ifdef __TINYC__
     /* P-System: file names are upper case; "x.h" is X.H (or X.H.TEXT).
        A name with its own volume or path (VOL:, #n:, *, A/X.H) is opened
-       there and only there.  Without one: in the sub-volume of the file
-       that names it (when that is in one), else findfile looks (the
-       shell's path, then every disk: see it): "x.h" and <x.h> alike.  A
-       UCSD file name has at most 15 characters; a longer name (without a
-       volume or path) is no file at all. */
+       there and only there.  Without one: <x.h> in TINY-C:/INCLUDE first;
+       then in the sub-volume of the file that names it (when that is in
+       one), else findfile looks (the shell's path, then every disk: see
+       it); "x.h" last in TINY-C:/INCLUDE.  A UCSD file name has at most 15
+       characters; a longer name (without a volume or path) is no file at
+       all. */
     int i;
     int vol;
     int n;
@@ -172,10 +177,23 @@ static FILE *openinc(char *name, int sys, int *unit, int *many)
     fp = 0;
     if (name[i] || (!vol && i > 15))
         return 0;                   /* cannot be a file name */
+    if (!vol && sys && (fp = placeopen(INCDIR, u, path, unit, "r")) != 0) {
+        strcpy(openedpath, path);
+        return fp;
+    }
     if (!vol && idepth > 0 && (p = strrchr(istack[idepth - 1].name, '/')) != 0
         && p - istack[idepth - 1].name + 1 + i + 5 < INCPATH) {
         n = p - istack[idepth - 1].name + 1;    /* the including file's sub-volume */
         memcpy(path, istack[idepth - 1].name, n);
+        path[n] = 0;
+        if (strchr(path, ':')) {        /* (named with its volume: by its place) */
+            fp = placeopen(path, u, path, unit, "r");
+            if (fp) {
+                strcpy(openedpath, path);
+                return fp;
+            }
+            memcpy(path, istack[idepth - 1].name, n);
+        }
         strcpy(path + n, u);
         fp = fopen(path, "r");
         if (!fp) {
@@ -212,6 +230,8 @@ static FILE *openinc(char *name, int sys, int *unit, int *many)
             strcpy(openedpath, p ? p + 1 : path);
             return fp;
         }
+        if (n == 0)
+            fp = placeopen(INCDIR, u, path, unit, "r");      /* ("x.h": a header there) */
     }
     strcpy(openedpath, path);
     p = 0;
@@ -252,6 +272,18 @@ static FILE *openinc(char *name, int sys, int *unit, int *many)
 }
 
 static char *outname;            /* file the compiler will assume */
+
+/* an included file's name as the compiler keeps it for messages: without its volume and
+   sub-volumes (STDIO.H, not TINY-C:/INCLUDE/STDIO.H: the names stay in memory all through
+   the compile) */
+static char *leafname(char *path)
+{
+    char *p;
+    p = strrchr(path, '/');
+    if (!p)
+        p = strrchr(path, ':');
+    return p ? p + 1 : path;
+}
 static int startline;           /* first physical line of the current logical line */
 static char *pragbuf;           /* [MAXLINE] */
 
@@ -1381,7 +1413,7 @@ int preprocess(char *src, char *out)
             putc('#', ppout);
             fputs(itoa10(startline, num), ppout);
             fputs(idepth > 1 ? " !" : " ", ppout);
-            fputs(curfile, ppout);
+            fputs(idepth > 1 ? leafname(curfile) : curfile, ppout);
             putc('\n', ppout);
             outname = curfile;
         }
@@ -1543,6 +1575,42 @@ int fileunit(char *path)
     return 0;
 }
 
+/* the place (unit, first block) of the sub-volume dir, VOL:/A/B/ or VOL:A/ (its volume named:
+   VOL:, #n: or *), into at: its directories read a block at a time.  0 if it is not there */
+int dirplace(char *dir, struct svat *at)
+{
+    struct FDWin w;
+    unsigned char h[26];
+    unsigned char e[26];
+    char name[16];
+    char *p;
+    char *q;
+    int i;
+    int files;
+    at->unit = fileunit(dir);
+    at->base = 0;
+    p = strchr(dir, ':');
+    if (!at->unit || !p)
+        return 0;
+    for (p++; *p; p = q + 1) {
+        if (*p == '/')
+            p++;
+        q = strchr(p, '/');
+        if (!q || q - p > 15 || q == p)
+            return 0;
+        memcpy(name, p, q - p);
+        name[q - p] = 0;
+        files = fdopen(&w, at->unit, at->base, h);
+        for (i = 1; i <= files; i++)
+            if (fdent(&w, i, e) && fdname(e, name) && ((e[4] & 15) == 5 || (e[4] & 15) == 0))
+                break;
+        if (i > files)
+            return 0;
+        at->base = at->base + (e[0] | (e[1] << 8));
+    }
+    return fdopen(&w, at->unit, at->base, h) >= 0;
+}
+
 /* the shell's path: its unit (0: no path, or not there) and first block,
    found once (pathdir's directory on the stack: before the passes) */
 static int svunit;
@@ -1644,5 +1712,77 @@ int findfile(char *name, char *alt, int from, char *path, int *unit)
     strcat(path, fn[j]);
     *unit = fu[j];
     return 1;
+}
+
+/* ---- files in sub-volumes opened by their places (in the library's SVAT segment, which such
+   an open loads anyway) ----
+   A file in a sub-volume named with its volume (TINY-C:/INCLUDE/STDIO.H, a header beside the
+   source, TINY-C:/SRC/CC/MAIN.OBJ, TINY-C:/LIB/TCLIB.OBJ) is opened by the sub-volume's place,
+   found once (dirplace, DIRS: its directories a block at a time): fopen of the path would take
+   DIRS and a 2 KB directory on the stack, each time -- at the preprocessor's least free
+   memory, and each time the linker reads an object again.  Two places are kept, the newer
+   one replacing the older. */
+#pragma segment SVAT
+#define SVDIR 40                        /* (a longer sub-volume path is opened by its path) */
+static struct svat svat[2];
+static char svdir[2][SVDIR];            /* their sub-volumes, VOL:/A/B/ ("": none yet) */
+static int svold;                       /* the older one */
+
+/* leaf (or leaf.TEXT) in dir, to read (mode "r") or a new one to write ("w"); path: dir and
+   leaf, *unit: its disk.  0 if it cannot be */
+FILE *placeopen(char *dir, char *leaf, char *path, int *unit, char *mode)
+{
+    struct svat *at;
+    FILE *fp;
+    int k;
+    if (strlen(dir) >= SVDIR || strlen(dir) + strlen(leaf) + 6 > INCPATH || strlen(leaf) > 15 || !strchr(dir, ':'))
+        return 0;
+    k = strcmp(dir, svdir[0]) == 0 ? 0 : strcmp(dir, svdir[1]) == 0 ? 1 : -1;
+    if (k < 0) {
+        k = svold;
+        strcpy(svdir[k], dir);
+        if (!dirplace(svdir[k], &svat[k]))
+            svat[k].unit = 0;
+    }
+    svold = 1 - k;
+    at = &svat[k];
+    if (!at->unit)
+        return 0;
+    strcpy(at->name, leaf);
+    strcpy(path, svdir[k]);
+    strcat(path, leaf);
+    k = strlen(leaf);
+    at->kind = k > 5 && strcmp(leaf + k - 5, ".CODE") == 0 ? 2 : 5;  /* (what CC writes: code, objects) */
+    __svat = at;
+    fp = fopen(path, mode);
+    if (!fp && *mode == 'r' && strlen(leaf) <= 10 && strchr(leaf, '.') && strcmp(strrchr(leaf, '.'), ".OBJ") != 0) {
+        strcat(at->name, ".TEXT");
+        strcat(path, ".TEXT");
+        fp = fopen(path, "r");
+    }
+    __svat = 0;
+    *unit = at->unit;
+    return fp;
+}
+
+/* fopen of a whole name: in a sub-volume named with its volume (TINY-C:/SRC/CC/MAIN.OBJ,
+   TINY-C:/LIB/TCLIB.OBJ) by its place -- for the objects the code generator writes and the
+   linker reads again and again -- else as it is */
+FILE *svfopen(char *name, char *mode)
+{
+    char dir[SVDIR];
+    char path[INCPATH];
+    char *p;
+    FILE *f;
+    int u;
+    p = strrchr(name, '/');
+    if (p && strchr(name, ':') && p - name + 1 < SVDIR) {
+        memcpy(dir, name, p - name + 1);
+        dir[p - name + 1] = 0;
+        f = placeopen(dir, p + 1, path, &u, mode);
+        if (f)
+            return f;
+    }
+    return fopen(name, mode);
 }
 #endif

@@ -206,7 +206,6 @@ void ucsd_unreserve(void)
    directory read into 2 KB of the window (pg_load, pg_save): only the library's small SVAT
    segment comes in.  Any other file in a sub-volume (:r, :w NAME) is opened only when DIRS and
    its directory still fit. */
-#define SV_NEED 2200			/* words: DIRS, a 2 KB directory, their stack */
 int __istext(char *name);
 struct svat *ucsd_at;			/* (allocated for the first file in a sub-volume) */
 static char *ucsd_atfn;			/* the file whose place it is */
@@ -217,36 +216,17 @@ int ucsd_isat(const char *fn)
 	return ucsd_atfn && !strncasecmp(fn, ucsd_atfn, 64);
 }
 
-/* fn's place, if it is in a sub-volume, unless it is the one found before (DIRS: while there
-   is the memory; without it vi stops, the file untouched) */
-void ucsd_place(const char *fn)
-{
-	if (!__svname((char *)fn) || ucsd_isat(fn))
-		return;
-	free(ucsd_atfn);
-	ucsd_atfn = NULL;
-	if (__cspi(40) < SV_NEED)
-		pg_abandon(fn, "no memory in a sub-volume");
-	if (!ucsd_at)
-		ucsd_at = xmalloc(sizeof(struct svat));
-	if (__svplace((char *)fn, ucsd_at))		/* (else: no such sub-volume, fopen says so) */
-		ucsd_atfn = xstrdup(fn);
-}
-
-/* fopen: the file being edited by its place, its directory read into dir (2 KB), when dir is
-   given (its fclose: with __svat = ucsd_at, pg_save); another file in a sub-volume only if
-   DIRS still fits (else NULL) */
+/* fopen: the file being edited by its place, to read (its directory read a block at a time),
+   or to write when dir is given (2 KB for its directory when it is closed: with __svat =
+   ucsd_at, pg_save); another file in a sub-volume only if DIRS still fits (else NULL) */
 FILE *ucsd_fopen(const char *fn, char *mode, char *dir)
 {
 	FILE *f;
-	if (!ucsd_isat(fn))
-		dir = NULL;
-	if (!dir && __svname((char *)fn) && __cspi(40) < SV_NEED)
-		return NULL;
-	if (dir) {
+	if (ucsd_isat(fn) && (dir || *mode == 'r')) {
 		ucsd_at->dir = (int *)dir;
 		__svat = ucsd_at;
-	}
+	} else if (__svname((char *)fn) && __cspi(40) < SV_NEED)
+		return NULL;
 	f = fopen((char *)fn, mode);
 	__svat = NULL;
 	return f;
@@ -480,14 +460,13 @@ int hdr_line, hdr_col, hdr_blocks;
 
 /* rd: the header page of the text file fn into pg_buf; else pg_buf into it; 1 if done.  The
    file is opened to find its blocks (and their count, the chunk table's), then read and written
-   by them: in a sub-volume by its place, the directory into the window (when it is read the
-   window is not there yet; when it is written it is no longer needed) */
+   by them (in a sub-volume: opened by its place) */
 static int hdr_io(const char *fn, int rd)
 {
 	FILE *f;
 	int *r;
 	int u, b, n;
-	f = ucsd_fopen(fn, "r", text);
+	f = ucsd_fopen(fn, "r", NULL);
 	if (!f)
 		return 0;
 	r = (int *)f->fib;
@@ -541,6 +520,20 @@ char *ucsd_askname(void)
 	while (n > 0 && (name[n - 1] == '\n' || name[n - 1] == ' '))
 		name[--n] = 0;
 	return name;
+}
+
+/* fn's place, if it is in a sub-volume, unless it is the one found before (DIRS and a 2 KB
+   directory: at the start, or for :e when pg_load has seen that they fit) */
+void ucsd_place(const char *fn)
+{
+	if (!__svname((char *)fn) || ucsd_isat(fn))
+		return;
+	free(ucsd_atfn);
+	ucsd_atfn = NULL;
+	if (!ucsd_at)
+		ucsd_at = xmalloc(sizeof(struct svat));
+	if (__svplace((char *)fn, ucsd_at))		/* (else: no such sub-volume, fopen says so) */
+		ucsd_atfn = xstrdup(fn);
 }
 #pragma segment MAIN
 

@@ -55,7 +55,7 @@
 #define CONFIG_FEATURE_VI_MAX_LEN 132
 #define TEXT_SLACK 1024	// free room in the text buffer: memory is small
 #define PG_RESERVE 1024	// memory left out of the window: yanks, and so on
-#define PG_SVAT 1000	// ... and for a file in a sub-volume: the library's SVAT segment (its load, its save) and its stack
+#define PG_SVAT 1300	// ... and for a file in a sub-volume: the library's SVAT segment (its load, its save) and its stack
 #include <limits.h>
 /* The P-System opens an include file with a 2K buffer on the stack, so the
    includes come before the macros below: Tiny-C's preprocessor has the least
@@ -443,7 +443,7 @@ void ucsd_unreserve(void);
 /* the file being edited, in a sub-volume: by its place (viucsd.c) */
 extern struct svat *ucsd_at;
 int ucsd_isat(const char *fn);
-void ucsd_place(const char *fn);
+#define SV_NEED 2300			// words: DIRS, a 2 KB directory, their stack (and VISTART: ucsd_place)
 FILE *ucsd_fopen(const char *fn, char *mode, char *dir);
 /* the place a text file was left, in its header page (viucsd.c) */
 extern int hdr_line, hdr_col;		// read when the file is opened (0: none)
@@ -451,6 +451,7 @@ extern int hdr_blocks;			// ... and its size in blocks
 #pragma segment VISTART
 void hdr_read(const char *fn);		// (pg_start's segment)
 char *ucsd_askname(void);
+void ucsd_place(const char *fn);
 #pragma segment MAIN
 void hdr_write(const char *fn, int line, int col);
 #else

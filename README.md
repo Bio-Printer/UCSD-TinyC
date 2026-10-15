@@ -16,11 +16,11 @@ Start here when picking the project up in a new session.
 | `tinyc/include/*.h` | headers; `tcmsgs.txt` = the compiler's messages (TCMSGS.TEXT) |
 | `tests/NAME.c` + `.expect` (+ `.keys`, `.wait`) | test/demo programs and their expected output |
 | `examples/` | `shell.c` (a mini-shell built on `pexec()`: a program name without a volume is looked for on every disk on line, and when several have it the shell asks which; `CD #5` sets the prefix to unit 5's volume, `DIR [VOL:|#n:][PATTERN]` lists files with `*`/`=` and `?` wildcards, `TYPE` shows text files, `DELETE` deletes files (with wildcards it asks first), `WHEREIS` finds files on every disk, `VOLUMES` lists the disks, `COPY`/`MOVE`/`RENAME` (a copy keeps its kind and date), `MKDIR NAME [BLOCKS]` makes a sub-volume (`RMDIR NAME` removes it, asking first when it holds files; `DIR A` lists what is in it; COPY, MOVE and RENAME work in sub-volumes too) (a data file holding a volume of its own: its files are `VOL:A/NAME` or `VOL:/A/B/NAME`, which `fopen` and `remove` in every program take; a code file in one runs where it is: `A/PROG`, or a name on the path) and `CD VOL:/A` makes it the path for names without a volume (the prompt shows it, `BIGGY:/A> `, and `PWD`; `.` and `..` in any path; `COPY SRC` alone copies here); `COMMAND >FILE` / `>>FILE` / `<FILE` redirect a command's output / input and `A | B | C` pipe one program's output into the next (the shell's own commands and programs whose main has argc/argv, e.g. `DIR *.C | GREP TEST`; `.TEXT` files), its command line keeps the last 10 commands in `#4:SYSTEM.CMDS` (Up/Down) and is edited with Left, Right, Home, End, Insert, Delete; on BIGGY as SYSTEM.SHELL, which `S` at the Command: prompt runs) `memfree.c` (a program's free memory), `memmark.c` (`MEMMARK FILL`, run a program, `MEMMARK SCAN`: an estimate of that program's least free memory, from `memfill()`/`memgap()` in `psys.h`) and `args.c` (does what its `main(argc, argv)` arguments say: run it from the shell, e.g. `ARGS ADD 2 3`); on TCEXTRA |
-| `volumes/` | **TINY-C.zip** (what is needed to use Tiny-C: compiler, library, messages, headers; the compiler looks for them on `TINY-C:`) **TCSRC.zip** (the compiler's and the library's sources, BUILD/LIBS scripts), **TCEXTRA.zip** (demos, the shell and its examples, CMPCODE), **TCTESTS.zip** (the test programs; four volumes because a UCSD directory holds 77 files and `@BUILD`/`@LIBS`/`@DEMOS`/`@TESTS` leave a NAME.OBJ per module or program), **TOOLS.zip** (tools written in Tiny-C, ready to run: VI.CODE, GREP.CODE, BINDERC.CODE) and **TOOLSRC.zip** (their sources: vi's modules, GREP.C, BINDERC.C) and **BIGGY.zip** (boot disk `Big_Disk.BLK` with Tiny-C ready to use; doubles need the v1.88 emulator's CSP 100..137); `*.txt` = file listings |
+| `volumes/` | **TINY-C.zip** (Tiny-C in one volume, laid out like a Unix tree in sub-volumes: CC.CODE and TCMSGS.TEXT at the top, `INCLUDE/` the headers, `LIB/` TCLIB.OBJ, `SRC/` the sources -- `SRC/CC/` the compiler with BUILD.TEXT, `SRC/LIB/` the library with LIBS.TEXT, `SRC/ALL.TEXT` everything at once; the compiler looks for them on `TINY-C:`), **TOOLS.zip** (the tools written in Tiny-C, ready to run: VI.CODE, GREP.CODE, BINDERC.CODE ..., MAN.TEXT, and `SRC/` their sources, a sub-volume each -- `SRC/VI/`, `SRC/GREP/` ... -- with TOOLS.TEXT), **TCEXTRA.zip** (demos, the shell and its examples, CMPCODE), **TCTESTS.zip** (the test programs; volumes of their own because a UCSD directory holds 77 files and `@DEMOS`/`@TESTS` leave a NAME.OBJ per program) and **BIGGY.zip** (boot disk `Big_Disk.BLK` with Tiny-C ready to use; doubles need the v1.88 emulator's CSP 100..137); `*.txt` = file listings, a sub-volume's files as `A/NAME` |
 | `ports/vi/` | **vi** (the BusyBox-derived tiny vi) ported to the P-System: modules `vi.h`, `vimain.c`, `viscreen.c`, `vitext.c`, `vicolon.c`, `vicmd.c`, `vipage.c` (still build on Linux) + `viucsd.c` (the P-System side); work in progress, see its README |
 | `ports/binder/` | **binderc.c**: `BINDERC [FILE]`, the Pascal System's Binder (BINDER.CODE; its Pascal source is lost) in Tiny-C: puts your GOTOXY procedure into SYSTEM.PASCAL, byte for byte what BINDER makes (TOOLS:BINDERC.CODE) |
-| `ports/cat/` | **cat.c**: `CAT [-AbeEnstTuv] [FILE ...]` from the shell -- every option of cat(1) except the long ones (-A -b -e -E -n -s -t -T -u -v, joined as `-bn`); no FILE or `-`: the standard input; `.TEXT`/`.C`/`.H` files as text, others as their bytes (TOOLS:CAT.CODE, source TOOLSRC:CAT.C) |
-| `ports/hexdump/` | **hexdump.c**: `HEXDUMP [-i] [FILE ...]` from the shell -- offset, 16 bytes in hex (two extra blanks after the 8th), the characters; `-i`: Intel Hex (16-byte records, extended linear address every 64 KB, end record) (TOOLS:HEXDUMP.CODE, source TOOLSRC:HEXDUMP.C) |
+| `ports/cat/` | **cat.c**: `CAT [-AbeEnstTuv] [FILE ...]` from the shell -- every option of cat(1) except the long ones (-A -b -e -E -n -s -t -T -u -v, joined as `-bn`); no FILE or `-`: the standard input; `.TEXT`/`.C`/`.H` files as text, others as their bytes (TOOLS:CAT.CODE, source TOOLS:/SRC/CAT/CAT.C) |
+| `ports/hexdump/` | **hexdump.c**: `HEXDUMP [-i] [FILE ...]` from the shell -- offset, 16 bytes in hex (two extra blanks after the 8th), the characters; `-i`: Intel Hex (16-byte records, extended linear address every 64 KB, end record) (TOOLS:HEXDUMP.CODE, source TOOLS:/SRC/HEXDUMP/HEXDUMP.C) |
 | `ports/objcopy/` | **objcopy.c**: `OBJCOPY [-I ihex|hexdump] [-O binary] [INFILE [OUTFILE]]` -- HEXDUMP's output (either form) back into the bytes (offsets place them, gaps are zero filled, Intel Hex checksums checked) (TOOLS:OBJCOPY.CODE) |
 | `ports/more/` | **more.c**: `MORE [-N] [-s] [-i] [+N] [FILE ...]` -- a screen at a time with a `--More--(NN%)` prompt (TOOLS:MORE.CODE) |
 | `ports/less/` | **less.c**: `LESS [-NSiF] [+N] [FILE ...]` -- forwards and backwards through any size of file (a sparse index of line starts and 1 KB page reads), search, line numbers, several files, the console's scroll codes (emulator 2.04) (TOOLS:LESS.CODE) |
@@ -52,7 +52,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `runtests.py [name]` | compile each test with the host compiler, run it on the P-System, compare with `.expect` |
 | `selfcompile.py [module]` | compile the compiler's modules on the P-System, link CC2.CODE, compare with the host build |
 | `buildtc.py` | host build of CC.CODE from the modules (`build/tcmod/`) |
-| `mkvolume.py` | build `volumes/` (TINY-C, TCSRC, TCEXTRA, TCTESTS, TOOLS, TOOLSRC) with FILES.TEXT listings; a new tool is one line in its `TOOLS` table |
+| `mkvolume.py` | build `volumes/` (TINY-C, TCEXTRA, TCTESTS, TOOLS; the sub-volumes INCLUDE, LIB, SRC made on the host: `ucsdvol.Volume.new`) with FILES.TEXT listings of every file, the sub-volumes' too; a new tool is one line in its `TOOLS` table |
 | `mkbiggy.py` | build `volumes/BIGGY.zip`: the boot volume BIGGY: with SYSTEM.SHELL (the Tiny-C shell); Tiny-C itself is only on TINY-C: (`X TINY-C:CC`; since BIGGY 1.15); only files that differ are written, so it is byte-identical to the reference `Big_Disk.BLK` of [UCSD-Pascal-Volumes](https://github.com/Bio-Printer/UCSD-Pascal-Volumes) (Filer and Editor that take NAME.C / NAME.H workfiles) |
 | `viscreentest.py` | vi's screen after every key against an earlier version's (Linux, a pseudo-terminal and a small terminal emulator): refresh may skip only what is unchanged |
 | `vipagetest.py` | vi's paging on Linux: random sessions of the paged build with the file loaded lazily against the committed version |
@@ -62,7 +62,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `mantest.py` | MAN with the real MAN.TEXT: the list, a page, several, case, -k, a missing page, a bad option, the --More-- stop, a page into a file; every program on TOOLS: has a page |
 | `sedtest.py` | SED against the host's GNU sed on the same text: 150 scripts (addresses, ranges, every command, s with its flags, both regular expression dialects, y, a i c, branches, hold space, -n -e -f -E -s -i, w, exit status) |
 | `vipostest.py` | vi opens a text file where it was left (line and column, binary, in 6 bytes of the file's header page), that line in the middle of the screen; beyond the end, a bad magic, the rest of the header page kept |
-| `viswaptest.py` | vi saves a file on the volume that holds VI.SWAP (the prefix volume): VI.SWAP is the file and 25 KB, so `:w` and `ZZ` find room; Big_Disk's SYSTEM.LIST (CR line ends, 146 KB): saved with CRs, 687G then Up, Page Up and the line in the middle, and it opens with a full screen (at most 4 `~` rows); no VI.SWAP left |
+| `viswaptest.py` | vi saves a file on the volume that holds VI.SWAP (the prefix volume): VI.SWAP is the file and 32 KB, so `:w` and `ZZ` find room; Big_Disk's SYSTEM.LIST (CR line ends, 146 KB): saved with CRs, 687G then Up, Page Up and the line in the middle, and it opens with a full screen (at most 4 `~` rows); no VI.SWAP left |
 | `viaddrtest.py` | vi's `:` addresses as patterns (`:/pat/`): found in the window and beyond it, a range of two, and "Pattern not found" (nothing changed) when no line matches |
 | `krunchtest.py` | KRUNCH and the shell's DIR /E: a disk with gaps krunched (the bytes of every file the same, the files one after another), the question answered N, then the boot disk krunched while SYSTEM.PASCAL and the shell run (the shell comes back, the Filer and S work) |
 | `subvoltest.py` | sub-volumes: the shell's MKDIR (one inside another), CD into a path (kept after programs ran), DIR to a file there, WC and CAT on paths (`>B/COPY.TEXT`), TYPE, CD .., DELETE, refusals; on the host the inner directories and the copied text |
@@ -82,13 +82,13 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `hexdumptest.py` | HEXDUMP, its output redirected into files read back from the disk image: the dump layout, Intel Hex (read back by the host's objcopy), binary and text files, one over 64 KB, several files, stdin, a pipe, errors |
 | `cattest.py` | CAT from the shell: every option against the host's cat on the same bytes (text files with tabs and control characters, a binary file, several files, standard input, a pipe, errors) |
 | `greptest.py` | GREP from the shell: case, `-i`, regular expressions, wildcards on every disk or one volume, line numbers across pages |
-| `alltest.py` | TOOLSRC:ALL.TEXT: one batch file running BUILD, LIBS and TOOLS; the compiler, library and tools identical to the shipped ones, the objects on TCSRC: |
-| `shellalltest.py` | the way a user starts a total rebuild: `S` at the Command: prompt, then `cc @all` in the shell (TOOLSRC:ALL: BUILD, LIBS, TOOLS); the same checks as `alltest.py`, and the tracked least free memory with the lowest passes |
+| `alltest.py` | TINY-C:/SRC/ALL.TEXT: one batch file running `@TINY-C:/SRC/CC/BUILD`, `@TINY-C:/SRC/LIB/LIBS` and `@TOOLS:/SRC/TOOLS`; the compiler, library and tools identical to the shipped ones, every object beside its source (the sub-volumes), none on the prefix volume |
+| `shellalltest.py` | the way a user starts a total rebuild: `S` at the Command: prompt, then `cc @tiny-c:/src/all` in the shell (BUILD, LIBS, TOOLS); the same checks as `alltest.py`, and the tracked least free memory with the lowest passes |
 | `findtest.py` | which disk CC takes `#include` files and a batch file's sources from (copies on several disks; the including file's disk, the prefix, an error) |
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; the shell's CD, DIR, TYPE, DELETE, WHEREIS, VOLUMES, COPY, MOVE and RENAME, its command history and line editing; `S` at the Command: prompt |
-| `voltest.py` | on the four volumes: `@LIBS`, `@BUILD` (on TCSRC:), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
+| `voltest.py` | on the volumes: `@TINY-C:/SRC/LIB/LIBS`, `@TINY-C:/SRC/CC/BUILD` (from the shell), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
 | `mkverify.py`, `tcverify.py [native\|z80]` | build / run the Tiny-C Verify pack (`TCV_MAX=seconds` for Z80 mode) |
-| `vitest.py [--build]` | `ports/vi`: the same 60-command editing session on Linux and on the P-System (from the shell); the saved files must be identical. `--build`: `@TOOLS` on TOOLSRC: (P-Code mode, Harvard layout) must make TOOLS:VI.CODE byte for byte |
+| `vitest.py [--build]` | `ports/vi`: the same 60-command editing session on Linux and on the P-System (from the shell); the saved files must be identical. `--build`: `@TOOLS:/SRC/TOOLS` (P-Code mode, Harvard layout) must make TOOLS:VI.CODE byte for byte |
 | `modes.py prog.c` | run a program in Z80 and P-Code mode and compare (engine bug hunting) |
 | `pdis.py FILE.CODE` | P-code disassembler |
 | `pcensus.py FILE.CODE\|VOL.BLK` | static P-code census: instructions, and the inline constants/tables (`LSA LPA LDC XJP`), `--check` validates every jump target, `--selfpatch` lists the old self-modifying indirect calls |
@@ -118,13 +118,18 @@ one command, they run in turn without a prompt, and the first that fails stops C
 (exit status 1).
 Sources are `NAME.C`, headers `NAME.H` (UCSD text format, text kind).
 Which disk a file comes from: a source, `#include` file or `@FILE` named with a
-volume (`TOOLSRC:VI.H`, `#5:X.C`) only from there; named without one, CC reads every
+volume (`TOOLS:/SRC/VI/VI.H`, `#5:X.C`) only from there; named without one, CC reads every
 disk's directory: on one disk only, that one; on several, the one on the disk of the
 file that names it (the including file, the `@FILE`), else the prefix volume's, else
-an error that lists the volumes (`findfile` in `pp.c`, code segment FIND;
-`tools/findtest.py` tests it).
-With the prefix on TCSRC: (and TINY-C: mounted), `X(ecute TINY-C:CC`
-`@BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `@LIBS` the library (TINY-C:TCLIB2.OBJ); `@TOOLS` (on TOOLSRC:) links every tool onto TOOLS:; `@ALL` (on TOOLSRC:) runs `@TCSRC:BUILD`, `@TCSRC:LIBS` and `@TOOLS` (a batch file may name others; `/C` puts NAME.OBJ on its source's volume, `/L` and `/J` find objects the way sources are found);
+an error that lists the volumes (`findfile` in `pp.c`, code segment DIRS;
+`tools/findtest.py` tests it).  Headers: `<x.h>` comes from TINY-C:/INCLUDE first,
+`"x.h"` from the including file's sub-volume first and TINY-C:/INCLUDE last; the library
+is TINY-C:/LIB/TCLIB.OBJ (unless the prefix or boot volume has a TCLIB.OBJ); the names in
+an `@FILE` in a sub-volume are looked for beside it first.  A file in a sub-volume named
+with its volume (a header, an object CC writes or the linker reads) is opened by the
+sub-volume's place, found once (`placeopen`, `svfopen`), not through the library's path
+code and a 2 KB directory each time.
+From the shell (or `X(ecute TINY-C:CC`), `CC @TINY-C:/SRC/CC/BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `CC @TINY-C:/SRC/LIB/LIBS` the library (TINY-C:/LIB/TCLIB2.OBJ); `CC @TOOLS:/SRC/TOOLS` links every tool onto TOOLS:; `CC @TINY-C:/SRC/ALL` runs all three (a batch file may name others; `/C` puts NAME.OBJ next to its source, `/L` and `/J` find objects the way sources are found);
 `@DEMOS` (on TCEXTRA:) and `@TESTS` (on TCTESTS:) every program there.
 
 ## Calls through function pointers (`-z` / `/Z`)
@@ -163,7 +168,7 @@ docs/DESIGN.md for how.
   has 3,915 words less memory, and is the tightest).  GEN.C outgrew it
   (the Compiling pass ran out of stack in Z80 mode, and in P-Code mode
   without reclaimed memory), so it is split into `gen.c` and `genx.c`;
-  `PSYS_MODE=z80 voltest.py` runs `@BUILD @LIBS @DEMOS @TESTS` in Z80 mode.
+  `PSYS_MODE=z80 voltest.py` runs BUILD, LIBS, `@DEMOS` and `@TESTS` in Z80 mode.
 * Least free memory (SP - NP at every P-code instruction, tracked by the
   emulator: Options > Track Least Free Memory, run_verify
   `VERIFY_LOWWATER`) in Z80 mode (the normal layout; the same in P-Code

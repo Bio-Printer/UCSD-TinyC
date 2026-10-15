@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """viswaptest.py -- vi saves a file on the volume that holds VI.SWAP (the prefix volume).
 
-VI.SWAP is made the size of the file and 25 KB more, then closed (the rest of the volume is free again) and
+VI.SWAP is made the size of the file and 32 KB more, then closed (the rest of the volume is free again) and
 opened again to read and write; before, it took the largest free area of the prefix volume and a :w or ZZ of
 a file on that volume found no room ("I/O error").  On the P-System: the Filer's P(refix sets #5 (WORK:,
 whose free space is one area at its end), then from the shell:

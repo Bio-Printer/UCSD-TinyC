@@ -393,12 +393,15 @@ void gen_objuse(char *name);
 #pragma segment PP
 int preprocess(char *src, char *out);
 #ifdef __TINYC__
+#include <dirs.h>                       /* pathdir, __svpath (the shell's path), struct svat */
 #pragma segment DIRS	/* (with the library's dirs.c: one segment) */
 int fileunit(char *path);
 int findfile(char *name, char *alt, int from, char *path, int *unit);
 void svwhere(void);                     /* where the shell's path is (main: before the passes) */
-int pathdir(char *path, int *dir, int *up, int *bp, char *leaf);    /* the library's (dirs.h) */
-extern char __svpath[64];               /* the shell's path: VOL:/A/B after a CD into a sub-volume */
+int dirplace(char *dir, struct svat *at);   /* the sub-volume VOL:/A/B/'s place (unit, base) */
+#pragma segment SVAT
+FILE *placeopen(char *dir, char *leaf, char *path, int *unit, char *mode);   /* (pp.c) a file there, by its place */
+FILE *svfopen(char *name, char *mode);  /* fopen; in a named sub-volume by its place (pp.c) */
 #endif
 #pragma segment REALLIT
 int realtoken(char *s, char *out);
@@ -411,5 +414,12 @@ int compileend(void);
 int link(char **objs, int nobjs, char *code, char *progname);
 int join(char **objs, int nobjs, char *out);
 #pragma segment MAIN
+#ifdef __TINYC__
+#pragma segment LINK
+int inbatch(char *name, char *dir, char *ext1, char *ext2);    /* name beside the @batch file */
+#pragma segment MAIN
+#else
+#define svfopen fopen
+#endif
 
 #endif

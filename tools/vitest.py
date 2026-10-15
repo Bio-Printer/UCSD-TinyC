@@ -15,9 +15,9 @@ and the files they save must be identical:
 Uses the mode of PSYS_MODE (native or z80) like the other tools; the
 P-System VI is built with -z (tclibz.obj) so that it runs in both.
 
-  vitest.py --build   on the volumes (build/, tools/mkvolume.py): @TOOLS on
-                      TOOLSRC: with TINY-C:CC (TOOLS: as unit 10, its tools
-                      removed), in PSYS_MODE's mode and the normal layout;
+  vitest.py --build   on the volumes (build/, tools/mkvolume.py):
+                      @TOOLS:/SRC/TOOLS with TINY-C:CC (TOOLS: as unit 9, its
+                      tools removed), in PSYS_MODE's mode and the normal layout;
                       --build harvard: in P-Code mode with the Harvard
                       layout; the NAME.CODE it links onto TOOLS: must be
                       the ones mkvolume made
@@ -126,32 +126,30 @@ def psystem(work, text, keys, y):
 def build_on_psystem(harvard):
     import shutil
     from psys import BUILD
-    from voltest import prefix
     mode = 'native' if harvard else os.environ.get('PSYS_MODE', 'native')
     layout = 'P-Code mode, Harvard layout' if harvard else '%s mode, normal layout' % mode
     work = tempfile.mkdtemp(prefix='vibuild_')
-    for v in ('TINY-C', 'TOOLSRC', 'TOOLS'):
+    for v in ('TINY-C', 'TOOLS'):
         shutil.copy(os.path.join(BUILD, v + '.BLK'), work)
-    script = ['WAIT "Command:"'] + prefix('TOOLSRC:') + [
-        'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINY-C:CC\\r"',
-        'WAIT "Compile what file?"', 'TYPE "@TOOLS\\r"', 'WAIT "Done."', 'WAIT "Command:"']
+    script = ['WAIT "Command:"', 'TYPE "X"', 'WAIT "Execute what file?"', 'TYPE "TINY-C:CC\\r"',
+              'WAIT "Compile what file?"', 'TYPE "@TOOLS:/SRC/TOOLS\\r"', 'WAIT "Done."', 'WAIT "Command:"']
     sp = os.path.join(work, 'script')
     open(sp, 'w').write(shell_script('\n'.join(script) + '\n'))
     out = os.path.join(work, 'out')
     from mkvolume import TOOLS
-    tv = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK'))     # @TOOLS links onto TOOLS: (unit 10):
+    tv = ucsdvol.Volume(os.path.join(work, 'TOOLS.BLK'))     # @TOOLS links onto TOOLS: (unit 9):
     for name, mods, hdrs, desc in TOOLS:                    # the tools go first, so what is there after
         tv.remove(name + '.CODE')                           # was made by this run
     tv.save()
-    env = dict(os.environ, VERIFY_UNIT10=os.path.join(work, 'TOOLS.BLK'))
+    env = dict(os.environ)
     if harvard:
         env.update(VERIFY_RECLAIM='1', VERIFY_HARVARD='1')
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'), os.path.join(work, 'TINY-C.BLK'),
-                        os.path.join(work, 'TOOLSRC.BLK'), sp, mode, out, '', '1800'], capture_output=True, text=True, env=env)
+                        os.path.join(work, 'TOOLS.BLK'), sp, mode, out, '', '1800'], capture_output=True, text=True, env=env)
     tr = shell_transcript(open(os.path.join(out, 'transcript.txt'), encoding='latin1').read())
     names = [name + '.CODE' for name, mods, hdrs, desc in TOOLS]
     built = {}
-    for f in [os.path.join(out, f) for f in os.listdir(out)] + [os.path.join(work, 'TOOLS.BLK')]:
+    for f in [os.path.join(out, f) for f in os.listdir(out)]:
         if f.endswith('.BLK'):
             v = ucsdvol.Volume(f)
             if v.volname == 'TOOLS' and all(v.find(n) for n in names):
@@ -159,7 +157,7 @@ def build_on_psystem(harvard):
     shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))     # as mkvolume made it
     same = [n for n in names if built.get(n) == shipped.read(n)[0]]
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout and (not harvard or 'harvard layout: yes' in r.stdout) and len(same) == len(names)
-    print('@TOOLS on TOOLSRC: (%s): %s' % (layout, ', '.join('%s identical to TOOLS:%s' % (n, n) for n in same) if ok
+    print('@TOOLS:/SRC/TOOLS (%s): %s' % (layout, ', '.join('%s identical to TOOLS:%s' % (n, n) for n in same) if ok
                                           else 'FAILED (identical: %s)' % (', '.join(same) or 'none')))
     if not ok:
         print(tr[tr.find('Compile what'):][-800:])

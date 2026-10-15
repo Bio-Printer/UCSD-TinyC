@@ -8,7 +8,7 @@
   file), else the one on the prefix volume, else an error that lists the
   volumes.
 
-Disks: #4 the boot volume, #5 TINY-C: (the compiler, <stdio.h>), #9 ONE:,
+Disks: #4 the boot volume, #5 TINY-C: (the compiler, TINY-C:/INCLUDE), #9 ONE:,
 #10 TWO:, #11 THREE: (the prefix, set with the Filer).  Every copy CC must
 not take is a syntax error, so a clean compile shows it took the right
 ones; the program it makes prints what the right ones define.
@@ -17,7 +17,8 @@ ones; the program it makes prints what the right ones define.
     /Z MAIN       MAIN.C on ONE: (the batch file's disk), not THREE:'s
     /Z /C MAIN2   F.H on TINY-C: and TWO: only: error, Stopped.
   ONE:MAIN.C includes
-    <stdio.h>     only on TINY-C:
+    <stdio.h>     TINY-C:/INCLUDE's, though ONE: has a STDIO.H too
+    "stddef.h"    on no disk: TINY-C:/INCLUDE's (the last place looked)
     "a.h"         only on TWO:; it includes "e.h": on TWO: and THREE:,
                   TWO:'s (the including file's disk beats the prefix)
     "b.h"         on ONE: and TWO:: ONE:'s (the including file's disk)
@@ -37,12 +38,13 @@ from psys import ensure_setup, BUILD
 WRONG = 'this is the wrong copy\n'
 FILES = {
     'ONE': {'T.TEXT': '/Z MAIN\n/Z /C MAIN2\n',
-            'MAIN.C': '#include <stdio.h>\n#include "a.h"\n#include "b.h"\n#include "c.h"\n'
+            'MAIN.C': '#include <stdio.h>\n#include "stddef.h"\n#include "a.h"\n#include "b.h"\n#include "c.h"\n'
                       '#include "TWO:d.h"\n'
                       'int main(void) { printf("values %d %d %d %d %d\\n", A, B, C, D, E); return 0; }\n',
             'MAIN2.C': '#include "f.h"\nint x;\n',
             'B.H': '#define B 2\n',
-            'D.H': WRONG},
+            'D.H': WRONG,
+            'STDIO.H': WRONG},
     'TWO': {'A.H': '#define A 1\n#include "e.h"\n',
             'B.H': WRONG,
             'C.H': WRONG,

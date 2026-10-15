@@ -34,8 +34,9 @@ def main(a):
     mode = a[0] if a else 'native'
     ensure_setup()
     d = tempfile.mkdtemp(prefix='tcverify_')
-    for v in ('TINY-C', 'TCSRC', 'TCTESTS', 'TCEXTRA', 'TCVERIF', 'TCEXPCT'):
-        shutil.copy(os.path.join(BUILD if v in ('TINY-C', 'TCSRC', 'TCTESTS', 'TCEXTRA') else os.path.join(ROOT, 'build'), v + '.BLK'), d)
+    for v in ('TINY-C', 'TCTESTS', 'TCEXTRA', 'TCVERIF', 'TCEXPCT'):
+        shutil.copy(os.path.join(BUILD if v in ('TINY-C', 'TCTESTS', 'TCEXTRA') else os.path.join(ROOT, 'build'), v + '.BLK'), d)
+    ucsdvol.main(['new', os.path.join(d, 'SPARE.BLK'), 'SPARE', '100'])
     out = os.path.join(d, 'out')
     script = os.path.join(ROOT, 'verify', 'TCVERIFY.SCRIPT')
     if mode == 'z80':
@@ -47,7 +48,7 @@ def main(a):
     else:
         env.pop('VERIFY_RECLAIM', None)
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
-                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), script,
+                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'SPARE.BLK'), script,
                         mode, out, '', os.environ.get('TCV_MAX', '7200')], capture_output=True, text=True, env=env)
     ok = 'VERIFY SCRIPT COMPLETED' in r.stdout
     tail = [l for l in r.stderr.split('\n') if l.strip()][-3:]

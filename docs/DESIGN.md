@@ -262,9 +262,40 @@ live there too) comes into the gap.  vi's start-up code (pg_start, hdr_read,
 ucsd_askname) is a segment of its own (VISTART), gone before the window is
 sized.  The header page that keeps the place a file was left is read and
 written at the blocks fopen finds (in a sub-volume by the place, at the end
-when the window is no longer needed).  The window in Z80 mode: 3842 bytes for
-a text file on a volume (3876 before), 2988 for a 146 KB listing (3022), 2728
-for a text file in a sub-volume (before: none, vi refused).  Closing a
+when the window is no longer needed).  The window in Z80 mode: 3856 bytes for
+a text file on a volume (3876 before), 3002 for a 146 KB listing (3022), 2442
+for a text file in a sub-volume (before: none, vi refused).  VI.SWAP is the
+file, 32 KB for what is typed in and the 2 parking slots; ucsd_place is in
+VISTART too (pg_load checks first that DIRS and its directory fit).  Closing a
 sub-volume file that was only read needs no directory (__svclose).  The
 compiler's fmtfix moved from its own segment (REFSCAN) into PARSE: a code
 file has at most ten segments, and CC's library part now has DIRS and SVAT.
+
+The volumes in sub-volumes (mkvolume.py).  TINY-C: holds CC.CODE and
+TCMSGS.TEXT at the top and the sub-volumes INCLUDE (the headers), LIB
+(TCLIB.OBJ) and SRC (ALL.TEXT; CC/ the compiler with BUILD.TEXT, LIB/ the
+library with LIBS.TEXT); TOOLS: holds the tools' code files and MAN.TEXT, and
+SRC/ with a sub-volume of sources for each tool and TOOLS.TEXT.  TCSRC: and
+TOOLSRC: are gone.  The host makes the sub-volumes (ucsdvol.Volume.new: the
+shell's MKDIR format) with room for as much again as their files hold and 40
+blocks more, for the objects a rebuild leaves; FILES.TEXT lists the
+sub-volumes' files too (SRC/CC/MAIN.C).  CC: `<x.h>` is taken from
+TINY-C:/INCLUDE first, `"x.h"` from the including file's sub-volume first and
+TINY-C:/INCLUDE last; TCLIB.OBJ from TINY-C:/LIB when the prefix and boot
+volumes have none; the names in a batch file in a sub-volume are looked for
+beside it first (main.c inbatch), so `CC @TINY-C:/SRC/ALL` works from
+anywhere.  A file in a sub-volume named with its volume is opened by the
+sub-volume's place (pp.c placeopen, svfopen: two places kept, found by
+dirplace a directory block at a time; the code in the SVAT segment, which
+such an open loads anyway): through the path it would cost DIRS and a 2 KB
+directory, at the preprocessor's least free memory for a header and each
+time the linker reads an object again.  An open by a place reads the
+directory a block at a time into the FILE's own buffer (dirs.c svent), so
+only closing a file written needs 2 KB.  The compiler keeps every included
+file's name for its messages, so the preprocessor writes them without
+volume and sub-volumes (STDIO.H): with the whole paths the compile of a vi
+module had 450 words less.  Compiling a vi module from TOOLS:/SRC/VI (Z80
+layout): 2287 words free at the compile's least (2150 with the old CC and
+layout), 4670 while code is generated (5146: the object is closed in a
+sub-volume, SVAT and a 2 KB directory); CC linking itself no longer has the
+objects' opens at its least.

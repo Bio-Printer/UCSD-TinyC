@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """shellalltest.py -- a total system rebuild the way a user starts it: at the
-Command: prompt, S (the Tiny-C shell), then  cc @all  (TOOLSRC:ALL.TEXT:
-the compiler, the library and every tool), and the least free memory of it.
+Command: prompt, S (the Tiny-C shell), then  cc @tiny-c:/src/all  (the
+compiler, the library and every tool), and the least free memory of it.
 
-  @TCSRC:BUILD   the compiler -> TINY-C:CC2.CODE: CMPCODE IDENTICAL to CC.CODE
-  @TCSRC:LIBS    the library  -> TINY-C:TCLIB2.OBJ: IDENTICAL to TCLIB.OBJ
-  @TOOLS         every tool linked onto TOOLS: (its tools removed first):
-                 the same bytes as mkvolume's
-
-The shell finds ALL.TEXT on TOOLSRC: itself (a name without a volume is
-looked for on every disk), so the Filer's Prefix is not set: nothing else
-at the Command: prompt has less memory than the rebuild.
+  @TINY-C:/SRC/CC/BUILD   the compiler -> TINY-C:CC2.CODE: CMPCODE IDENTICAL
+                          to CC.CODE
+  @TINY-C:/SRC/LIB/LIBS   the library  -> TINY-C:/LIB/TCLIB2.OBJ: IDENTICAL
+                          to TCLIB.OBJ
+  @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
+                          first): the same bytes as mkvolume's
+and every object beside its source, none on the prefix volume (alltest's
+checks).  The Filer's Prefix is not set: nothing else at the Command: prompt
+has less memory than the rebuild.
 
 Reported: the emulator's tracked least free memory (SP - NP at every P-code
 instruction, VERIFY_LOWWATER) of the whole run, and the lowest passes by the
@@ -18,7 +19,7 @@ instruction, VERIFY_LOWWATER) of the whole run, and the lowest passes by the
 Z80 mode and P-Code mode without reclaimed memory (the default here) have the
 same layout, so the same figures; PSYS_MODE=z80 takes about 25 minutes.
 
-Disks: #5 TINY-C:, #9 TCSRC:, #10 TOOLSRC:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE).
+Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE).
 """
 import os, sys, re, shutil, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +28,7 @@ sys.path.insert(0, HERE)
 import ucsdvol
 from psys import ensure_setup, BUILD, shell_script, shell_transcript
 from voltest import cmpcode
-from mkvolume import TOOLS, MODULES, LIBMODS_
+from alltest import WAITS, prepare, results
 
 
 def passes(tr):
@@ -49,50 +50,24 @@ def passes(tr):
 def main():
     ensure_setup()
     d = tempfile.mkdtemp(prefix='shellall_')
-    for v in ('TINY-C', 'TCSRC', 'TOOLSRC', 'TOOLS', 'TCEXTRA'):
-        shutil.copy(os.path.join(BUILD, v + '.BLK'), d)
-    names = [name + '.CODE' for name, mods, hdrs, desc in TOOLS]
-    tv = ucsdvol.Volume(os.path.join(d, 'TOOLS.BLK'))
-    for n in names:                     # what is there after the run, @TOOLS made
-        tv.remove(n)
-    tv.save()
-    L = ['WAIT "Command:"', 'TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @all\\r"',
-         'WAIT "> @TCSRC:BUILD"', 'WAIT "> /L TINY-C:CC2="', 'WAIT "> @TCSRC:LIBS"',
-         'WAIT "Joining TINY-C:TCLIB2.OBJ"', 'WAIT "> @TOOLS"', 'WAIT "> /L TOOLS:GREP="',
-         'WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
+    names = prepare(d)
+    L = ['WAIT "Command:"', 'TYPE "S"', 'WAIT "shell> "', 'TYPE "cc @tiny-c:/src/all\\r"'] + \
+        ['WAIT "%s"' % w for w in WAITS] + \
+        ['WAIT "[exit status 0]"', 'WAIT "shell> "', 'TYPE "bye\\r"', 'WAIT "Command:"']
     L += cmpcode('TINY-C:CC.CODE', 'TINY-C:CC2.CODE')
-    L += cmpcode('TINY-C:TCLIB.OBJ', 'TINY-C:TCLIB2.OBJ')
+    L += cmpcode('TINY-C:/LIB/TCLIB.OBJ', 'TINY-C:/LIB/TCLIB2.OBJ')
     sp = os.path.join(d, 'shellall.script')
     open(sp, 'w').write(shell_script('\n'.join(L) + '\n'))
     mode = os.environ.get('PSYS_MODE', 'native')
-    env = dict(os.environ, VERIFY_UNIT10=os.path.join(d, 'TOOLSRC.BLK'), VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'),
+    env = dict(os.environ, VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'),
                VERIFY_UNIT12=os.path.join(d, 'TCEXTRA.BLK'), VERIFY_LOWWATER='1')
     # (P-Code mode without VERIFY_RECLAIM: Z80 mode's layout, many times faster)
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
-                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'TCSRC.BLK'), sp, mode,
+                        os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'SPARE.BLK'), sp, mode,
                         os.path.join(d, 'out'), '', '3600'], capture_output=True, text=True, env=env)
-    vols = {}
-    for f in [os.path.join(d, 'out', f) for f in os.listdir(os.path.join(d, 'out'))] + \
-             [os.path.join(d, v + '.BLK') for v in ('TOOLSRC', 'TOOLS')]:
-        if f.endswith('.BLK'):
-            v = ucsdvol.Volume(f)
-            if v.volname not in vols or v.volname in ('TCSRC', 'TINY-C'):
-                vols.setdefault(v.volname, v)
-    shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))
-    tools = vols.get('TOOLS')
     tr = shell_transcript(open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read())
-    objs = [m.upper() + '.OBJ' for m in MODULES + LIBMODS_]
-    tcsrc, toolsrc = vols.get('TCSRC'), vols.get('TOOLSRC')
-    checks = [
-        ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
-        ('cc @all ran BUILD, LIBS and TOOLS in turn, status 0', tr.find('> @TCSRC:BUILD') < tr.find('> @TCSRC:LIBS') < tr.find('> @TOOLS')
-         and 'Stopped' not in tr and '[exit status 0]' in tr),
-        ('TINY-C:CC2.CODE and TINY-C:TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
-        ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
-         and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
-        ('the objects of BUILD and LIBS on TCSRC:, not on TOOLSRC:', tcsrc is not None and toolsrc is not None
-         and all(tcsrc.find(o) for o in objs) and not any(toolsrc.find(o) for o in objs)),
-    ]
+    checks = results(d, r, tr, names)
+    checks.insert(2, ('the shell: cc exit status 0', '[exit status 0]' in tr))
     print([l for l in r.stdout.split('\n') if 'VERIFY' in l][-1:])
     lw = [l for l in r.stdout.split('\n') if l.startswith('least free memory')]
     if lw:

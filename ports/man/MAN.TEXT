@@ -45,10 +45,10 @@ DESCRIPTION
     another file (a compiler's .LIST) a CR ends a line, and it is written back
     with CRs.  A file larger than memory is edited through a window (the rest
     is kept in a temporary file VI.SWAP on the prefix volume, the file's size
-    and 25 KB, so a save on that volume finds room; the prefix volume even
+    and 32 KB, so a save on that volume finds room; the prefix volume even
     after a CD into a sub-volume: a file there is found once, when vi starts,
     and read and saved by where it is, with a window 1 KB smaller -- in Z80
-    mode about 2.7 KB): moving, searching, G and
+    mode about 2.4 KB): moving, searching, G and
     :N move the window; a command that needs more lines than the window holds
     (500dd on a big file) is refused.  Files up to about 185 KB.  Needs
     emulator 2.04.
@@ -123,7 +123,8 @@ EXAMPLES
     GREP printf *.C            every .C file on every disk
     GREP -i ^int #9:*.H        lines starting with int, case counts
     GREP -n ^\s*$ A.TEXT       the lines that are not blank
-    GREP vi*pageup TOOLSRC:=.C a pattern with * in it
+    GREP vi*pageup TOOLS:/SRC/VI/=.C
+                               a pattern with * in it
     GREP p-\>q A.C             the shell would take a bare > for a redirection
     DIR #5:= | GREP .TEXT      lines of another program's output
 SEE ALSO
