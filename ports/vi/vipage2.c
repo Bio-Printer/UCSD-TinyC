@@ -336,8 +336,15 @@ void pg_init(const char *fn)
 		fclose(pg_f);
 		pg_f = fopen(PG_SWAP, "r+b");
 	}
-	/* MEMAVAIL words, less malloc's room for the stack and some for yanks */
+	/* MEMAVAIL words, less malloc's room for the stack and some for yanks; for a file in a
+	   sub-volume also what its opens and the save take: the library's DIRS segment, a 2 KB
+	   directory and their stack */
 	cap = 2L * __cspi(40) - 600 - PG_RESERVE;
+	if (__svname((char *)fn)) {
+		cap = cap - 5200;
+		if (cap < PG_SLOT + 2 * PG_ROOM)	/* (Z80 mode: the window would be gone) */
+			pg_abandon(fn, "no memory in a sub-volume");
+	}
 #else
 	cap = getenv("VI_PAGECAP") ? atol(getenv("VI_PAGECAP")) : 32000L;
 #endif

@@ -449,6 +449,8 @@ static int hdr_io(const char *fn, int rd)
 	char fib[80];
 	char title[32];
 	int n;
+	if (__svname((char *)fn))			/* in a sub-volume: by the blocks' place (dirs.c) */
+		return __svio((char *)fn, pg_buf, __istext((char *)fn) ? 2 : 0, rd, &hdr_blocks);
 	__ptitle((char *)fn, title);
 	__cxp0v(3, fib, 0, -1);				/* FINIT(fib, NIL, untyped) */
 	__cxp0v(5, fib, title, 1, 0);			/* FOPEN, an old file */

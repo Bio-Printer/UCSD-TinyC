@@ -1,7 +1,7 @@
 /* dirs.c -- Tiny-C library: the disk units and their directories, and
    sub-volumes (dirs.h): units[], direntname, volunit,
    prefixvol, namesame, wildmatch, dirreadat, dirwriteat, pathdir, and
-   stdio's __svopen, __svclose, __svremove.
+   stdio's __svopen, __svclose, __svremove; __svio.
 
    A directory is blocks 2..5 of a disk, int dir[1024]: entry 0 the volume,
    entries 1..dir[8] the files, 13 words each.  A sub-volume is a Data file
@@ -360,6 +360,28 @@ int __svclose(FILE *f)
     e[11] = 512;
     e[12] = date;
     return dirwriteat(r[0], r[4], dir);
+}
+
+/* the first n blocks of the file at path in a sub-volume into buf (rd), or
+   buf onto them, by their place on the disk (vi: a text file's header
+   page); *len: the file's blocks (0: no such file).  1 if done */
+int __svio(char *path, char *buf, int n, int rd, int *len)
+{
+    int dir[1024];
+    char leaf[16];
+    int u, base, i;
+    *len = 0;
+    if (!pathdir(path, dir, &u, &base, leaf) || (i = findname(dir, leaf)) == 0)
+        return 0;
+    *len = dir[13 * i + 1] - dir[13 * i];
+    base = base + dir[13 * i];
+    if (n < 1 || *len < n)
+        return 0;
+    if (rd)
+        __cspv(5, u, buf, 0, n * 512, base, 0);     /* UNITREAD */
+    else
+        __cspv(6, u, buf, 0, n * 512, base, 0);     /* UNITWRITE */
+    return __cspi(34) == 0;
 }
 
 /* the file at path goes: 0 if done */

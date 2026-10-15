@@ -25,7 +25,7 @@
 #define PG_MAXCH   192          /* chunks in the stores, 6 bytes each (VI.SWAP: files up to about 185 KB) */
 #define PG_MAXSLOT (PG_MAXCH + 8)  /* slots in VI.SWAP: one a chunk, and some to spare */
 #define PG_ROOM    512          /* free bytes kept in the window for typing */
-#define PG_SWAP    "VI.SWAP"
+#define PG_SWAP    ":VI.SWAP"	// (on the prefix volume: not in a sub-volume after a CD)
 
 struct pgchunk {
 	int slot;               /* where in VI.SWAP: slot * PG_SLOT */

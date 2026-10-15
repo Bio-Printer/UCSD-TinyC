@@ -30,6 +30,7 @@ int dirwriteat(int u, int base, int *dir);  /* back (GDIRP forgotten): 0 on a di
 int findname(int *dir, char *name);     /* the entry called name, 0 none */
 void slashes(char *s);                  /* every \ in s a / (paths as Windows write them) */
 int pathdir(char *path, int *dir, int *up, int *bp, char *leaf);    /* the directory path's file is in */
+int __svio(char *path, char *buf, int n, int rd, int *len);  /* a sub-volume file's first n blocks in or out */
 
 /* subvol.c, a code segment of its own (SUBVOL) */
 #pragma segment SUBVOL
@@ -39,5 +40,6 @@ int fileson(int u);                     /* a file of the program open on unit u 
 int dirkrunch(int u, int base, int *dir, int show);     /* files moved down, the free blocks at the end */
 int svresize(char *path, char *size, char *cmd);        /* GROW, SHRINK: +N, -N or N blocks */
 #pragma segment MAIN
+int __svname(char *name);               /* (stdio) a path into a sub-volume, or a name on the shell's path */
 
 #endif

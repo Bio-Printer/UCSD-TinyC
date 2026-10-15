@@ -42,7 +42,7 @@ full regression test is asked for (it takes a long time).
 | compiler code generation or library | `tools/runtests.py` in both modes, `tools/selfcompile.py` (the compiler on the P-System against the host's); for stdio (`tinyc/lib/stdio.c`) also `tools/greptest.py`, `tools/pexectest.py` and `tools/vitest.py` |
 | linker, volume layout, memory | add `tools/voltest.py` and `tools/vitest.py --build` |
 | pexec / shell | `tools/pexectest.py` |
-| sub-volumes (`tinyc/lib/dirs.c` pathdir, `__sv*`; the shell's MKDIR, CD PATH) | `tools/subvoltest.py` (both modes) |
+| sub-volumes (`tinyc/lib/dirs.c` pathdir, `__sv*`; the shell's MKDIR, CD PATH) | `tools/subvoltest.py` (both modes); vi in one: `tools/visubvoltest.py` (both modes) |
 | the OS (U134.4_OS_SOURCE in UCSD-Pascal-Volumes; build/img Big_Disk's SYSTEM.PASCAL) | `tools/xsubvoltest.py`, `tools/pexectest.py`, `tools/keytest.py`, quicktest (both modes) |
 | the emulator's Import / Export (sub-volumes) | `tools/subvolxfertest.py` (needs `build/run_verify_new`, 2.07) |
 | memory (segments, pools, parser or linker stack): the least free memory of `cc @all` from the shell | `tools/shellalltest.py` (add `PSYS_MODE=z80` before a commit: about 25 minutes), `tools/voltest.py` |

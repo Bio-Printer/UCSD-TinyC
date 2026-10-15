@@ -45,7 +45,10 @@ DESCRIPTION
     another file (a compiler's .LIST) a CR ends a line, and it is written back
     with CRs.  A file larger than memory is edited through a window (the rest
     is kept in a temporary file VI.SWAP on the prefix volume, the file's size
-    and 25 KB, so a save on that volume finds room): moving, searching, G and
+    and 25 KB, so a save on that volume finds room; the prefix volume even
+    after a CD into a sub-volume: a file there is edited with a window 5 KB
+    smaller, for the directory code its save loads -- in Z80 mode there is
+    no such room, and vi says so): moving, searching, G and
     :N move the window; a command that needs more lines than the window holds
     (500dd on a big file) is refused.  Files up to about 185 KB.  Needs
     emulator 2.04.

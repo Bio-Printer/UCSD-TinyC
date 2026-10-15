@@ -106,8 +106,8 @@ int __svclose(FILE *f);
 int __svremove(char *path);
 #pragma segment MAIN
 
-/* a path (a / in it), or a name on the shell's path: dirs.c's sub-volumes */
-static int svname(char *name)
+/* a path (a / or \\ in it), or a name on the shell's path: dirs.c's sub-volumes (dirs.h) */
+int __svname(char *name)
 {
     return strchr(name, '/') || strchr(name, '\\') || (__svpath[0] && !strchr(name, ':') && name[0] != '#');
 }
@@ -213,7 +213,7 @@ FILE *fopen(char *name, char *mode)
         return NULL;
     }
     old = mode[0] == 'r' || mode[0] == 'a';
-    if (svname(name)) {
+    if (__svname(name)) {
         f->flags = f->flags | __F_SUB;
         ok = __svopen(f, name, mode);
     } else {
@@ -477,7 +477,7 @@ int remove(char *name)
 {
     char fib[80];
     char title[32];
-    if (svname(name))
+    if (__svname(name))
         return __svremove(name);
     __ptitle(name, title);
     __cxp0v(3, fib, 0, -1);

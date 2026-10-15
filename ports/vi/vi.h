@@ -428,6 +428,7 @@ void colon(char *buf);
 void colon1(char *buf);
 void do_cmd(char c);
 #ifdef __UCSD__
+#include <dirs.h>			// __svname, __svfile: a file in a sub-volume
 /* the P-System: viucsd.c */
 char *strchrnul(const char *s, int c);
 void *memrchr(const void *s, int c, size_t n);
