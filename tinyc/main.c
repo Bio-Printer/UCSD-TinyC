@@ -226,9 +226,37 @@ static void onpathvol(char *out, char *name)
    names (on the stack: gone with the command -- on the heap they outlived
    it and @ALL ran out of memory) take no room while a source compiles */
 #pragma segment LINK
-/* dir: the sub-volume of the @batch file the command is in ("" none): the objects named without
-   a volume are looked for there first */
-static int linkcmd(char *s, char *lib, int from, char *dir)
+/* /O DIR: odir (40 bytes) becomes DIR, ending in / or : ("" none: next to the sources) */
+static int setodir(char *s, char *odir)
+{
+    int n;
+    while (*s == ' ')
+        s++;
+    n = strlen(s);
+    if (n > 36) {
+        say("name too long\n");
+        return 0;
+    }
+    strcpy(odir, s);
+    if (n > 0 && s[n - 1] != '/' && s[n - 1] != ':')
+        strcat(odir, "/");
+    return 1;
+}
+
+/* NAME without its volume and sub-volumes (VI/VIMAIN: VIMAIN) */
+static char *leaf(char *s)
+{
+    char *p;
+    for (p = s; *s; s++)
+        if (*s == '/' || *s == ':')
+            p = s + 1;
+    return p;
+}
+
+/* dir: the sub-volume of the @batch file the command is in ("" none), odir where /O put the
+   objects ("" next to their sources): the objects named without a volume are looked for in odir
+   first, then beside the batch file */
+static int linkcmd(char *s, char *lib, int from, char *dir, char *odir)
 {
     char *objs[MAXFILES];
     char names[640];                    /* (paths into sub-volumes: TINY-C:/SRC/LIB/STDIO.OBJ) */
@@ -278,6 +306,12 @@ static int linkcmd(char *s, char *lib, int from, char *dir)
             continue;
         strcpy(src, s);
         strcat(src, ".OBJ");
+        if (odir[0] && !strchr(s, ':') && s[0] != '*') {
+            strcpy(obj, odir);
+            strcat(obj, leaf(src));
+            if (exists(obj))
+                strcpy(src, obj);       /* (where /O put it) */
+        }
 #ifdef __TINYC__
         inbatch(src, dir, "", "");      /* (beside the batch file, if it is there) */
 #endif
@@ -319,8 +353,9 @@ static int linkcmd(char *s, char *lib, int from, char *dir)
 #pragma segment MAIN
 
 /* from: the unit of the @batch file the command is in (0: typed); dir: its sub-volume ("" not
-   in one), where a source named without a volume is looked for first */
-static int command(char *s, char *lib, int from, char *dir)
+   in one), where a source named without a volume is looked for first; odir: where the objects
+   go ("" next to their sources; /O DIR sets it, for the rest of the batch file) */
+static int command(char *s, char *lib, int from, char *dir, char *odir)
 {
     char *objs[2];                      /* the object and the library */
     char src[64];                       /* a name, or a path into sub-volumes */
@@ -342,8 +377,10 @@ static int command(char *s, char *lib, int from, char *dir)
         while (*s == ' ')
             s++;
     }
+    if (s[0] == '/' && s[1] == 'O')
+        return setodir(s + 2, odir);    /* /O DIR: the objects go into DIR */
     if (s[0] == '/' && (s[1] == 'L' || s[1] == 'J'))
-        return linkcmd(s, lib, from, dir);
+        return linkcmd(s, lib, from, dir, odir);
     {
         conly = 0;
         if (s[0] == '/' && s[1] == 'C') {
@@ -388,16 +425,18 @@ static int command(char *s, char *lib, int from, char *dir)
             if (n < 0)
                 return 0;               /* on several disks: findfile said so */
         }
-        /* NAME.OBJ goes next to its source; NAME.CODE where NAME says (a
-           volume or path in it, else the shell's path or the prefix) */
+        /* NAME.OBJ goes where /O said, else next to its source; NAME.CODE where NAME
+           says (a volume or path in it, else the shell's path or the prefix) */
         obj[0] = 0;
         t = strchr(src, ':');
-        if (t && !strchr(s, ':') && !strchr(s, '/') && s[0] != '*') {
+        if (odir[0])
+            strcpy(obj, odir);
+        else if (t && !strchr(s, ':') && !strchr(s, '/') && s[0] != '*') {
             n = t - src + 1;
             memcpy(obj, src, n);
             obj[n] = 0;
         }
-        strcat(obj, s);
+        strcat(obj, odir[0] ? leaf(s) : s);
         strcat(obj, ".OBJ");
         onpathvol(ti, "TCTEMP.TEXT");
         onpathvol(tr, "TCTEMP.IR");
@@ -424,7 +463,7 @@ static int command(char *s, char *lib, int from, char *dir)
    afresh for each line anyway); the sources and objects its commands
    name are looked for on its own disk first. */
 #define BATCHLINE 150
-static int batch(char *name, char *lib, char *line)
+static int batch(char *name, char *lib, char *line, char *podir)
 {
     FILE *f;
     char path[64];
@@ -433,6 +472,7 @@ static int batch(char *name, char *lib, char *line)
     int n;
     char found[64];
     char dir[64];
+    char odir[40];                      /* /O: the objects' sub-volume (the caller's, until a /O) */
     char *p;
     int from;
     if (strlen(name) > 56) {
@@ -455,6 +495,7 @@ static int batch(char *name, char *lib, char *line)
         if (n > 0)
             strcpy(path, found);
     }
+    strcpy(odir, podir);
     strcpy(dir, path);                  /* its sub-volume: VOL:/A/ ("" none) */
     p = strrchr(dir, '/');
     if (p)
@@ -490,13 +531,13 @@ static int batch(char *name, char *lib, char *line)
         say(line);
         say("\n");
         if (line[0] == '@') {               /* another batch file, then on with this one */
-            if (!batch(line + 1, lib, line)) {
+            if (!batch(line + 1, lib, line, odir)) {
                 say("Stopped.\n");
                 return 0;
             }
             continue;
         }
-        if (!command(line, lib, from, dir)) {
+        if (!command(line, lib, from, dir, odir)) {
             say("Stopped.\n");
             return 0;
         }
@@ -512,6 +553,7 @@ int main(int argc, char **argv)
     /* UCSD file names are short: small buffers save 1 KB of stack; the
        command line (e.g. /L CC2=MAIN,UTIL,...) needs more */
     char out[30]; char src[30]; char tmpi[30]; char tmpr[30]; char obj[30]; char lib[30]; char line[BATCHLINE];
+    char odir[40];                      /* /O: where the objects go ("" next to their sources) */
 #else
     char out[200]; char src[200]; char tmpi[200]; char tmpr[200]; char obj[200]; char lib[200]; char line[200];
 #endif
@@ -526,6 +568,7 @@ int main(int argc, char **argv)
     out[0] = 0;
     lib[0] = 0;
 #ifdef __TINYC__
+    odir[0] = 0;
     svwhere();                          /* the shell's path, if any (pp.c) */
     strcpy(lib, "TCLIB.OBJ");
     if (!exists(lib))
@@ -557,7 +600,7 @@ int main(int argc, char **argv)
             say("> ");
             say(line);
             say("\n");
-            if (!(line[0] == '@' ? batch(line + 1, lib, line) : command(line, lib, 0, "")))
+            if (!(line[0] == '@' ? batch(line + 1, lib, line, odir) : command(line, lib, 0, "", odir)))
                 return 1;
         }
         say("Done.\n");
@@ -576,9 +619,9 @@ int main(int argc, char **argv)
     if (!*s)
         return 1;
     if (*s == '@')
-        n = batch(s + 1, lib, line);
+        n = batch(s + 1, lib, line, odir);
     else
-        n = command(s, lib, 0, "");
+        n = command(s, lib, 0, "", odir);
     if (!n)
         return 1;
     say("Done.\n");

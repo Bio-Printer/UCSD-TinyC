@@ -9,8 +9,8 @@ compiler, the library and every tool), and the least free memory of it.
                           to TCLIB.OBJ
   @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
                           first): the same bytes as mkvolume's
-and every object beside its source, none on the prefix volume (alltest's
-checks).  The Filer's Prefix is not set: nothing else at the Command: prompt
+and every object in TINY-C:/OBJ or TOOLS:/OBJ, none among the sources or on
+the prefix volume (alltest's checks).  The Filer's Prefix is not set: nothing else at the Command: prompt
 has less memory than the rebuild.
 
 Reported: the emulator's tracked least free memory (SP - NP at every P-code

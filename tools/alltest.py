@@ -9,9 +9,9 @@ others.  With the prefix on SPARE: (an empty volume), X(ecute TINY-C:CC,
                           to TCLIB.OBJ
   @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
                           first): the same bytes as mkvolume's
-and every object is beside its source (TINY-C:/SRC/CC, TINY-C:/SRC/LIB,
-TOOLS:/SRC/VI ...: the names in a batch file are looked for beside it),
-none on the prefix volume.
+and every object is in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' /O),
+none among the sources (TINY-C:/SRC/CC, TOOLS:/SRC/VI ...: the names in a
+batch file are looked for beside it) or on the prefix volume.
 
 Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE).  Uses the
 mode of PSYS_MODE (native or z80); about 25 minutes in Z80 mode.
@@ -55,13 +55,21 @@ def results(d, r, tr, names):
     shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))
     tools, tinyc, spare = vols.get('TOOLS'), vols.get('TINY-C'), vols.get('SPARE')
 
-    def objs_in(v, path, objs):
+    def at(v, path):
         try:
             for p in path:
                 v = v.sub(p)
-            return all(v.find(o) for o in objs)
+            return v
         except (Exception, SystemExit):
-            return False
+            return None
+
+    def objs_in(v, path, objs):
+        v = at(v, path)
+        return v is not None and all(v.find(o) for o in objs)
+
+    def no_objs(v, path):
+        v = at(v, path)
+        return v is not None and not any(e[3].endswith('.OBJ') for e in v.entries)
     pos = [tr.find(w) for w in WAITS]
     checks = [
         ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
@@ -69,12 +77,13 @@ def results(d, r, tr, names):
         ('TINY-C:CC2.CODE and TINY-C:/LIB/TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
         ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
          and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
-        ('every object beside its source (TINY-C:/SRC/CC, /SRC/LIB, TOOLS:/SRC/VI ...), none on the prefix SPARE:',
+        ('every object in TINY-C:/OBJ or TOOLS:/OBJ (/O), none in SRC/CC, SRC/LIB, TOOLS:/SRC/VI ... or on the prefix SPARE:',
          tinyc is not None and tools is not None and spare is not None
-         and objs_in(tinyc, ['SRC', 'CC'], [m.upper() + '.OBJ' for m in MODULES])
-         and objs_in(tinyc, ['SRC', 'LIB'], [m.upper() + '.OBJ' for m in LIBMODS_])
-         and all(objs_in(tools, ['SRC', name], [os.path.splitext(os.path.basename(m))[0].upper() + '.OBJ' for m in mods])
-                 for name, mods, hdrs, desc in TOOLS)
+         and objs_in(tinyc, ['OBJ'], [m.upper() + '.OBJ' for m in MODULES + LIBMODS_])
+         and objs_in(tools, ['OBJ'], [os.path.splitext(os.path.basename(m))[0].upper() + '.OBJ'
+                                      for name, mods, hdrs, desc in TOOLS for m in mods])
+         and no_objs(tinyc, ['SRC', 'CC']) and no_objs(tinyc, ['SRC', 'LIB'])
+         and all(no_objs(tools, ['SRC', name]) for name, mods, hdrs, desc in TOOLS)
          and not any(e[3].endswith('.OBJ') for e in spare.entries)),
     ]
     return checks

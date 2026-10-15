@@ -2,10 +2,10 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
 
   FILE                     BLOCKS  WHAT
 
-  CC.CODE                     131  the Tiny-C compiler: CC from the shell, X(ecute TINY-C:CC
+  CC.CODE                     132  the Tiny-C compiler: CC from the shell, X(ecute TINY-C:CC
   TCMSGS.TEXT                   8  the compiler's messages (line n = message n)
   README.TEXT                  14  how to use Tiny-C, and what is where
-  INCLUDE/                    246  sub-volume: the headers (#include <stdio.h> finds them here)
+  INCLUDE/                    171  sub-volume: the headers (#include <stdio.h> finds them here)
   INCLUDE/ASSERT.H              4  assert()
   INCLUDE/CONIO.H               4  console: getch, putch, cputs, kbhit, gotoxy, clrscr
   INCLUDE/CTYPE.H               4  isdigit, isalpha, toupper, ...
@@ -25,13 +25,13 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   INCLUDE/TCRT.H                6  runtime helpers the compiler calls (reference only)
   LIB/                        204  sub-volume: the C library
   LIB/TCLIB.OBJ                79  the C library (built with /Z), linked into every program
-  SRC/                       1734  sub-volume: the sources of the compiler and the library, and how to rebuild them
+  SRC/                       1140  sub-volume: the sources of the compiler and the library, and how to rebuild them
   SRC/README.TEXT               6  how to rebuild Tiny-C and the tools
   SRC/ALL.TEXT                  4  CC @TINY-C:/SRC/ALL: the compiler, the library and every tool
-  SRC/CC/                    1150  sub-volume: the compiler: its modules and BUILD.TEXT
+  SRC/CC/                     741  sub-volume: the compiler: its modules and BUILD.TEXT
   SRC/CC/BUILD.TEXT             4  CC @TINY-C:/SRC/CC/BUILD: rebuilds the compiler -> TINY-C:CC2.CODE
   SRC/CC/OBJFORMAT.TEXT        24  the .OBJ file format: what CC writes, how the linker reads it
-  SRC/CC/MAIN.C                38  the driver: commands, @FILE, the passes
+  SRC/CC/MAIN.C                42  the driver: commands, @FILE, the passes
   SRC/CC/UTIL.C                16  messages, output helpers, memory pools
   SRC/CC/TYPES.C                6  type predicates
   SRC/CC/PP.C                  78  pass 1: the preprocessor
@@ -48,7 +48,7 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/CC/TC.H                  30  shared declarations (every module)
   SRC/CC/PARSE.H               12  the parser modules' shared declarations
   SRC/CC/GEN.H                  8  gen.c and genx.c's shared declarations
-  SRC/LIB/                    518  sub-volume: the library: its modules and LIBS.TEXT
+  SRC/LIB/                    341  sub-volume: the library: its modules and LIBS.TEXT
   SRC/LIB/LIBS.TEXT             4  CC @TINY-C:/SRC/LIB/LIBS: rebuilds the library -> TINY-C:/LIB/TCLIB2.OBJ
   SRC/LIB/ASSERT.C              4  <assert.h>
   SRC/LIB/CONIO.C               4  <conio.h>
@@ -69,4 +69,5 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/LIB/SUBVOL.C             26  svcanon, dirfree, dirkrunch, svresize: KRUNCH, GROW, SHRINK (<dirs.h>)
   SRC/LIB/TCRT.C               18  runtime helpers: C division, shifts, unsigned, longs
   SRC/LIB/LIBINT.H              6  the library modules' shared declarations
+  OBJ/                        658  sub-volume: empty: the objects BUILD and LIBS make (/O TINY-C:/OBJ)
   FILES.TEXT                   14  this list

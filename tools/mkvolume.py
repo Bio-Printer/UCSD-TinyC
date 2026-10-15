@@ -43,6 +43,7 @@ WHAT IS WHERE (FILES.TEXT lists every file):
     TCMSGS.TEXT      its messages
     INCLUDE/         the headers: STDIO.H, STRING.H, PSYS.H ...
     LIB/             the C library, TCLIB.OBJ
+    OBJ/             empty: the objects a rebuild makes (BUILD's and LIBS's /O)
     SRC/             the sources, and the batch files that rebuild everything:
       SRC/ALL.TEXT     the compiler, the library and the tools at once
       SRC/CC/          the compiler's modules, BUILD.TEXT
@@ -61,6 +62,9 @@ X(ecute TINY-C:CC and answer "Compile what file?" with
                          for the Z80 interpreter (see FUNCTION POINTERS)
     /L OUT=A,B,...       link A.OBJ, B.OBJ, ... and TCLIB.OBJ -> OUT.CODE
     /J LIB=A,B,...       join A.OBJ, B.OBJ, ... into the library LIB.OBJ
+    /O DIR               the objects of the commands after it go into DIR
+                         (TINY-C:/OBJ), and /L and /J look there first; in a
+                         batch file until its end
     @FILE                run the commands in FILE.TEXT, one per line
                          (blank lines and lines starting with ; skipped;
                          a line @OTHER runs OTHER.TEXT, then goes on)
@@ -150,8 +154,9 @@ EVERYTHING AT ONCE:  CC @TINY-C:/SRC/ALL (TOOLS: on line too): BUILD, LIBS,
 then TOOLS:/SRC/TOOLS (every tool linked onto TOOLS:).
 
 The names in a batch file are looked for beside it first, so these work
-from anywhere, and each module leaves its NAME.OBJ next to its source
-(DELETE them from the shell if you like: DELETE TINY-C:/SRC/CC/*.OBJ).
+from anywhere.  Their first command, /O TINY-C:/OBJ, puts every NAME.OBJ
+into TINY-C:/OBJ, not among the sources (DELETE TINY-C:/OBJ/*.OBJ from
+the shell to clear it).
 CC/OBJFORMAT.TEXT describes what is in a .OBJ file and how the linker
 reads it.
 """
@@ -288,7 +293,8 @@ TOOLS = [
 README_TOOLS = """TOOLS                                               volume TOOLS:
 
 Tools written in Tiny-C, ready to run.  Their sources are in TOOLS:/SRC, a
-sub-volume each (TOOLS:/SRC/VI, TOOLS:/SRC/GREP ...; SRC/README.TEXT).
+sub-volume each (TOOLS:/SRC/VI, TOOLS:/SRC/GREP ...; SRC/README.TEXT); the
+objects a rebuild makes go into TOOLS:/OBJ (empty until then).
 
 VI      the screen editor vi (the BusyBox "tiny vi"):  from the shell,
         VI NAME.C  (the name as typed; .C, .H and .TEXT files are text
@@ -432,9 +438,9 @@ modules, SRC/GREP GREP.C, and so on.
 
 REBUILDING THEM:  from the shell, CC @TOOLS:/SRC/TOOLS (or X(ecute
 TINY-C:CC, answer @TOOLS:/SRC/TOOLS).  TOOLS.TEXT compiles every tool's
-modules (VI/VIMAIN: found beside TOOLS.TEXT; each leaves its NAME.OBJ next
-to its source) and links the tool straight onto TOOLS: (TOOLS:NAME.CODE,
-replacing the one there).
+modules (VI/VIMAIN: found beside TOOLS.TEXT; /O TOOLS:/OBJ puts each
+NAME.OBJ into TOOLS:/OBJ) and links the tool straight onto TOOLS:
+(TOOLS:NAME.CODE, replacing the one there).
 
 EVERYTHING AT ONCE:  CC @TINY-C:/SRC/ALL: the compiler (TINY-C:CC2.CODE),
 the library (TINY-C:/LIB/TCLIB2.OBJ), then TOOLS; a batch file can name
@@ -488,13 +494,16 @@ DEMOS = ('boxes', 'calc', 'demo', 'guess', 'hanoi', 'pi', 'queens', 'sieve')
 LIBMODS_ = sorted(f[:-2] for f in os.listdir(os.path.join(ROOT, 'tinyc', 'lib')) if f.endswith('.c'))
 LIBS = """; LIBS -- rebuild the C library: CC @TINY-C:/SRC/LIB/LIBS from the shell
 ; (or X(ecute TINY-C:CC and answer @TINY-C:/SRC/LIB/LIBS).  Compiles every library
-; module here (each leaves NAME.OBJ here), then joins them into TINY-C:/LIB/TCLIB2.OBJ.
+; module here (/O: each NAME.OBJ into TINY-C:/OBJ), then joins them into
+; TINY-C:/LIB/TCLIB2.OBJ.
+/O TINY-C:/OBJ
 """ + ''.join('/Z /C %s\n' % m.upper() for m in LIBMODS_) + \
     '/J TINY-C:/LIB/TCLIB2=%s\n' % ','.join(m.upper() for m in LIBMODS_)
 
 BUILD = """; BUILD -- rebuild the Tiny-C compiler: CC @TINY-C:/SRC/CC/BUILD from the shell
 ; (or X(ecute TINY-C:CC and answer @TINY-C:/SRC/CC/BUILD).  Compiles every module
-; here (each leaves NAME.OBJ here), then links them into TINY-C:CC2.CODE.
+; here (/O: each NAME.OBJ into TINY-C:/OBJ), then links them into TINY-C:CC2.CODE.
+/O TINY-C:/OBJ
 """ + ''.join('/C %s\n' % m.upper() for m in MODULES) + \
     '/L TINY-C:CC2=%s\n' % ','.join(m.upper() for m in MODULES)
 
@@ -570,8 +579,8 @@ ROOM = 40                               # a sub-volume's least room to spare, in
 
 class Dir:
     """A volume being made (blocks given) or a sub-volume in it (blocks None: what it holds, and
-    room for as much again as its own files and ROOM blocks more, for the objects a rebuild
-    leaves, a new library beside the old one, and edits; GROW makes it bigger).  Its files with what they are; sub-volumes are made first, then written into it
+    room for a quarter as much again as its own files and ROOM blocks more, for edits; GROW
+    makes it bigger; the objects a rebuild makes go to OBJ, objdir).  Its files with what they are; sub-volumes are made first, then written into it
     as data files (ucsdvol.Volume.new: the shell's MKDIR)."""
     def __init__(self, name, blocks=None):
         self.name = name.upper()
@@ -588,8 +597,8 @@ class Dir:
     def binary(self, name, data, desc):
         self.items.append([name.upper(), data, 2 if name.upper().endswith('.CODE') else 5, desc])
 
-    def sub(self, name, desc):
-        d = Dir(name)
+    def sub(self, name, desc, blocks=None):
+        d = Dir(name, blocks)
         self.items.append([d.name, d, 5, desc])
         return d
 
@@ -599,7 +608,7 @@ class Dir:
             parts = [(n, r.made().image() if isinstance(r, Dir) else r, k) for n, r, k, d in self.items]
             need = 6 + sum(max(1, (len(r) + 511) // 512) for n, r, k in parts)
             own = sum(max(1, (len(r) + 511) // 512) for n, r, k, d in self.items if not isinstance(r, Dir))
-            v = ucsdvol.Volume.new(self.name, self.blocks or need + own + ROOM)
+            v = ucsdvol.Volume.new(self.name, self.blocks or need + own // 4 + ROOM)
             for n, r, k in parts:
                 v.write(n, r, k)
             self.v = v
@@ -659,8 +668,9 @@ def tiny_c():
     for f in sorted(os.listdir(INC)):
         if f.endswith('.h'):
             inc.textfile(f.upper(), os.path.join(INC, f), describe(os.path.join(INC, f)))
-    lib = t.sub('LIB', 'the C library')
-    lib.binary('TCLIB.OBJ', open(build_lib(True), 'rb').read(), 'the C library (built with /Z), linked into every program')
+    tclib = open(build_lib(True), 'rb').read()
+    lib = t.sub('LIB', 'the C library', 6 + 2 * ((len(tclib) + 511) // 512) + ROOM)  # (and TCLIB2.OBJ, LIBS)
+    lib.binary('TCLIB.OBJ', tclib, 'the C library (built with /Z), linked into every program')
     src = t.sub('SRC', 'the sources of the compiler and the library, and how to rebuild them')
     src.text('README.TEXT', README_SRC, 'how to rebuild Tiny-C and the tools')
     src.text('ALL.TEXT', ALL, 'CC @TINY-C:/SRC/ALL: the compiler, the library and every tool')
@@ -676,7 +686,17 @@ def tiny_c():
     for m in LIBMODS:
         lb.textfile(m.upper() + '.C', os.path.join(LIB, m + '.c'))
     lb.textfile('LIBINT.H', os.path.join(LIB, 'libint.h'))
+    objdir(t, [os.path.join(os.path.dirname(code), m + '.obj') for m in MODULES] +
+           [os.path.join(ROOT, 'build', 'libz', m + '.obj') for m in LIBMODS],
+           "empty: the objects BUILD and LIBS make (/O TINY-C:/OBJ)")
     t.finish()
+
+
+def objdir(vol, objs, desc):
+    """the sub-volume OBJ, empty: room for the objects a rebuild makes (the host's, objs) twice
+    over -- a new one is written before the old one goes -- and ROOM blocks more"""
+    need = sum((os.path.getsize(o) + 511) // 512 for o in objs)
+    vol.sub('OBJ', desc, 6 + 2 * need + ROOM)
 
 
 def programs(vol, batch, progs, desc):
@@ -741,13 +761,17 @@ def tools():
     s = t.sub('SRC', "the tools' sources (a sub-volume each) and TOOLS.TEXT")
     s.text('README.TEXT', README_TOOLS_SRC, "how to rebuild the tools")
     s.text('TOOLS.TEXT', '; TOOLS -- compile and link every tool onto TOOLS:\n'
-           '; CC @TOOLS:/SRC/TOOLS from the shell, or X(ecute TINY-C:CC and answer @TOOLS:/SRC/TOOLS\n' +
+           '; CC @TOOLS:/SRC/TOOLS from the shell, or X(ecute TINY-C:CC and answer @TOOLS:/SRC/TOOLS\n'
+           '; (/O: the objects into TOOLS:/OBJ)\n/O TOOLS:/OBJ\n' +
            ''.join(tool_batch(name, mods) for name, mods, hdrs, desc in TOOLS),
            'CC @TOOLS:/SRC/TOOLS: rebuilds every tool')
     for name, mods, hdrs, desc in TOOLS:
         d = s.sub(name, name.lower() + "'s source")
         for f in mods + hdrs:
             d.textfile(os.path.basename(f).upper(), os.path.join(ROOT, f))
+    objdir(t, [os.path.join(TMP, os.path.splitext(os.path.basename(m))[0] + '.obj')
+               for name, mods, hdrs, desc in TOOLS for m in mods],
+           "empty: the objects TOOLS.TEXT makes (/O TOOLS:/OBJ)")
     t.finish()
 
 

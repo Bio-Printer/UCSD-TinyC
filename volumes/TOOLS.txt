@@ -21,10 +21,10 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   MAN.CODE                     26  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
   BINDERC.CODE                 29  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
   MAN.TEXT                     66  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
-  SRC/                       2288  sub-volume: the tools' sources (a sub-volume each) and TOOLS.TEXT
+  SRC/                       1737  sub-volume: the tools' sources (a sub-volume each) and TOOLS.TEXT
   SRC/README.TEXT               8  how to rebuild the tools
   SRC/TOOLS.TEXT                6  CC @TOOLS:/SRC/TOOLS: rebuilds every tool
-  SRC/VI/                     758  sub-volume: vi's source
+  SRC/VI/                     491  sub-volume: vi's source
   SRC/VI/VIMAIN.C              36  vi: start, main loop, keys, files, the terminal (Linux)
   SRC/VI/VISCREEN.C            48  vi: the screen, the status line, the cursor
   SRC/VI/VITEXT.C              40  vi: moving in and changing the text, searching ...
@@ -35,38 +35,39 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/VI/VIUCSD.C              30  vi on UCSD Pascal II.0 with Tiny-C: the routines that
   SRC/VI/VI.H                  38  vi's modules share this: configuration, globals
   SRC/VI/VIPAGE.H              14  vi's window into big files (VI.SWAP)
-  SRC/GREP/                    94  sub-volume: grep's source
+  SRC/GREP/                    76  sub-volume: grep's source
   SRC/GREP/GREP.C              24  GREP [-i] [-n] PATTERN [VOL: | #n: | PATH]FILES  ...
-  SRC/CAT/                     70  sub-volume: cat's source
+  SRC/CAT/                     61  sub-volume: cat's source
   SRC/CAT/CAT.C                12  CAT [-AbeEnstTuv] [FILE ...]: the files, one after the ...
-  SRC/HEXDUMP/                 70  sub-volume: hexdump's source
+  SRC/HEXDUMP/                 61  sub-volume: hexdump's source
   SRC/HEXDUMP/HEXDUMP.C        12  HEXDUMP [-i] [FILE ...]: the bytes of the files (one ...
-  SRC/OBJCOPY/                 74  sub-volume: objcopy's source
+  SRC/OBJCOPY/                 63  sub-volume: objcopy's source
   SRC/OBJCOPY/OBJCOPY.C        14  OBJCOPY [-I ihex|hexdump] [-O binary] [INFILE ...
-  SRC/MORE/                    82  sub-volume: more's source
+  SRC/MORE/                    68  sub-volume: more's source
   SRC/MORE/MORE.C              18  MORE [-N] [-s] [-i] [+N] [FILE ...]: the files a screen ...
-  SRC/LESS/                   126  sub-volume: less's source
+  SRC/LESS/                    96  sub-volume: less's source
   SRC/LESS/LESS.C              40  LESS [-NSiF] [+N] [FILE ...]: the files a screen at a ...
-  SRC/SED/                    214  sub-volume: sed's source
+  SRC/SED/                    151  sub-volume: sed's source
   SRC/SED/SED.C                50  SED [-nEsur] [-i[SUFFIX]] [-e SCRIPT] [-f SCRIPTFILE] ...
   SRC/SED/SEDRE.C              30  SED's regular expressions: POSIX basic (BRE) and ...
   SRC/SED/SED.H                 4  what SED.C and SEDRE.C share: the regular expression ...
-  SRC/DIFF/                   110  sub-volume: diff's source
+  SRC/DIFF/                    86  sub-volume: diff's source
   SRC/DIFF/DIFF.C              32  DIFF [-iwbBqs] [-u|-U N|-c|-C N] FILE1 FILE2: what ...
-  SRC/WC/                      78  sub-volume: wc's source
+  SRC/WC/                      66  sub-volume: wc's source
   SRC/WC/WC.C                  16  WC [-clmwL] [FILE ...]: the lines, words and bytes of ...
-  SRC/LC/                      78  sub-volume: lc's source
+  SRC/LC/                      66  sub-volume: lc's source
   SRC/LC/LC.C                  16  LC [-1xFsrSC] [VOL: | #n: | PATH][PATTERN ...]: the ...
-  SRC/KRUNCH/                  66  sub-volume: krunch's source
+  SRC/KRUNCH/                  58  sub-volume: krunch's source
   SRC/KRUNCH/KRUNCH.C          10  KRUNCH [-y] [VOL: | #n | PATH]: move the files of a ...
-  SRC/GROW/                    58  sub-volume: grow's source
+  SRC/GROW/                    53  sub-volume: grow's source
   SRC/GROW/GROW.C               6  GROW NAME SIZE: the sub-volume NAME (a path: A, #5:A ...
-  SRC/SHRINK/                  54  sub-volume: shrink's source
+  SRC/SHRINK/                  51  sub-volume: shrink's source
   SRC/SHRINK/SHRINK.C           4  SHRINK NAME SIZE: the sub-volume NAME (a path: A, #5:A
-  SRC/PATCH/                  130  sub-volume: patch's source
+  SRC/PATCH/                   98  sub-volume: patch's source
   SRC/PATCH/PATCH.C            42  PATCH [-RsbClN] [-F N] [-pN] [-o OUTFILE] [-i ...
-  SRC/MAN/                     74  sub-volume: man's source
+  SRC/MAN/                     63  sub-volume: man's source
   SRC/MAN/MAN.C                14  MAN [-k WORD] [-l] [NAME ...]: the manual pages of the ...
-  SRC/BINDERC/                 78  sub-volume: binderc's source
+  SRC/BINDERC/                 66  sub-volume: binderc's source
   SRC/BINDERC/BINDERC.C        16  BINDERC [FILE]: the Pascal System Binder, in Tiny-C
+  OBJ/                        692  sub-volume: empty: the objects TOOLS.TEXT makes (/O TOOLS:/OBJ)
   FILES.TEXT                   14  this list

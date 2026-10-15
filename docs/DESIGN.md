@@ -275,10 +275,14 @@ The volumes in sub-volumes (mkvolume.py).  TINY-C: holds CC.CODE and
 TCMSGS.TEXT at the top and the sub-volumes INCLUDE (the headers), LIB
 (TCLIB.OBJ) and SRC (ALL.TEXT; CC/ the compiler with BUILD.TEXT, LIB/ the
 library with LIBS.TEXT); TOOLS: holds the tools' code files and MAN.TEXT, and
-SRC/ with a sub-volume of sources for each tool and TOOLS.TEXT.  TCSRC: and
+SRC/ with a sub-volume of sources for each tool and TOOLS.TEXT; each volume
+also has OBJ/, empty, where the batch files put the objects they make (CC's
+/O DIR command: the objects of the commands after it go to DIR, and /L and /J
+look there first; it lasts to the end of the batch file).  TCSRC: and
 TOOLSRC: are gone.  The host makes the sub-volumes (ucsdvol.Volume.new: the
-shell's MKDIR format) with room for as much again as their files hold and 40
-blocks more, for the objects a rebuild leaves; FILES.TEXT lists the
+shell's MKDIR format) with room for a quarter as much again as their files hold and 40
+blocks more (OBJ/: twice the objects the host's build makes, and 40 blocks);
+FILES.TEXT lists the
 sub-volumes' files too (SRC/CC/MAIN.C).  CC: `<x.h>` is taken from
 TINY-C:/INCLUDE first, `"x.h"` from the including file's sub-volume first and
 TINY-C:/INCLUDE last; TCLIB.OBJ from TINY-C:/LIB when the prefix and boot
