@@ -187,10 +187,15 @@ docs/DESIGN.md for how.
   words (STDIO.C), `cc @build @libs` from the shell 2,573; the tools were
   not counted, and they were the worst: VICMD.C 589.  The Filer, setting the
   prefix, has 1,993 -- which is why shellalltest.py does not set it.)
-  With reclaimed memory, 3,915 words more.  CC's "(N
-  free)" after each pass is that pass's least (`memleast()` in
+  With reclaimed memory, 3,915 words more.  CC's "N
+  bytes free" after each pass is that pass's least (`memleast()` in
   psys.h, emulator 1.99; elsewhere the free memory at the pass's end), so
-  the least of them is the status bar's figure; `voltest.py` prints both.
+  the least of them is the status bar's figure (in words: half); `voltest.py` prints both.
+  A compile's line is `NAME  N bytes free  Compiling  N bytes free  Generating code  N bytes
+  free  N lines/s` (the lines of the source and its headers, over all three passes), a
+  link's ends in `N bytes free  N bytes/s` (its segments' bytes); the rates need the clock
+  (TIME: the emulator's Options > Host clock, VERIFY_HOSTCLOCK in a Verify run) and are left
+  out without it.
   What took the memory, and what was done in the last round (a code segment
   is in memory as long as one of its functions runs, so the segments of
   main(), of the parser and of the pass count in full at every point, and a

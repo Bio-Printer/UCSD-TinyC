@@ -33,6 +33,7 @@ struct Incl {
     int unit;                   /* P-System: the disk unit it is on (0: not known) */
 };
 static struct Incl *istack;
+unsigned pplines;
 static int idepth;
 static FILE *ppout;
 static int incomment;
@@ -305,6 +306,7 @@ static int rawline(char *buf, int max)
     }
     buf[n] = 0;
     istack[idepth - 1].line++;
+    pplines++;
     return 1;
 }
 

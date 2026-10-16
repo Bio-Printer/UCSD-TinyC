@@ -61,7 +61,7 @@ static void basename8(char *path, char *out)
 
 /* every pass gives its heap back: on the P-System memory is released
    to where it was before the pass (the stdio files are all closed).
-   Its "words free" is the least free memory during the pass (memleast,
+   Its "bytes free" is the least free memory during the pass (memleast,
    psys.h: emulator 1.99), else the free memory at its end (MEMAVAIL). */
 static void passbegin(int xsize)
 {
@@ -74,15 +74,20 @@ static void passbegin(int xsize)
     xsetsize(xsize);
 }
 
+/* the clock: TIME's 1/60 s (the emulator's Host clock, VERIFY_HOSTCLOCK; 0 without it), read
+   in line (__cspv(9, &hi, &lo)) where a pass starts: a function here would be in memory in every pass */
+#pragma segment LINK
+static void sayrate(unsigned n, unsigned t0, char *what);   /* (in LINK: in memory after the passes only) */
+#pragma segment MAIN
+
 static void passend(void)
 {
 #ifdef __TINYC__
     int least;
     least = memleast();
     memleast_stop();
-    say("(");
-    saynw(least >= 0 ? least : __cspi(40), 4);
-    say(" free)  ");
+    saynw(2 * (unsigned)(least >= 0 ? least : __cspi(40)), 5);
+    say(" bytes free  ");
     fflush(stdout);
     __heaprestore();
 #endif
@@ -98,12 +103,17 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
 {
     char mod[10];
     int ok;
+    unsigned t0;
+    int hi;
     basename8(src, mod);
     remove(tmpi);
     remove(tmpr);
-    say("Preprocessing ");
     sayw(src, 29);                      /* the passes' figures line up in columns (a path in */
     say(" ");                           /* a sub-volume: TOOLS:/SRC/BINDERC/BINDERC.C, 28) */
+    pplines = 0;
+#ifdef __TINYC__
+    __cspv(9, &hi, &t0);                /* TIME */
+#endif
     passbegin(8000);
     if (!preprocess(src, tmpi))
         return 0;
@@ -122,6 +132,7 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
     remove(tmpr);
     if (!ok)
         return 0;
+    sayrate(pplines, t0, " lines/s");   /* (the source's and its headers', all three passes) */
     say("\n");
     return 1;
 }
@@ -129,17 +140,49 @@ static int compileone(char *src, char *tmpi, char *tmpr, char *obj)
 /* The linker's commands are in its segment: it is in memory while it
    links, not while a source compiles (this is 600 bytes of every pass). */
 #pragma segment LINK
+/* n things in the time since tick t0, a second's worth: "  N what" (nothing without a clock) */
+static void sayrate(unsigned n, unsigned t0, char *what)
+{
+    unsigned t, q, r;
+    int hi;
+    hi = 0;
+    t = 0;
+#ifdef __TINYC__
+    __cspv(9, &hi, &t);                 /* TIME */
+#endif
+    if (!hi && !t)                      /* (no clock: TIME is 0) */
+        return;
+    t = t - t0;
+    if (t == 0)
+        t = 1;
+    q = n / t;
+    r = n % t;
+    if (q >= 1092)                      /* (65535 a second at most: 16 bits) */
+        q = 65535;
+    else
+        q = q * 60 + (t < 1092 ? r * 60 / t : r / (t / 60));
+    saynw(q, 5);
+    say(what);
+}
+
 static int linkall(char **objs, int n, char *out)
 {
     char prog[10];
     int r;
+    unsigned t0;
+    int hi;
     basename8(out, prog);
     say("Linking ");
     say(out);
     say("\n");
+#ifdef __TINYC__
+    __cspv(9, &hi, &t0);                /* TIME */
+#endif
     passbegin(1000);
     r = link(objs, n, out, prog);
     passend();
+    if (r)
+        sayrate(linkbytes, t0, " bytes/s");
     say("\n");
     return r;
 }

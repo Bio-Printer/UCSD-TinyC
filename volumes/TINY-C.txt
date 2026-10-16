@@ -26,12 +26,12 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   INCLUDE/TCRT.H                6  runtime helpers the compiler calls (reference only)
   LIB/                        204  sub-volume: the C library
   LIB/TCLIB.OBJ                79  the C library (built with -Z), linked into every program
-  SRC/                       1135  sub-volume: the sources of the compiler and the library, and how to rebuild them
+  SRC/                       1137  sub-volume: the sources of the compiler and the library, and how to rebuild them
   SRC/README.TEXT               6  how to rebuild Tiny-C and the tools
-  SRC/CC/                     741  sub-volume: the compiler: its modules and BUILD.TEXT
+  SRC/CC/                     743  sub-volume: the compiler: its modules and BUILD.TEXT
   SRC/CC/BUILD.TEXT             4  CC @TINY-C:/SRC/CC/BUILD: rebuilds the compiler -> TINY-C:CC2.CODE
   SRC/CC/OBJFORMAT.TEXT        24  the .OBJ file format: what CC writes, how the linker reads it
-  SRC/CC/MAIN.C                42  the driver: commands, @FILE, the passes
+  SRC/CC/MAIN.C                44  the driver: commands, @FILE, the passes
   SRC/CC/UTIL.C                16  messages, output helpers, memory pools
   SRC/CC/TYPES.C                6  type predicates
   SRC/CC/PP.C                  78  pass 1: the preprocessor
@@ -69,5 +69,5 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/LIB/SUBVOL.C             26  svcanon, dirfree, dirkrunch, svresize: KRUNCH, GROW, SHRINK (<dirs.h>)
   SRC/LIB/TCRT.C               18  runtime helpers: C division, shifts, unsigned, longs
   SRC/LIB/LIBINT.H              6  the library modules' shared declarations
-  OBJ/                        658  sub-volume: empty: the objects BUILD and LIBS make (-O TINY-C:/OBJ)
+  OBJ/                        660  sub-volume: empty: the objects BUILD and LIBS make (-O TINY-C:/OBJ)
   FILES.TEXT                   14  this list

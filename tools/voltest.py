@@ -11,7 +11,7 @@ made by mkvolume.py) on the P-System: TINY-C: on unit #5, an empty SPARE: on
   @DEMOS   on TCEXTRA: (compiler and headers from TINY-C:), then QUEENS runs
   @TESTS   on TCTESTS: (likewise), then LONGS runs
 
-Prints the result, the least "(N free)" CC printed (at the end of a
+Prints the result, the least "N bytes free" CC printed (at the end of a
 pass), and the least free memory the emulator tracked (SP - NP at every
 P-code instruction: the true worst case, emulator 1.97 or later).  PSYS_MODE
 picks the mode, as for the other tools: native (default; P-Code mode with
@@ -87,18 +87,22 @@ def main():
             cmd = l[2:].strip()
         elif l.startswith('Linking'):
             step = 'Linking'
-        # each pass's figure follows its name: Preprocessing X.C (n) Compiling (n) Generating code X.OBJ (n)
-        for m in re.finditer(r'(Preprocessing|Compiling|Generating|Linking)|\((\d+) free\)', l):
+        # X.C  n bytes free  Compiling  n bytes free  Generating code  n bytes free; a link's  n bytes free
+        if 'bytes free' in l and step != 'Linking':
+            step = 'Preprocessing'
+        for m in re.finditer(r'(Compiling|Generating)|(\d+) bytes free', l):
             if m.group(1):
                 step = m.group(1)
             elif least is None or int(m.group(2)) < least:
                 least, where = int(m.group(2)), '%s, %s' % (cmd, step)
-    glued = re.findall(r'free\) +(?:> |Done).*', tr)   # a pass's last line runs into the next one
+        if 'bytes free' in l:
+            step = ''
+    glued = re.findall(r'(?:free|/s) +(?:> |Done).*', tr)   # a pass's last line runs into the next one
     if glued:
         print('not on a line of its own: %s' % glued[0])
         ok = False
     print([l for l in r.stdout.split('\n') if 'VERIFY' in l][-1:])
-    print('least memory: %s words free (%s; the least "(N free)" CC printed)' % (least, where))
+    print('least memory: %s bytes free (%s; the least "N bytes free" CC printed)' % (least, where))
     lw = [l for l in r.stdout.split('\n') if l.startswith('least free memory')]
     if lw:                              # the emulator's tracking (engine 1.97): the true worst case
         print('tracked ' + lw[0])

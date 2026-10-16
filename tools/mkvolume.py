@@ -94,6 +94,12 @@ the volume that holds the shell's path; TCLIB.OBJ and TCMSGS.TEXT are
 taken from the prefix volume or the boot volume when they are there, else
 from TINY-C:/LIB and TINY-C:.
 
+WHAT CC SHOWS: a line for each source, its name, then the least free
+memory of each pass in bytes (the preprocessor's, Compiling, Generating
+code) and the lines a second it compiled (the source's and its headers');
+a link ends in its least free bytes and the bytes a second it linked.  The
+rates need the emulator's clock (Options > Host clock).
+
 REBUILDING (see SRC/README.TEXT):  CC @TINY-C:/SRC/CC/BUILD makes
 TINY-C:CC2.CODE, CC @TINY-C:/SRC/LIB/LIBS TINY-C:/LIB/TCLIB2.OBJ, CC
 @TINY-C:ALL both and every tool.

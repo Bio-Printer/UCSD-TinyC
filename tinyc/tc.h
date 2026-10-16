@@ -392,6 +392,7 @@ void gen_objuse(char *name);
 /* passes */
 #pragma segment PP
 int preprocess(char *src, char *out);
+extern unsigned pplines;        /* the lines preprocess read (the source and its headers) */
 #ifdef __TINYC__
 #include <dirs.h>                       /* pathdir, __svpath (the shell's path), struct svat */
 #pragma segment DIRS	/* (with the library's dirs.c: one segment) */
@@ -412,6 +413,7 @@ int compileend(void);
 #pragma segment PARSE
 #pragma segment LINK
 int link(char **objs, int nobjs, char *code, char *progname);
+extern unsigned linkbytes;      /* the code link wrote (its segments' bytes) */
 int join(char **objs, int nobjs, char *out);
 #pragma segment MAIN
 #ifdef __TINYC__

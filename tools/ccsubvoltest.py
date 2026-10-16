@@ -95,7 +95,7 @@ def main():
         a_names = sorted(x[3] for x in ucsdvol.Volume(p).entries)
     except (Exception, SystemExit) as x:
         work_names, a_names = ['(%s)' % x], []
-    print('\n'.join(l for l in tr.split('\n') if re.search(r'^shell> |rror|wrong|Linking|^main|^prog|^both|Preprocessing', l)))
+    print('\n'.join(l for l in tr.split('\n') if re.search(r'^shell> |rror|wrong|Linking|^main|^prog|^both|bytes free', l)))
     checks = [('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
               ('CC run from the sub-volume (#9:a/cc: its segments loaded from there) compiles MAIN on the path',
                'rror' not in part('#9:a/cc -z main') and 'Linking MAIN.CODE' in part('#9:a/cc -z main')),

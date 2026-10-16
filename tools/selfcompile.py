@@ -35,7 +35,7 @@ def main(mods):
                    'WAIT "Command:"']
     ok, tr, info = ps.run_script('\n'.join(script) + '\n', 3000)
     for l in tr.split('\n'):
-        if any(k in l for k in ('Preprocessing', 'free', 'error', 'fatal', 'Linking', 'segment', 'OFLOW')):
+        if any(k in l for k in ('free', 'error', 'fatal', 'Linking', 'segment', 'OFLOW')):
             print('   ', l.strip())
     same = 0
     for m in todo:

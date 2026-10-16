@@ -604,6 +604,8 @@ static void patchproc(struct LProc *p, int pos, int type, char *rname)
     }
 }
 
+unsigned linkbytes;
+
 int link(char **objs, int nobjs, char *code, char *progname)
 {
     struct LProc *mainp;
@@ -867,8 +869,10 @@ int link(char **objs, int nobjs, char *code, char *progname)
         }
     }
     fclose(out);
+    linkbytes = 0;
     for (k = 0; k < norder; k++) {
         s = order[k];
+        linkbytes = linkbytes + seglen[s];
         say("  segment ");
         saynw(segnum[s], 2);
         say(" ");
