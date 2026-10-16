@@ -60,6 +60,9 @@
 #define O_STL  0xCC
 #define O_CXP  0xCD
 #define O_CGP  0xCF
+#define O_CBP  0xC2
+#define O_RBP  0xC1
+#define O_STR  0xB8
 #define O_LPA  0xD0
 #define O_EFJ  0xD3
 #define O_NFJ  0xD4

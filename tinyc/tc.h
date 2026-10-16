@@ -341,6 +341,20 @@ int retwords(struct Type *ft);
 extern int curlocal;
 extern int maxlocal;
 extern int nparamwords;
+/* #pragma system: the module is a II.0 operating system (SYSTEM.PASCAL): its
+   functions are lex level 0 procedures (called with CBP, returning with RBP,
+   as the segment-0 procedures of the Pascal one), its static variables the
+   locals of the lex level -1 outer block (LOD/STR/LDA 1,n from the
+   functions), a function's result two words below its parameters (as a
+   Pascal caller pushes it); the linker makes segment 0 of it.  Its main is
+   the outer block itself (procedure 1, lex level -1, as the Pascal one's
+   body): the statics are its first locals, its own locals come after them,
+   it starts by zeroing words 2.. (word 1 is the boot's ^SYSCOM) and ends
+   with XIT (sysouter while it is compiled) */
+extern int sysmode;
+extern int sysouter;
+extern int globoff;                     /* the module's static words so far (psym.c) */
+void gen_outerbegin(int statics);       /* (gen.c) */
 extern int scratch;
 extern char *cursegname;
 extern FILE *objout;

@@ -46,7 +46,9 @@ void pragma(char *s)
         cursegi = segno(name);
         cursegname = segtab[cursegi - 1];
         segexplicit = 1;
-    } else if (strncmp(s, "nofltused", 9) == 0)
+    } else if (strncmp(s, "system", 6) == 0)
+        sysmode = 1;
+    else if (strncmp(s, "nofltused", 9) == 0)
         nofltused = 1;              /* library modules: float use does not link %f */
 }
 
@@ -77,6 +79,7 @@ int compile(char *src, char *ir, char *mod)
     modname = mod;
     usesfloat = 0;
     nofltused = 0;
+    sysmode = 0;
     fp = fopen(src, "r");
     if (!fp)
         fatal(25 /* cannot open */, src);

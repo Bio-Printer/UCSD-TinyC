@@ -50,7 +50,6 @@ extern int usesfloat;
 extern int segexplicit;
 extern int curfnseg;
 extern int cursegi;
-extern int globoff;
 extern struct Sym *curfn;
 extern struct Type *curft;
 extern int exitlab;

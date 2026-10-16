@@ -177,6 +177,9 @@ void ir_funcbegin(void)
     irb('F');
     irw(nparamwords);
     irw(scratch);
+    irb(sysouter);
+    if (sysouter)
+        irw(globoff);                   /* (the statics main zeroes) */
 }
 
 int ir_newlabel(void)
@@ -523,6 +526,9 @@ int gencode(char *irname, char *obj)
             scratch = rw();
             curlocal = scratch;
             maxlocal = scratch;
+            sysouter = rb();
+            if (sysouter)
+                gen_outerbegin(rw());
             for (i = 0; i < nlmap; i++)
                 lmap[i] = -1;
             break;

@@ -92,6 +92,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `modes.py prog.c` | run a program in Z80 and P-Code mode and compare (engine bug hunting) |
 | `pdis.py FILE.CODE` | P-code disassembler |
 | `pcensus.py FILE.CODE\|VOL.BLK` | static P-code census: instructions, and the inline constants/tables (`LSA LPA LDC XJP`), `--check` validates every jump target, `--selfpatch` lists the old self-modifying indirect calls |
+| `ostest.py` | `#pragma system` (an operating system laid out as SYSTEM.PASCAL; [UCSD-SYSTEM-C](https://github.com/Bio-Printer/UCSD-SYSTEM-C)): the code file's procedures, lex levels and data, then booted in place of SYSTEM.PASCAL (both modes) |
 | `f12test.py` | test the double (8-byte floating point) CSPs 100..137 (P-Code mode; see `docs/DOUBLES.md`) |
 | `pchunk.py [SIZE ...]` | the compiler's least free memory (emulator-tracked, every @BUILD and @LIBS command) against PCHUNK, the block size of its permanent pool (`util.c`) |
 | `ucsdvol.py` | read/write UCSD volume images (`ls`, `get`, `put`, `rm`, `new`) |
@@ -291,6 +292,10 @@ docs/DESIGN.md for how.
   parameter names kept apart (`pnames`), header declarations kept only when
   used (`scanrefs` Bloom filter), prototypes declared under `#pragma segment`
   so calls within a segment are 2-byte CGPs (linker checks: message 116).
+* `#pragma system` compiles a module as an operating system in SYSTEM.PASCAL's
+  layout (lex level 0 procedures, statics as the outer block's globals,
+  Pascal-style function results; `docs/DESIGN.md`).  The II.0 operating system
+  written this way is [UCSD-SYSTEM-C](https://github.com/Bio-Printer/UCSD-SYSTEM-C).
 * Limits: 10 segments per program (1 + 7..15), 77 files per UCSD directory.
 * **8-byte doubles** (`double`, `long double`; P-Code mode, and Z80 mode
   from engine 1.93):

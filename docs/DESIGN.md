@@ -92,6 +92,33 @@ pointers, then `segnum | nprocs<<8`). The OS enters a program with
   `long double`: all the 32-bit P-machine real (the only real type II.0
   has). Plain `char` is signed; `unsigned char` is not.
 
+## `#pragma system`: an operating system
+
+`#pragma system` at the top of a module compiles it as SYSTEM.PASCAL is
+laid out (UCSD-SYSTEM-C is the II.0 operating system written this way):
+
+* `main` is the outer block: segment 0 procedure 1, lex level -1, no
+  parameters.  Its data is the module's static variables first (words 1..,
+  in the order of the file: the Pascal globals), then its own locals.  It
+  zeroes them (`CSP FLC`) and ends with XIT.  There is no startup procedure.
+* The other functions are lex level 0 procedures, numbered in the order of
+  the file (prototypes first fix the numbers), all kept by the linker.
+  They are called with CBP / CXP and return with RBP; they reach the statics
+  with `LOD/STR/LDA 1,n`.
+* A function's result is two words below its parameters (the caller pushes
+  the arguments, then two zero words): the Pascal convention, so Pascal
+  programs can call them.
+* No scratch word: a value that is not used is dropped with `FJP 0`.
+* `#pragma segment NAME` segments are numbered 1..6 (at most 7 with segment
+  0); segment 0 is named PASCALSY, unused names are blank.
+* Nothing of a library is linked (a library procedure that would be is
+  error 109), and a library procedure of the same name as one of the module
+  is ignored.  So the C uses no library: no plain `char` (sign extension is
+  a call), `__dvi` / `__mdi` for `/` and `%`, no `>>`, no constant above
+  32767 (they would need the long-integer helpers).
+
+`tools/ostest.py` compiles and boots a small one.
+
 ## Compiler passes
 
 1. **Preprocessor** (`#include` nesting, `#define` with arguments,

@@ -503,6 +503,8 @@ void funcdef(struct Sym *fs, int isstatic)
         pw++;
     rw = retwords(ft);
     pad = rw > pw ? rw - pw : 0;
+    if (sysmode)
+        pad = rw ? 2 : 0;
     off = pad + 1;
     vaoff = 0;
     if (ft->flags & TF_VARIADIC) {
@@ -524,7 +526,14 @@ void funcdef(struct Sym *fs, int isstatic)
     }
     nparamwords = off - 1;
     curlocal = nparamwords;
-    scratch = ++curlocal;
+    sysouter = sysmode && strcmp(fs->name, "main") == 0;
+    if (sysouter) {                     /* the outer block: its locals after the statics */
+        nparamwords = 0;
+        curlocal = globoff;
+    }
+    if (!sysmode)                       /* (an operating system's functions have none: drop) */
+        curlocal++;
+    scratch = curlocal;
     maxlocal = curlocal;
     ir_funcbegin();
     exitlab = ir_newlabel();
@@ -533,6 +542,7 @@ void funcdef(struct Sym *fs, int isstatic)
         if (!s->defined)
             error(87 /* undefined label */, s->name);
     ir_funcend(fs, ft, exitlab, isstatic, seg);
+    sysouter = 0;
     curfnseg = 0;               /* file-scope initialisers run in segment INIT */
     popscope();
     curfn = 0;

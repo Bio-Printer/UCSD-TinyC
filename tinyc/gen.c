@@ -206,11 +206,18 @@ int newtemp(int words)
     return curlocal - words + 1;
 }
 
-/* discard n words from the evaluation stack (the P-machine has no pop) */
+/* discard n words from the evaluation stack (the P-machine has no pop): into
+   the function's scratch word; an operating system's functions have none: FJP 0
+   (to the next instruction, whatever the word) takes a word off as well */
 void drop(int n)
 {
-    while (n-- > 0)
-        gen_stl(scratch);
+    while (n-- > 0) {
+        if (sysmode) {
+            ob(O_FJP);
+            ob(0);
+        } else
+            gen_stl(scratch);
+    }
 }
 
 /* ---- labels and jumps ---- */
@@ -324,6 +331,8 @@ void gen_objheader(char *modname)
     fputs("TCOB", objout);
     putc('M', objout);
     outs(modname);
+    if (sysmode)
+        putc('S', objout);              /* an operating system (the linker) */
 }
 
 void gen_objdata(char *name, int words, int strong)
@@ -405,7 +414,7 @@ static void endproc(char *name, char *seg, int exitlab, int rw, int flags)
     ob(jtab - 2);
     ob((jtab - 2) >> 8);
     ob(0);                          /* procedure number: the linker */
-    ob(1);                          /* lex level */
+    ob(sysouter ? 255 : sysmode ? 0 : 1);   /* lex level */
     /* case tables (after everything else is placed) */
     for (i = 0; i < E->nfix; i++) {
         if (E->fixlab[i] > -2)
@@ -443,14 +452,31 @@ void gen_funcbegin(void)
     lvtemp = 0;
 }
 
+/* an operating system's main, the outer block: FILLCHAR(words 2.., 0) first */
+void gen_outerbegin(int statics)
+{
+    if (statics > 1) {
+        lla(2);
+        ldc(0);
+        ldc((statics - 1) * 2);
+        ldc(0);
+        csp(10);
+    }
+}
+
 void gen_funcend(char *name, struct Type *ft, int exitlab, int isstatic, char *seg)
 {
     int rw;
     rw = retwords(ft);
     setlabel(exitlab);
-    ob(O_RNP);
-    ob(rw);
+    if (sysouter)
+        ob(0xD6);                       /* XIT: the P-machine stops */
+    else {
+        ob(sysmode ? O_RBP : O_RNP);
+        ob(rw);
+    }
     endproc(name, seg, exitlab, rw, isstatic ? 2 : 0);
+    sysouter = 0;
 }
 
 /* ---- initialisers ---- */

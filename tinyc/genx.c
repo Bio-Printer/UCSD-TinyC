@@ -24,7 +24,25 @@ struct LV {
 static void gglob(int op, struct LV *lv, int add)
 {
     int v;
-    ob(op);
+    if (sysouter && !lv->name) {        /* in the outer block: its own locals */
+        v = lv->off + add + 1;
+        if (op == O_LDO)
+            ldl(v);
+        else if (op == O_SRO)
+            gen_stl(v);
+        else
+            lla(v);
+        return;
+    }
+    if (sysmode) {                      /* the outer block's locals, one static level up */
+        ob(op == O_LDO ? O_LOD : op == O_SRO ? O_STR : O_LDA);
+        ob(1);
+        if (!lv->name) {                /* (one module: its statics are words 1, 2, ...) */
+            big(lv->off + add + 1);
+            return;
+        }
+    } else
+        ob(op);
     if (lv->name) {
         reloc(R_GNAME, lv->name);
         v = add;
@@ -407,13 +425,15 @@ static void gen_call(struct Node *n, int want)
         lla(blk);
         pw++;
     }
+    if (sysmode && rw)                  /* (a Pascal caller's two result words) */
+        pw = rw - 2;
     while (pw < rw) {
         ldc(0);
         pw++;
     }
     if (fs && n->a->val) {
         reloc(R_NEAR, fs->name);        /* the parser knows it is in this segment */
-        ob(O_CGP);
+        ob(sysmode ? O_CBP : O_CGP);
         ob(0);
     } else if (fs) {
         reloc(R_CALL, fs->name);

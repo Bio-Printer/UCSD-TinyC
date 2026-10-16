@@ -62,6 +62,7 @@ full regression test is asked for (it takes a long time).
 | grow, shrink (`ports/grow/`, `ports/shrink/`), `tinyc/lib/subvol.c` (dirkrunch, svresize) | `tools/growtest.py` (both modes), `tools/krunchtest.py` |
 | patch (`ports/patch/`) | `tools/patchtest.py` (against the host's diff) |
 | shell redirection / pipes (`examples/shell.c`, `tinyc/lib/redirect.c`) | `tools/redirtest.py`, `tools/pexectest.py`, `tools/greptest.py` |
+| `#pragma system` (OS mode: `sysmode`, `sysouter` in stmt.c, genx.c, gen.c, ir.c, link.c `linksys`) | `tools/ostest.py` (both modes); UCSD-SYSTEM-C's `build.py`, `tools/systest.py` and `tools/suite.py quicktest pexectest` |
 | emulator keys / break / ^S ^Q (`tools/mkbiggy.py` MISCINFO, psys.h handshakes) | `tools/keytest.py` |
 
 Modes: `PSYS_MODE=native` or `PSYS_MODE=z80`. Say in the report what was run and

@@ -21,6 +21,14 @@
  *
  * Segment 1 procedure 1 is the startup code generated here: zero the
  * globals, run the initialisers, call main, then exit(main's result).
+ *
+ * An operating system (#pragma system: an 'S' record) is linked as
+ * SYSTEM.PASCAL is laid out: main's segment is 0 (PASCALSY), the others
+ * 1..6 in the order of their first procedure, every procedure is kept and
+ * numbered in the order of the files (the numbers are what compiled
+ * programs call); main is procedure 1, the outer block (lex level -1, the
+ * globals its first locals from word 1, where the boot puts ^SYSCOM: the
+ * compiler made it so), and no startup code is generated.
  */
 #include "tc.h"
 #pragma segment LINK
@@ -98,6 +106,8 @@ static int mainrw;
 static int cmparmsz;             /* __callmain's (main(argc, argv): pexec.c) */
 static int cmrw;
 static struct LProc *callmp;
+static int linksys;             /* an operating system ('S') */
+static int sysmod;              /* its module (one) */
 
 static int rd(void)
 {
@@ -240,6 +250,11 @@ static void record(int c, char *name, char *seg, int *flags, int *parmsz, int *r
     }
     if (c == 'E')
         return;
+    if (c == 'S') {
+        linksys = 1;
+        sysmod = curmod;
+        return;
+    }
     if (c == 'D') {
         *flags = rd();
         rds(name);
@@ -342,8 +357,11 @@ static void pass1(void)
         i = nprecs++;
         if (plive && !(plive[i >> 3] & (1 << (i & 7))))
             continue;                   /* (the second pass 1: not linked) */
-        if (findproc(name))
-            error(107 /* function defined twice */, name);
+        if (findproc(name)) {
+            if (!linksys || curmod == sysmod)
+                error(107 /* function defined twice */, name);
+            name[0] = 0;                /* (an operating system's name in a library: not that one) */
+        }
         if (nprocs >= MAXPROC)
             fatal(108 /* too many functions */, 0);
         if (nprocs % TBLK == 0)
@@ -584,7 +602,7 @@ static void patchproc(struct LProc *p, int pos, int type, char *rname)
         return;
     if (type == 1) {
         if (t->seg == p->seg) {
-            lbuf[pos] = 0xCF;
+            lbuf[pos] = linksys ? 0xC2 : 0xCF;     /* CBP / CGP */
             lbuf[pos + 1] = t->procnum;
             lbuf[pos + 2] = 0xD7;
         } else {
@@ -657,6 +675,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     nprocs = 0;
     ndatas = 0;
     nmods = 0;
+    linksys = 0;
     segnames = (char **)malloc(24 * sizeof(char *));
     segnum = (int *)malloc(24 * sizeof(int));
     if (!segnames || !segnum)
@@ -687,17 +706,25 @@ int link(char **objs, int nobjs, char *code, char *progname)
     }
     mainp->bits = mainp->bits | LP_LIVE;
     callmp = 0;
-    if (mainparmsz >= 4) {              /* main has parameters: argc, argv */
+    if (mainparmsz >= 4 && !linksys) {  /* main has parameters: argc, argv */
         callmp = findproc("__callmain");
         if (callmp)
             callmp->bits = callmp->bits | LP_LIVE;
     }
-    exitp = findproc("exit");
+    exitp = linksys ? 0 : findproc("exit");
     if (exitp)
         exitp->bits = exitp->bits | LP_LIVE;
+    if (linksys)                        /* an operating system: its numbers are its interface */
+        for (i = 0; i < nprocs; i++)
+            if (PROC(i)->mod == sysmod)
+                PROC(i)->bits = PROC(i)->bits | LP_LIVE;
     i = 1;
     while (markpass(i) && !nerrors)     /* (the first pass reports what is undefined) */
         i = 0;
+    if (linksys)                        /* nothing of a library: its functions are lex level 1 */
+        for (i = 0; i < nprocs; i++)
+            if ((PROC(i)->bits & LP_LIVE) && PROC(i)->mod != sysmod)
+                error(109 /* undefined function */, PROC(i)->name);
     if (nerrors)
         return 0;
     /* what is linked, by place in the files; then pass 1 again with that
@@ -723,10 +750,10 @@ int link(char **objs, int nobjs, char *code, char *progname)
     for (i = 0; i < ndatas; i++)
         DATA(i)->live = (dlive[i >> 3] >> (i & 7)) & 1;
     mainp = findproc("main");
-    callmp = mainparmsz >= 4 ? findproc("__callmain") : 0;
-    exitp = findproc("exit");
+    callmp = mainparmsz >= 4 && !linksys ? findproc("__callmain") : 0;
+    exitp = linksys ? 0 : findproc("exit");
     /* globals: the linked modules' statics, then the used variables */
-    globalwords = 3;
+    globalwords = linksys ? 1 : 3;
     for (i = 0; i < nmods; i++) {
         modbase[i] = globalwords;
         if (modlive[i])
@@ -747,14 +774,14 @@ int link(char **objs, int nobjs, char *code, char *progname)
     }
     norder = 0;
     order[norder++] = mainp->seg;
-    segnum[mainp->seg] = 1;
+    segnum[mainp->seg] = linksys ? 0 : 1;
     for (i = 0; i < nprocs; i++) {
         p = PROC(i);
-        if (!(p->bits & LP_LIVE) || segnum[p->seg])
+        if (!(p->bits & LP_LIVE) || p->seg == mainp->seg || segnum[p->seg])
             continue;
-        if (norder >= 10)
+        if (norder >= (linksys ? 7 : 10))
             fatal(111 /* more than 10 segments */, segnames[p->seg]);
-        segnum[p->seg] = norder + 6;
+        segnum[p->seg] = linksys ? norder : norder + 6;
         order[norder++] = p->seg;
     }
     /* procedure numbers and segment lengths */
@@ -764,7 +791,10 @@ int link(char **objs, int nobjs, char *code, char *progname)
         if (!(p->bits & LP_LIVE))
             continue;
         s = p->seg;
-        p->procnum = ++pnum[s];
+        if (linksys && p == mainp)
+            p->procnum = 1;             /* the outer block */
+        else
+            p->procnum = ++pnum[s];
         if (pnum[s] > 255)
             fatal(112 /* more than 255 functions in segment */, segnames[s]);
         seglen[s] = seglen[s] + ((p->codelen + 1) & ~1);
@@ -772,7 +802,9 @@ int link(char **objs, int nobjs, char *code, char *progname)
     entry = (unsigned char *)malloc(600);
     if (!entry)
         fatal(2 /* out of memory */, 0);
-    makeentry(mainp, exitp);
+    entrylen = 0;
+    if (!linksys)
+        makeentry(mainp, exitp);
     seglen[mainp->seg] = seglen[mainp->seg] + entrylen;
     blk = 1;
     for (k = 0; k < norder; k++) {
@@ -791,6 +823,8 @@ int link(char **objs, int nobjs, char *code, char *progname)
         fatal(2 /* out of memory */, 0);
     blk0 = (unsigned char *)malloc(512);
     memset(blk0, 0, 512);
+    if (linksys)                        /* the segment names blank, as the Pascal compiler leaves them */
+        memset(blk0 + 64, ' ', 128);
     for (k = 0; k < norder; k++) {
         s = order[k];
         n = segnum[s];
@@ -798,7 +832,10 @@ int link(char **objs, int nobjs, char *code, char *progname)
         put16(blk0, 4 * n + 2, seglen[s]);
         for (j = 0; j < 8; j++)
             blk0[64 + 8 * n + j] = ' ';
-        if (n == 1) {
+        if (linksys && n == 0) {
+            for (j = 0; j < 8; j++)
+                blk0[64 + j] = "PASCALSY"[j];
+        } else if (n == 1 && !linksys) {
             for (j = 0; j < 8 && progname[j]; j++)
                 blk0[64 + 8 * n + j] = progname[j] >= 'a' && progname[j] <= 'z' ? progname[j] - 32 : progname[j];
         } else {
@@ -811,7 +848,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     for (k = 0; k < norder; k++) {
         s = order[k];
         len = 0;
-        if (segnum[s] == 1) {
+        if (s == mainp->seg && !linksys) {
             fwrite(entry, 1, entrylen, out);
             jt[1] = entryjtab;
             len = entrylen;
