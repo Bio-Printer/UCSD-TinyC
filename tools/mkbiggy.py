@@ -12,7 +12,9 @@ written, so with a current base the result is byte-identical to it.
 BIGGY 1.27: SYSTEM.C, the operating system in C, beside SYSTEM.PASCAL, and
 SYSTEM.MICRO with the boot that chooses between them (a key within 2 seconds:
 SYSTEM.PASCAL), both from UCSD-SYSTEM-C (../UCSD-SYSTEM-C, or $SYSTEMC: its
-build.py makes them).
+build.py makes them).  BIGGY 1.28: SYSTEM.FILER of U134.4_OS_SOURCE_v1.14, whose
+K(runch) asks for a reboot when it moved the running system, SYSTEM.C or
+SYSTEM.PASCAL (UCSD-SYSTEM-C's tools/filer.py compiles it).
 The 8-byte doubles (CSP 100..137) are in the emulator itself (build it
 from UCSD-Pascal---P-Machine_work-v1.88.zip); nothing on the disk is needed
 for them."""
@@ -39,9 +41,17 @@ def main():
     def put(name, data, kind):
         """write NAME only when it differs: an up-to-date base disk (the
         reference Big_Disk.BLK in UCSD-Pascal-Volumes) stays byte-identical"""
-        if not v.find(name) or v.read(name)[0] != data:
+        e = v.find(name)
+        if e and v.read(name)[0] == data:
+            return
+        if e and e[2] == kind and (len(data) + 511) // 512 == e[1] - e[0]:
+            # the same size: in its place, so the disk's free areas stay as they were
+            # (CC's TCTEMP files need the second largest one while a pipe has the largest)
+            v.data[e[0] * 512: e[1] * 512] = data + bytes((e[1] - e[0]) * 512 - len(data))
+            v.entries[v.entries.index(e)] = [e[0], e[1], kind, e[3], len(data) - (e[1] - e[0] - 1) * 512, e[5]]
+        else:
             v.write(name, data, kind)
-            changed.append(name)
+        changed.append(name)
     # Tiny-C is on TINY-C: only
     gone = ['TINYC.CODE', 'CC.CODE', 'TCLIB.OBJ', 'TCMSGS.TEXT'] + \
            sorted(f.upper() for f in os.listdir(INC) if f.endswith('.h'))
@@ -60,14 +70,21 @@ def main():
         data[84] = ord('`')
         put(name, bytes(data), kind)
     # BIGGY 1.27: SYSTEM.C (the OS in C) and the boot that chooses it or SYSTEM.PASCAL
-    for name in ('SYSTEM.C', 'SYSTEM.MICRO'):
+    for name in ('SYSTEM.C', 'SYSTEM.MICRO', 'SYSTEM.FILER'):
         path = os.path.join(SYSTEMC, name)
         if not os.path.exists(path):
-            raise SystemExit('no %s (UCSD-SYSTEM-C: build.py)' % path)
+            raise SystemExit('no %s (UCSD-SYSTEM-C: build.py, tools/filer.py)' % path)
         put(name, open(path, 'rb').read(), 2)
     text = ucsdvol.ucsd_to_text(v.read('VERSION.TEXT')[0])
     if '  SYSTEM.C ' not in text:
-        text = text.replace('BIGGY boot volume, revision 1.26  (14-Oct-26)', 'BIGGY boot volume, revision 1.27  (16-Oct-26)')
+        text = text.replace('BIGGY boot volume, revision 1.26  (14-Oct-26)', 'BIGGY boot volume, revision 1.28  (17-Oct-26)')
+        old_filer = ('  SYSTEM.FILER   from U134.4_OS_SOURCE_v1.07: G(et/S(ave take .C, .H\n'
+                     '                 and NAME. (exact names); V(olumes lists units to 14\n')
+        assert old_filer in text
+        text = text.replace(old_filer, '  SYSTEM.FILER   from U134.4_OS_SOURCE_v1.14: G(et/S(ave take .C, .H\n'
+                            '                 and NAME. (exact names); V(olumes lists units to 14;\n'
+                            '                 K(runch asks for a reboot when it moved the running\n'
+                            '                 system, SYSTEM.C or SYSTEM.PASCAL (1.28)\n')
         text = text.replace('  SYSTEM.FILER ', '  SYSTEM.C       the same OS written in C (UCSD-SYSTEM-C, SYS-C:): booted\n'
                             '                 unless a key is typed within 2 seconds (1.27)\n'
                             '  SYSTEM.MICRO   the interpreter, with the boot that asks for that key\n'
