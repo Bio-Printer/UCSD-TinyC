@@ -9,11 +9,14 @@ others.  With the prefix on SPARE: (an empty volume), X(ecute TINY-C:CC,
                           to TCLIB.OBJ
   @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
                           first): the same bytes as mkvolume's
+  @SYS-C:BUILD            the operating system in C -> SYS-C:SYSTEM.C (removed
+                          first): the same bytes as UCSD-SYSTEM-C's SYSTEM.C
 and every object is in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' -O),
 none among the sources (TINY-C:/SRC/CC, TOOLS:/SRC/VI ...: the names in a
 batch file are looked for beside it) or on the prefix volume.
 
-Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE).  Uses the
+Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE), #13 SYS-C:
+(UCSD-SYSTEM-C's build/SYS-C.BLK: ../UCSD-SYSTEM-C, or $SYSTEMC).  Uses the
 mode of PSYS_MODE (native or z80); about 25 minutes in Z80 mode.
 """
 import os, sys, re, shutil, subprocess, tempfile
@@ -24,10 +27,12 @@ import ucsdvol
 from psys import ensure_setup, BUILD
 from voltest import prefix, cmpcode
 from mkvolume import TOOLS, MODULES, LIBMODS_
+SYSTEMC = os.environ.get('SYSTEMC', os.path.join(os.path.dirname(ROOT), 'UCSD-SYSTEM-C'))
 
 # what the run prints, in turn
 WAITS = ['> @TINY-C:/SRC/CC/BUILD', '> -L TINY-C:CC2=', '> @TINY-C:/SRC/LIB/LIBS',
-         'Joining TINY-C:/LIB/TCLIB2.OBJ', '> @TOOLS:/SRC/TOOLS', '> -L TOOLS:GREP=']
+         'Joining TINY-C:/LIB/TCLIB2.OBJ', '> @TOOLS:/SRC/TOOLS', '> -L TOOLS:GREP=', '> @SYS-C:BUILD',
+         '> -L SYS-C:SYSTEM.C.=']
 
 
 def prepare(d):
@@ -41,19 +46,30 @@ def prepare(d):
     for n in names:
         tv.remove(n)
     tv.save()
+    shutil.copy(os.path.join(SYSTEMC, 'build', 'SYS-C.BLK'), d)
+    sv = ucsdvol.Volume(os.path.join(d, 'SYS-C.BLK'))
+    sv.remove('SYSTEM.C')
+    sv.save()
     return names
+
+
+def units(d):
+    """run_verify's environment for the disks beyond #5 and #9"""
+    return {'VERIFY_UNIT11': os.path.join(d, 'TOOLS.BLK'), 'VERIFY_UNIT12': os.path.join(d, 'TCEXTRA.BLK'),
+            'VERIFY_UNIT13': os.path.join(d, 'SYS-C.BLK')}
 
 
 def results(d, r, tr, names):
     """the checks of a run: the volumes as it left them (out/ has the first two units' images)"""
     vols = {}
     for f in [os.path.join(d, 'out', f) for f in os.listdir(os.path.join(d, 'out'))] + \
-             [os.path.join(d, v + '.BLK') for v in ('TOOLS',)]:
+             [os.path.join(d, v + '.BLK') for v in ('TOOLS', 'SYS-C')]:
         if f.endswith('.BLK'):
             v = ucsdvol.Volume(f)
             vols.setdefault(v.volname, v)
     shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))
-    tools, tinyc, spare = vols.get('TOOLS'), vols.get('TINY-C'), vols.get('SPARE')
+    tools, tinyc, spare, sysc = vols.get('TOOLS'), vols.get('TINY-C'), vols.get('SPARE'), vols.get('SYS-C')
+    system_c = open(os.path.join(SYSTEMC, 'SYSTEM.C'), 'rb').read()
 
     def at(v, path):
         try:
@@ -73,7 +89,7 @@ def results(d, r, tr, names):
     pos = [tr.find(w) for w in WAITS]
     checks = [
         ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
-        ('@TINY-C:ALL ran BUILD, LIBS and TOOLS in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
+        ('@TINY-C:ALL ran BUILD, LIBS, TOOLS and SYS-C:BUILD in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
         ('TINY-C:CC2.CODE and TINY-C:/LIB/TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
         ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
          and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
@@ -85,6 +101,8 @@ def results(d, r, tr, names):
          and no_objs(tinyc, ['SRC', 'CC']) and no_objs(tinyc, ['SRC', 'LIB'])
          and all(no_objs(tools, ['SRC', name]) for name, mods, hdrs, desc in TOOLS)
          and not any(e[3].endswith('.OBJ') for e in spare.entries)),
+        ('SYS-C:SYSTEM.C made again, the same as UCSD-SYSTEM-C\'s SYSTEM.C (SYSC.OBJ beside SYSC.C)', sysc is not None
+         and sysc.find('SYSTEM.C') is not None and sysc.read('SYSTEM.C')[0] == system_c and sysc.find('SYSC.OBJ') is not None),
     ]
     return checks
 
@@ -101,8 +119,7 @@ def main():
     sp = os.path.join(d, 'alltest.script')
     open(sp, 'w').write('\n'.join(L) + '\n')
     mode = os.environ.get('PSYS_MODE', 'native')
-    env = dict(os.environ, VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'),
-               VERIFY_UNIT12=os.path.join(d, 'TCEXTRA.BLK'), VERIFY_LOWWATER='1')
+    env = dict(os.environ, VERIFY_LOWWATER='1', **units(d))
     if mode == 'native':
         env['VERIFY_RECLAIM'] = '1'
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),

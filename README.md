@@ -82,8 +82,8 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `hexdumptest.py` | HEXDUMP, its output redirected into files read back from the disk image: the dump layout, Intel Hex (read back by the host's objcopy), binary and text files, one over 64 KB, several files, stdin, a pipe, errors |
 | `cattest.py` | CAT from the shell: every option against the host's cat on the same bytes (text files with tabs and control characters, a binary file, several files, standard input, a pipe, errors) |
 | `greptest.py` | GREP from the shell: case, `-i`, regular expressions, wildcards on every disk or one volume, line numbers across pages |
-| `alltest.py` | TINY-C:ALL.TEXT: one batch file running `@TINY-C:/SRC/CC/BUILD`, `@TINY-C:/SRC/LIB/LIBS` and `@TOOLS:/SRC/TOOLS`; the compiler, library and tools identical to the shipped ones, every object in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' `-O`), none among the sources or on the prefix volume |
-| `shellalltest.py` | the way a user starts a total rebuild: `S` at the Command: prompt, then `cc @tiny-c:all` in the shell (BUILD, LIBS, TOOLS); the same checks as `alltest.py`, and the tracked least free memory with the lowest passes |
+| `alltest.py` | TINY-C:ALL.TEXT: one batch file running `@TINY-C:/SRC/CC/BUILD`, `@TINY-C:/SRC/LIB/LIBS`, `@TOOLS:/SRC/TOOLS` and `@SYS-C:BUILD` (UCSD-SYSTEM-C's SYS-C: on #13); the compiler, library, tools and SYS-C:SYSTEM.C identical to the shipped ones, every object in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' `-O`), none among the sources or on the prefix volume |
+| `shellalltest.py` | the way a user starts a total rebuild: `S` at the Command: prompt, then `cc @tiny-c:all` in the shell (BUILD, LIBS, TOOLS, SYS-C:BUILD); the same checks as `alltest.py`, and the tracked least free memory with the lowest passes |
 | `findtest.py` | which disk CC takes `#include` files and a batch file's sources from (copies on several disks; the including file's disk, the prefix, an error) |
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; the shell's CD, DIR, TYPE, DELETE, WHEREIS, VOLUMES, COPY, MOVE and RENAME, its command history and line editing; `S` at the Command: prompt |
 | `voltest.py` | on the volumes: `@TINY-C:/SRC/LIB/LIBS`, `@TINY-C:/SRC/CC/BUILD` (from the shell), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
@@ -111,7 +111,8 @@ Before committing a compiler change, run: `runtests.py`, `selfcompile.py`,
 
 `X(ecute TINY-C:CC` (the compiler is CC.CODE on TINY-C:), then at "Compile what file?":
 `NAME` (compile NAME.C, or NAME.TEXT, and link), `-C NAME`, `-L OUT=A,B`,
-`-J LIB=A,B` (join objects into a library), `@FILE` (commands from FILE.TEXT);
+`-J LIB=A,B` (join objects into a library; `OUT.` with a dot at its end is that name
+exactly, `-L SYS-C:SYSTEM.C.=SYSC`), `@FILE` (commands from FILE.TEXT);
 `-Z NAME` and `-Z -C NAME` are `NAME` and `-C NAME` with `-z` (below); `-O DIR` sends
 the objects of the commands after it into DIR.  Options start with `-` (they were `/`
 until a path could start with one); `-c` and `-C` are the same.
@@ -132,7 +133,7 @@ an `@FILE` in a sub-volume are looked for beside it first.  A file in a sub-volu
 with its volume (a header, an object CC writes or the linker reads) is opened by the
 sub-volume's place, found once (`placeopen`, `svfopen`), not through the library's path
 code and a 2 KB directory each time.
-From the shell (or `X(ecute TINY-C:CC`), `CC @TINY-C:/SRC/CC/BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `CC @TINY-C:/SRC/LIB/LIBS` the library (TINY-C:/LIB/TCLIB2.OBJ); `CC @TOOLS:/SRC/TOOLS` links every tool onto TOOLS:; `CC @TINY-C:ALL` runs all three (a batch file may name others; `-C` puts NAME.OBJ next to its source, or into the sub-volume a `-O DIR` before it named -- the batch files start with `-O TINY-C:/OBJ` or `-O TOOLS:/OBJ`; `-L` and `-J` look there first, then find objects the way sources are found);
+From the shell (or `X(ecute TINY-C:CC`), `CC @TINY-C:/SRC/CC/BUILD` rebuilds the compiler (TINY-C:CC2.CODE), `CC @TINY-C:/SRC/LIB/LIBS` the library (TINY-C:/LIB/TCLIB2.OBJ); `CC @TOOLS:/SRC/TOOLS` links every tool onto TOOLS:; `CC @TINY-C:ALL` runs all three, and `@SYS-C:BUILD` (the operating system in C, SYS-C:SYSTEM.C, from UCSD-SYSTEM-C's SYS-C: volume) (a batch file may name others; `-C` puts NAME.OBJ next to its source, or into the sub-volume a `-O DIR` before it named -- the batch files start with `-O TINY-C:/OBJ` or `-O TOOLS:/OBJ`; `-L` and `-J` look there first, then find objects the way sources are found);
 `@DEMOS` (on TCEXTRA:) and `@TESTS` (on TCTESTS:) every program there.
 
 ## Calls through function pointers (`-z` / `-Z`)

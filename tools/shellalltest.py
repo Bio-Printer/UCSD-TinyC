@@ -9,6 +9,7 @@ compiler, the library and every tool), and the least free memory of it.
                           to TCLIB.OBJ
   @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
                           first): the same bytes as mkvolume's
+  @SYS-C:BUILD            SYS-C:SYSTEM.C: the same bytes as UCSD-SYSTEM-C's
 and every object in TINY-C:/OBJ or TOOLS:/OBJ, none among the sources or on
 the prefix volume (alltest's checks).  The Filer's Prefix is not set: nothing else at the Command: prompt
 has less memory than the rebuild.
@@ -22,7 +23,7 @@ in the same columns, and every link ends in  N bytes free  N bytes/s.
 Z80 mode and P-Code mode without reclaimed memory (the default here) have the
 same layout, so the same figures; PSYS_MODE=z80 takes about 25 minutes.
 
-Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE).
+Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE), #13 SYS-C:.
 """
 import os, sys, re, shutil, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -31,7 +32,7 @@ sys.path.insert(0, HERE)
 import ucsdvol
 from psys import ensure_setup, BUILD, shell_script, shell_transcript
 from voltest import cmpcode
-from alltest import WAITS, prepare, results
+from alltest import WAITS, prepare, results, units
 
 
 COMPILE = re.compile(r'^\S+ +( *\d+) bytes free  Compiling ( *\d+) bytes free  Generating code ( *\d+) bytes free( +\d+ lines/s)?$')
@@ -79,8 +80,7 @@ def main():
     sp = os.path.join(d, 'shellall.script')
     open(sp, 'w').write(shell_script('\n'.join(L) + '\n'))
     mode = os.environ.get('PSYS_MODE', 'native')
-    env = dict(os.environ, VERIFY_UNIT11=os.path.join(d, 'TOOLS.BLK'),
-               VERIFY_UNIT12=os.path.join(d, 'TCEXTRA.BLK'), VERIFY_LOWWATER='1', VERIFY_HOSTCLOCK='1')
+    env = dict(os.environ, VERIFY_LOWWATER='1', VERIFY_HOSTCLOCK='1', **units(d))
     # (P-Code mode without VERIFY_RECLAIM: Z80 mode's layout, many times faster)
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
                         os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'SPARE.BLK'), sp, mode,

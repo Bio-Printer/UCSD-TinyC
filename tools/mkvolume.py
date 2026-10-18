@@ -42,8 +42,9 @@ README_TC = """TINY-C for UCSD Pascal II.0                        volume TINY-C:
 WHAT IS WHERE (FILES.TEXT lists every file):
     CC.CODE          the compiler
     TCMSGS.TEXT      its messages
-    ALL.TEXT         CC @TINY-C:ALL rebuilds the compiler, the library and
-                     every tool at once
+    ALL.TEXT         CC @TINY-C:ALL rebuilds the compiler, the library,
+                     every tool and the operating system in C (SYS-C:SYSTEM.C)
+                     at once
     INCLUDE/         the headers: STDIO.H, STRING.H, PSYS.H ...
     LIB/             the C library, TCLIB.OBJ
     OBJ/             empty: the objects a rebuild makes (BUILD's and LIBS's -O)
@@ -64,6 +65,8 @@ X(ecute TINY-C:CC and answer "Compile what file?" with
                          for the Z80 interpreter (see FUNCTION POINTERS)
     -L OUT=A,B,...       link A.OBJ, B.OBJ, ... and TCLIB.OBJ -> OUT.CODE
     -J LIB=A,B,...       join A.OBJ, B.OBJ, ... into the library LIB.OBJ
+                         (OUT. or LIB. with a dot at its end: that name
+                         exactly, as the Filer's: -L SYS-C:SYSTEM.C.=SYSC)
     -O DIR               the objects of the commands after it go into DIR
                          (TINY-C:/OBJ), and -L and -J look there first; until
                          the next -O
@@ -677,7 +680,7 @@ def tiny_c():
     t.binary('CC.CODE', open(code, 'rb').read(), 'the Tiny-C compiler: CC from the shell, X(ecute TINY-C:CC')
     t.textfile('TCMSGS.TEXT', os.path.join(INC, 'tcmsgs.txt'), "the compiler's messages (line n = message n)")
     t.text('README.TEXT', README_TC, 'how to use Tiny-C, and what is where')
-    t.text('ALL.TEXT', ALL, 'CC @TINY-C:ALL: rebuilds the compiler, the library and every tool')
+    t.text('ALL.TEXT', ALL, 'CC @TINY-C:ALL: rebuilds the compiler, the library, every tool and SYS-C:SYSTEM.C')
     inc = t.sub('INCLUDE', 'the headers (#include <stdio.h> finds them here)')
     for f in sorted(os.listdir(INC)):
         if f.endswith('.h'):
@@ -742,11 +745,13 @@ def tests():
     t.finish()
 
 
-ALL = """; ALL -- rebuild the compiler, the library and every tool (TOOLS: on line too):
-; CC @TINY-C:ALL from the shell, or X(ecute TINY-C:CC and answer @TINY-C:ALL
+ALL = """; ALL -- rebuild the compiler, the library, every tool and the operating system
+; in C (TOOLS: and SYS-C: on line too): CC @TINY-C:ALL from the shell, or X(ecute
+; TINY-C:CC and answer @TINY-C:ALL
 @TINY-C:/SRC/CC/BUILD
 @TINY-C:/SRC/LIB/LIBS
 @TOOLS:/SRC/TOOLS
+@SYS-C:BUILD
 """
 
 

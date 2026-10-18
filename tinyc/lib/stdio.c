@@ -200,7 +200,9 @@ FILE *fopen(char *name, char *mode)
         return NULL;
     if (mode[1] == '+' || (mode[1] && mode[2] == '+'))
         f->flags = __F_READ | __F_WRITE;
-    if (__istext(name))
+    /* a text file -- but a .C or .H opened "b" is bytes as they are (the linker writes
+       a code file named SYS-C:SYSTEM.C so: -L SYS-C:SYSTEM.C.=) */
+    if (__istext(name) && !(strchr(mode, 'b') && (name[strlen(name) - 1] | 32) != 't'))
         f->flags = f->flags | __F_TEXT;
     /* a text file is written a 1K page at a time (a line may not cross a
        page), but read a block at a time: half the memory for the buffer */

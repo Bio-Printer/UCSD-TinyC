@@ -13,6 +13,8 @@
  *              -C NAME          compile only -> NAME.OBJ
  *              -L OUT=A,B,...   link A.OBJ, B.OBJ ... and TCLIB.OBJ -> OUT.CODE
  *              -J OUT=A,B,...   join A.OBJ, B.OBJ ... into the library OUT.OBJ
+ *                               (OUT. with a dot at its end: that name exactly,
+ *                               as the Filer's: -L *SYSTEM.C.=SYSC)
  *              -Z NAME, -Z -C NAME   as above with -z (see below)
  *              -O DIR           the objects of the commands after it go into DIR
  *                               (-L and -J look there first)
@@ -337,7 +339,11 @@ static int linkcmd(char *s, char *lib, int from, char *dir)
         return 0;
     }
     strcpy(out, s);
-    strcat(out, joining ? ".OBJ" : ".CODE");
+    n = strlen(out);
+    if (n > 0 && out[n - 1] == '.')
+        out[n - 1] = 0;                 /* OUT. : the name exactly (SYS-C:SYSTEM.C.) */
+    else
+        strcat(out, joining ? ".OBJ" : ".CODE");
     while (*t) {
         s = t;
         while (*t && *t != ',')
