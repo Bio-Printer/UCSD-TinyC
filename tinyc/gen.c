@@ -49,7 +49,7 @@ static void saveframe(void)
     E->curlocal = curlocal;
     E->maxlocal = maxlocal;
     E->nparam = nparamwords;
-    E->scratch = scratch;
+    E->firstlocal = firstlocal;
 }
 
 static void loadframe(void)
@@ -57,7 +57,7 @@ static void loadframe(void)
     curlocal = E->curlocal;
     maxlocal = E->maxlocal;
     nparamwords = E->nparam;
-    scratch = E->scratch;
+    firstlocal = E->firstlocal;
 }
 
 /* ---- bytes ---- */
@@ -206,17 +206,14 @@ int newtemp(int words)
     return curlocal - words + 1;
 }
 
-/* discard n words from the evaluation stack (the P-machine has no pop): into
-   the function's scratch word; an operating system's functions have none: FJP 0
-   (to the next instruction, whatever the word) takes a word off as well */
+/* discard n words from the evaluation stack (the P-machine has no pop): FJP 0
+   (to the next instruction, whatever the word) takes a word off, as a store into
+   a spare local word would, in as many bytes, and the frame needs no such word */
 void drop(int n)
 {
     while (n-- > 0) {
-        if (sysmode) {
-            ob(O_FJP);
-            ob(0);
-        } else
-            gen_stl(scratch);
+        ob(O_FJP);
+        ob(0);
     }
 }
 
@@ -490,7 +487,7 @@ static void initstart(void)
     E->nfix = 0;
     E->nrel = 0;
     curlocal = 0;
-    scratch = 1;
+    firstlocal = 1;
     curlocal = 1;
     maxlocal = 1;
     nparamwords = 0;

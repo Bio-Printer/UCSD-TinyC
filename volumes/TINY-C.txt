@@ -69,5 +69,5 @@ TINY-C:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/LIB/SUBVOL.C             26  svcanon, dirfree, dirkrunch, svresize: KRUNCH, GROW, SHRINK (<dirs.h>)
   SRC/LIB/TCRT.C               18  runtime helpers: C division, shifts, unsigned, longs
   SRC/LIB/LIBINT.H              6  the library modules' shared declarations
-  OBJ/                        666  sub-volume: empty: the objects BUILD and LIBS make (-O TINY-C:/OBJ)
+  OBJ/                        664  sub-volume: empty: the objects BUILD and LIBS make (-O TINY-C:/OBJ)
   FILES.TEXT                   14  this list

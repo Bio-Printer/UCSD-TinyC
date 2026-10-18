@@ -15,7 +15,7 @@ int maxlocal;
 int nparamwords;
 int sysmode;                    /* #pragma system: the module is an operating system (see tc.h) */
 int sysouter;                   /* (in it) main, the outer block, is being compiled */
-int scratch;
+int firstlocal;
 char *cursegname;
 FILE *objout;
 char *curfile;

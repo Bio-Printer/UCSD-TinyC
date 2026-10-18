@@ -104,7 +104,7 @@ def main():
         checks += [('main: lex level -1, no parameters, its data the 32 words of statics, then its own 2',
                     proc(0, 1) == (255, 0, 68)),
                    ('twice: lex level 0, 2 parameters and 2 result words, no locals', proc(0, 3) == (0, 8, 0)),
-                   ('number: one local (no scratch word)', proc(0, 4) == (0, 2, 2))]
+                   ('number: one local', proc(0, 4) == (0, 2, 2))]
     data = os.path.join(d, 'data')
     os.makedirs(data)
     shutil.copy(os.path.join(BUILD, 'data', 'pascal.bin'), data)

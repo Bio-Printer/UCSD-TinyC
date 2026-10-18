@@ -32,6 +32,9 @@ compiler (disassembled with `tools/pdis.py`).
   for the caller -- so the parameter area must be at least as big as the
   result (Pascal always pushes two extra words; Tiny-C pads only when
   needed).
+* A value that is not used (an expression statement's) is dropped with
+  `FJP 0`: it pops the word and goes to the next instruction either way, so
+  no frame keeps a scratch word for it.
 * All C functions are **lex-level-1 procedures**. Calls use `CXP seg,proc`
   (another segment, or the OS in segment 0) or `CGP proc` (same segment).
   `CXP` finds the static link by searching for the lex-0 main frame, so
@@ -108,7 +111,6 @@ laid out (UCSD-SYSTEM-C is the II.0 operating system written this way):
 * A function's result is two words below its parameters (the caller pushes
   the arguments, then two zero words): the Pascal convention, so Pascal
   programs can call them.
-* No scratch word: a value that is not used is dropped with `FJP 0`.
 * `#pragma segment NAME` segments are numbered 1..6 (at most 7 with segment
   0); segment 0 is named PASCALSY, unused names are blank.
 * Nothing of a library is linked (a library procedure that would be is

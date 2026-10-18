@@ -93,7 +93,7 @@ static void lvinfo(struct Node *n, struct LV *lv)
     }
     error(57 /* lvalue required */, 0);
     lv->kind = LV_LOCAL;
-    lv->off = scratch;
+    lv->off = 1;                        /* (no code is written after an error) */
     lv->boff = 0;
     lv->ptr = 0;
 }

@@ -355,7 +355,7 @@ extern int sysmode;
 extern int sysouter;
 extern int globoff;                     /* the module's static words so far (psym.c) */
 void gen_outerbegin(int statics);       /* (gen.c) */
-extern int scratch;
+extern int firstlocal;                  /* a function's first local word: after its parameters */
 extern char *cursegname;
 extern FILE *objout;
 int newlabel(void);

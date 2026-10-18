@@ -9,7 +9,7 @@
  * had it been called directly -- but the two are never in memory at the
  * same time.
  *
- *   H modname            F nparam scratch      L lab      J lab
+ *   H modname            F nparam firstlocal      L lab      J lab
  *   B curlocal jumpif lab tree                 D curlocal tree
  *   V curlocal temp tree  (evaluate, store in temp)
  *   R curlocal sretoff functype [tree]         S temp n (val lab)* default
@@ -176,7 +176,7 @@ void ir_funcbegin(void)
     irlabels = 0;
     irb('F');
     irw(nparamwords);
-    irw(scratch);
+    irw(firstlocal);
     irb(sysouter);
     if (sysouter)
         irw(globoff);                   /* (the statics main zeroes) */
@@ -523,9 +523,9 @@ int gencode(char *irname, char *obj)
         case 'F':
             gen_funcbegin();
             nparamwords = rw();
-            scratch = rw();
-            curlocal = scratch;
-            maxlocal = scratch;
+            firstlocal = rw();
+            curlocal = firstlocal;
+            maxlocal = firstlocal;
             sysouter = rb();
             if (sysouter)
                 gen_outerbegin(rw());

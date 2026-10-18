@@ -99,7 +99,7 @@ struct Emit {
     int curlocal;
     int maxlocal;
     int nparam;
-    int scratch;
+    int firstlocal;
 };
 
 extern struct Emit *E;          /* the current emitter */

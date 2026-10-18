@@ -531,9 +531,7 @@ void funcdef(struct Sym *fs, int isstatic)
         nparamwords = 0;
         curlocal = globoff;
     }
-    if (!sysmode)                       /* (an operating system's functions have none: drop) */
-        curlocal++;
-    scratch = curlocal;
+    firstlocal = curlocal;
     maxlocal = curlocal;
     ir_funcbegin();
     exitlab = ir_newlabel();
