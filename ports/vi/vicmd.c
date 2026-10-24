@@ -203,7 +203,7 @@ dc_i:
 	case 'O':			// O- open a empty line above
 		//    0i\n ESC -i
 		p = begin_line(dot);
-		if (p[-1] == '\n') {
+		if (p > text) {	// (not the first line: text[-1] is not ours to read)
 			dot_prev();
 	case 'o':			// o- open a empty line below; Yes, I know it is in the middle of the "if (..."
 			dot_end();

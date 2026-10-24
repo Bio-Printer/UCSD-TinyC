@@ -1277,7 +1277,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
             len++;
         }
     }
-    fclose(out);
+    wclose(out, code);
     linkbytes = 0;
     for (k = 0; k < norder; k++) {
         s = order[k];
@@ -1327,7 +1327,7 @@ int join(char **objs, int nobjs, char *out)
         }
         fclose(f);
     }
-    fclose(o);
+    wclose(o, out);
     say("  joined ");
     sayn(nobjs);
     say(" object files\n");

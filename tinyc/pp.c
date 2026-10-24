@@ -1442,7 +1442,7 @@ int preprocess(char *src, char *out)
     }
     if (iflevel)
         error(26 /* missing #endif */, 0);
-    fclose(ppout);
+    wclose(ppout, out);
     return nerrors == 0;
 }
 

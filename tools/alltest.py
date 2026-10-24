@@ -118,7 +118,8 @@ def results(d, r, tr, names):
         ('PASCALC:PC.CODE made again, the same as the host\'s build/psys/PC.CODE (its objects in PASCALC:/OBJ, '
          'none in PASCALC:/SRC)', pascalc is not None
          and pascalc.find('PC.CODE') is not None and pascalc.read('PC.CODE')[0] == pc_code
-         and len([e for e in at(pascalc, ['OBJ']).entries if e[3].endswith('.OBJ')]) == 13 and no_objs(pascalc, ['SRC'])),
+         and len([e for e in at(pascalc, ['OBJ']).entries if e[3].endswith('.OBJ')])
+         == len([e for e in at(pascalc, ['SRC']).entries if e[3].endswith('.C')]) and no_objs(pascalc, ['SRC'])),
     ]
     return checks
 

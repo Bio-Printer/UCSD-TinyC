@@ -155,8 +155,11 @@ static void ircur(void)
     irw(irinit ? -1 : curlocal);
 }
 
+static char *irname_;                   /* (its name, for ir_close) */
+
 void ir_open(char *name, char *modname)
 {
+    irname_ = name;
     irout = fopen(name, "wb");
     if (!irout)
         fatal(24 /* cannot create */, name);
@@ -323,7 +326,7 @@ void ir_close(int globalwords)
     ceb('G');
     cew(globalwords);
     ceb('Q');
-    fclose(irout);
+    wclose(irout, irname_);
 }
 
 /* ---- the reader (code generator segment) ---- */
@@ -633,7 +636,7 @@ int gencode(char *irname, char *obj)
             break;
         case 'Q':
             fclose(irin);
-            fclose(objout);
+            wclose(objout, obj);
             return nerrors == 0;
         default:
             fatal(94 /* bad intermediate file record */, 0);

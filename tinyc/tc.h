@@ -269,6 +269,7 @@ extern int curline;
 /* util */
 void error(int n, char *arg);
 void fatal(int n, char *arg);
+void wclose(FILE *f, char *name);         /* a file written, closed: fatal if not all of it was */
 void memfail(int n);
 char *itoa10(int n, char *b);
 void say(char *s);

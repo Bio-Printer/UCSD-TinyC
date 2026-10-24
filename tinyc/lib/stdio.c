@@ -110,7 +110,15 @@ struct svat *__svat;                    /* set: a sub-volume path's file is at i
 /* a path (a / or \\ in it), or a name on the shell's path: dirs.c's sub-volumes (dirs.h) */
 int __svname(char *name)
 {
-    return strchr(name, '/') || strchr(name, '\\') || (__svpath[0] && !strchr(name, ':') && name[0] != '#');
+    char *p;
+    int colon;
+    colon = 0;
+    for (p = name; *p; p++)             /* (by hand: strchr is not linked for it) */
+        if (*p == '/' || *p == '\\')
+            return 1;
+        else if (*p == ':')
+            colon = 1;
+    return __svpath[0] && !colon && name[0] != '#';
 }
 
 int __blockio(FILE *f, int nblocks, int block, int doread)
@@ -151,10 +159,12 @@ int __flushbuf(FILE *f)
     if (f->flags & __F_TEXT) {
         memset(f->buf + f->pos, 0, 1024 - f->pos);
         n = __blockio(f, 2, f->blk, 0);
-        return n == 2 ? 0 : EOF;
-    }
-    n = __blockio(f, 1, f->blk, 0);
-    return n == 1 ? 0 : EOF;
+    } else
+        n = __blockio(f, 1, f->blk, 0);
+    if (n == ((f->flags & __F_TEXT) ? 2 : 1))
+        return 0;
+    f->flags = f->flags | __F_ERR;      /* (no room left: ferror says so, and fclose) */
+    return EOF;
 }
 
 int __loadblock(FILE *f, int b)

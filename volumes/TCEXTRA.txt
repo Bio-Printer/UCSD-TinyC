@@ -27,7 +27,7 @@ TCEXTRA:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   MEMFREE.C                     4  prints the memory free to it (stack to heap) and exits ...
   MEMFREE.CODE                 13    (ready to run)
   MEMMARK.C                     6  the least free memory of another program
-  MEMMARK.CODE                 21    (ready to run)
+  MEMMARK.CODE                 22    (ready to run)
   SHELL.C                      94  a mini-shell: runs programs with pexec() and comes back
   SHELL.CODE                   59    (ready to run)
   FILES.TEXT                    8  this list

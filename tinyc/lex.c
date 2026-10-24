@@ -47,6 +47,24 @@ static void nextch(void)
     ch = getc(lexin);
 }
 
+/* the file a line marker names: each name once (the source and its headers
+   take turns: a copy at each turn took up the pool) */
+#define MAXFILES 8
+static char *files[MAXFILES];
+static int nfiles;
+
+static char *filename(char *s)
+{
+    int i;
+    for (i = 0; i < nfiles; i++)
+        if (strcmp(files[i], s) == 0)
+            return files[i];
+    s = pstrdup(s);
+    if (nfiles < MAXFILES)
+        files[nfiles++] = s;
+    return s;
+}
+
 void lexinit(FILE *fp)
 {
     strbufs[0] = malloc(MAXSTR);
@@ -61,6 +79,7 @@ void lexinit(FILE *fp)
     havepeek = 0;
     insys = 0;
     strslot = 0;
+    nfiles = 0;
     nextch();
 }
 
@@ -90,7 +109,7 @@ static void lexdirective(void)
         if (insys)
             s++;
         if (!curfile || strcmp(curfile, s) != 0)
-            curfile = pstrdup(s);
+            curfile = filename(s);
     } else if (strncmp(buf, "pragma", 6) == 0)
         pragma(buf + 6);
 }

@@ -115,3 +115,4 @@ undefined variable
 variable defined twice
 function is not in the segment its prototype says (#pragma segment)
 file is on several disks, none of them the including file's or the prefix: name its volume
+cannot write all of it: no room left on its disk (or a disk error); it is not kept

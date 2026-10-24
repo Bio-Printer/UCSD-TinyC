@@ -184,6 +184,17 @@ void fatal(int n, char *arg)
     exit(2);
 }
 
+/* a file CC wrote, closed: if not all of it went to its disk (no room left
+   on it, or a disk error), it goes -- no short file is left that looks
+   whole -- and CC stops (message 118) */
+void wclose(FILE *f, char *name)
+{
+    if (ferror(f) | (fclose(f) != 0)) {
+        remove(name);
+        fatal(118 /* cannot write all of it: no room on its disk */, name);
+    }
+}
+
 #define PCHUNK 448           /* tools/pchunk.py: the least free memory against PCHUNK */
 static char *pcur;
 static int pleft;

@@ -20,6 +20,16 @@
 #include "libint.h"
 #include <psys.h>
 #include <dirs.h>
+
+/* copies and searches by hand, not by the library's string functions:
+   those are resident, so a program that uses them for nothing else (the
+   Pascal compiler in C) would hold them all the time; these are in SVAT,
+   in memory only while a path is used */
+#pragma segment SVAT
+static void svcopy(char *d, char *s, int n);    /* n bytes */
+static char *svchr(char *s, int c);             /* the first c in s, NULL none */
+#define ISDIGIT(c) ((c) >= '0' && (c) <= '9')
+
 #pragma segment DIRS
 
 int units[8] = { 4, 5, 9, 10, 11, 12, 13, 14 };
@@ -65,17 +75,17 @@ int volunit(char *vol, int *dir)
     char name[20];
     char got[16];
     int n, k, u;
-    strncpy(name, vol, 19);
-    name[19] = 0;
-    n = strlen(name);
+    for (n = 0; n < 19 && vol[n]; n++)
+        name[n] = vol[n];
+    name[n] = 0;
     if (n > 0 && name[n - 1] == ':')
         name[--n] = 0;
     if (n == 0)
         return 0;
     if (name[0] == '*' && n == 1)
         return SYSCOM->sysunit;
-    if (name[0] == '#' || isdigit(name[0])) {
-        for (u = 0, k = name[0] == '#'; isdigit(name[k]); k++)     /* (by hand: atoi is resident) */
+    if (name[0] == '#' || ISDIGIT(name[0])) {
+        for (u = 0, k = name[0] == '#'; ISDIGIT(name[k]); k++)     /* (by hand: atoi is resident) */
             u = u * 10 + name[k] - '0';
         return u > 0 && u <= 14 && dirread(u, dir) ? u : 0;
     }
@@ -153,7 +163,7 @@ static void dots(char *s)
         } else if (k > 0 && !(k == 1 && p[0] == '.')) {
             if (n > 0)
                 out[n++] = '/';
-            memcpy(out + n, p, k);
+            svcopy(out + n, p, k);
             n = n + k;
         }
     }
@@ -162,7 +172,7 @@ static void dots(char *s)
     out[n] = 0;
     if (*s == '/')
         s++;                                    /* (VOL:/A: the / stays) */
-    strcpy(s, out);
+    svcopy(s, out, n + 1);
 }
 
 /* Where path's file is: its directory in dir (unit *up, the sub-volume's
@@ -176,26 +186,27 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf)
     char *p;
     char *q;
     int u, base, i, n, len;
-    p = strchr(path, ':');
-    full[0] = 0;
+    p = svchr(path, ':');
+    n = 0;
     if (!p && __svpath[0] && path[0] != '/' && path[0] != '\\' && path[0] != '#') {
         n = strlen(__svpath);                   /* on the shell's path */
-        strcpy(full, __svpath);
+        svcopy(full, __svpath, n);
         if (n > 0 && full[n - 1] != '/' && full[n - 1] != ':')
-            strcat(full, "/");
+            full[n++] = '/';
     }
-    if (strlen(full) + strlen(path) + 1 > sizeof full)
+    len = strlen(path);
+    if (n + len + 1 > sizeof full)
         return 0;
-    strcat(full, path);
+    svcopy(full + n, path, len + 1);
     slashes(full);                              /* (A\B: A/B) */
     path = full;
-    p = strchr(path, ':');
+    p = svchr(path, ':');
     dots(p ? p + 1 : path);                     /* (A/../B: B) */
     if (p) {
         n = p - path;
         if (n > 19)
             n = 19;
-        memcpy(vol, path, n);
+        svcopy(vol, path, n);
         vol[n] = 0;
         p++;
     } else {
@@ -208,11 +219,11 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf)
     base = 0;
     if (*p == '/')
         p++;
-    while ((q = strchr(p, '/')) != NULL) {
+    while ((q = svchr(p, '/')) != NULL) {
         n = q - p;
         if (n > 15)
             return 0;
-        memcpy(leaf, p, n);
+        svcopy(leaf, p, n);
         leaf[n] = 0;
         if (n > 0) {                            /* (A//B: the same as A/B) */
             if (!(i = findname(dir, leaf)))
@@ -227,9 +238,10 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf)
         }
         p = q + 1;
     }
-    if (strlen(p) > 15)
+    n = strlen(p);
+    if (n > 15)
         return 0;
-    strcpy(leaf, p);
+    svcopy(leaf, p, n + 1);
     *up = u;
     *bp = base;
     return 1;
@@ -284,6 +296,20 @@ int __svremove(char *path)
    sub-volume) ---- */
 #pragma segment SVAT
 
+static void svcopy(char *d, char *s, int n)
+{
+    while (n-- > 0)
+        *d++ = *s++;
+}
+
+static char *svchr(char *s, int c)
+{
+    for (; *s; s++)
+        if (*s == c)
+            return s;
+    return NULL;
+}
+
 /* dir back; the OS's copy of a directory (GDIRP) is then forgotten, so
    that it reads this one again: 0 on a disk error */
 int dirwriteat(int u, int base, int *dir)
@@ -335,7 +361,7 @@ static int svent(char *buf, int *blk, int u, int base, int i, int *e)
         n = 512 - o;
         if (n > 26 - k)
             n = 26 - k;
-        memcpy((char *)e + k, buf + o, n);
+        svcopy((char *)e + k, buf + o, n);
         o = 0;
         b++;
     }
@@ -364,7 +390,7 @@ int __svopenat(FILE *f, char *mode, struct svat *at)
     nf = v[8];
     r[0] = at->unit;
     r[4] = at->base;
-    strcpy((char *)(r + 7), at->name);
+    svcopy((char *)(r + 7), at->name, strlen(at->name) + 1);
     found = 0;
     for (i = 1; i <= nf && !found; i++) {      /* the entry of that name */
         if (!svent(buf, &blk, at->unit, at->base, i, e))
