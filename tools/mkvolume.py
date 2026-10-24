@@ -752,7 +752,7 @@ ALL = """; ALL -- rebuild the compiler, the library, every tool, the operating s
 @TINY-C:/SRC/LIB/LIBS
 @TOOLS:/SRC/TOOLS
 @SYS-C:BUILD
-@PASCALC:BUILD
+@PASCALC:/SRC/BUILD
 """
 
 

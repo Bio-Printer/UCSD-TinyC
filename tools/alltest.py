@@ -11,7 +11,7 @@ others.  With the prefix on SPARE: (an empty volume), X(ecute TINY-C:CC,
                           first): the same bytes as mkvolume's
   @SYS-C:BUILD            the operating system in C -> SYS-C:SYSTEM.C (removed
                           first): the same bytes as UCSD-SYSTEM-C's SYSTEM.C
-  @PASCALC:BUILD          the Pascal compiler in C -> PASCALC:PC.CODE (removed
+  @PASCALC:/SRC/BUILD     the Pascal compiler in C -> PASCALC:PC.CODE (removed
                           first): the same bytes as the host's build/psys/PC.CODE
                           of UCSD-Pascal-compiler-written-in-C
 and every object is in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' -O),
@@ -38,7 +38,7 @@ PASCALC = os.environ.get('PASCALC', os.path.join(os.path.dirname(ROOT), 'ucsd-pa
 # what the run prints, in turn
 WAITS = ['> @TINY-C:/SRC/CC/BUILD', '> -L TINY-C:CC2=', '> @TINY-C:/SRC/LIB/LIBS',
          'Joining TINY-C:/LIB/TCLIB2.OBJ', '> @TOOLS:/SRC/TOOLS', '> -L TOOLS:GREP=', '> @SYS-C:BUILD',
-         '> -L SYS-C:SYSTEM.C.=', '> @PASCALC:BUILD', '> -L PASCALC:PC=']
+         '> -L SYS-C:SYSTEM.C.=', '> @PASCALC:/SRC/BUILD', '> -L PASCALC:PC=']
 
 
 def prepare(d):
@@ -101,7 +101,7 @@ def results(d, r, tr, names):
     pos = [tr.find(w) for w in WAITS]
     checks = [
         ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
-        ('@TINY-C:ALL ran BUILD, LIBS, TOOLS, SYS-C:BUILD and PASCALC:BUILD in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
+        ('@TINY-C:ALL ran BUILD, LIBS, TOOLS, SYS-C:BUILD and PASCALC:/SRC/BUILD in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
         ('TINY-C:CC2.CODE and TINY-C:/LIB/TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
         ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
          and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
@@ -115,8 +115,10 @@ def results(d, r, tr, names):
          and not any(e[3].endswith('.OBJ') for e in spare.entries)),
         ('SYS-C:SYSTEM.C made again, the same as UCSD-SYSTEM-C\'s SYSTEM.C (SYSC.OBJ beside SYSC.C)', sysc is not None
          and sysc.find('SYSTEM.C') is not None and sysc.read('SYSTEM.C')[0] == system_c and sysc.find('SYSC.OBJ') is not None),
-        ('PASCALC:PC.CODE made again, the same as the host\'s build/psys/PC.CODE', pascalc is not None
-         and pascalc.find('PC.CODE') is not None and pascalc.read('PC.CODE')[0] == pc_code),
+        ('PASCALC:PC.CODE made again, the same as the host\'s build/psys/PC.CODE (its objects in PASCALC:/OBJ, '
+         'none in PASCALC:/SRC)', pascalc is not None
+         and pascalc.find('PC.CODE') is not None and pascalc.read('PC.CODE')[0] == pc_code
+         and len([e for e in at(pascalc, ['OBJ']).entries if e[3].endswith('.OBJ')]) == 13 and no_objs(pascalc, ['SRC'])),
     ]
     return checks
 

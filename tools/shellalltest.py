@@ -10,7 +10,7 @@ compiler, the library and every tool), and the least free memory of it.
   @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
                           first): the same bytes as mkvolume's
   @SYS-C:BUILD            SYS-C:SYSTEM.C: the same bytes as UCSD-SYSTEM-C's
-  @PASCALC:BUILD          PASCALC:PC.CODE: the same bytes as the host's
+  @PASCALC:/SRC/BUILD     PASCALC:PC.CODE: the same bytes as the host's
                           build/psys/PC.CODE (UCSD-Pascal-compiler-written-in-C);
                           its BODYPART.C is the least of the run
 and every object in TINY-C:/OBJ or TOOLS:/OBJ, none among the sources or on
