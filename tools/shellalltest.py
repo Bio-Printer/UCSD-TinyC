@@ -10,6 +10,9 @@ compiler, the library and every tool), and the least free memory of it.
   @TOOLS:/SRC/TOOLS       every tool linked onto TOOLS: (its tools removed
                           first): the same bytes as mkvolume's
   @SYS-C:BUILD            SYS-C:SYSTEM.C: the same bytes as UCSD-SYSTEM-C's
+  @PASCALC:BUILD          PASCALC:PC.CODE: the same bytes as the host's
+                          build/psys/PC.CODE (UCSD-Pascal-compiler-written-in-C);
+                          its BODYPART.C is the least of the run
 and every object in TINY-C:/OBJ or TOOLS:/OBJ, none among the sources or on
 the prefix volume (alltest's checks).  The Filer's Prefix is not set: nothing else at the Command: prompt
 has less memory than the rebuild.
@@ -21,9 +24,10 @@ With the emulator's clock on (VERIFY_HOSTCLOCK) every compile's line is
   NAME  N bytes free  Compiling  N bytes free  Generating code  N bytes free  N lines/s
 in the same columns, and every link ends in  N bytes free  N bytes/s.
 Z80 mode and P-Code mode without reclaimed memory (the default here) have the
-same layout, so the same figures; PSYS_MODE=z80 takes about 25 minutes.
+same layout, so the same figures; PSYS_MODE=z80 takes about 70 minutes.
 
-Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE), #13 SYS-C:.
+Disks: #5 TINY-C:, #9 SPARE:, #10 PASCALC:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE),
+#13 SYS-C: (as alltest.py).
 """
 import os, sys, re, shutil, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -84,7 +88,7 @@ def main():
     # (P-Code mode without VERIFY_RECLAIM: Z80 mode's layout, many times faster)
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
                         os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'SPARE.BLK'), sp, mode,
-                        os.path.join(d, 'out'), '', '3600'], capture_output=True, text=True, env=env)
+                        os.path.join(d, 'out'), '', '7200'], capture_output=True, text=True, env=env)
     tr = shell_transcript(open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read())
     checks = results(d, r, tr, names)
     checks.insert(2, ('the shell: cc exit status 0', '[exit status 0]' in tr))

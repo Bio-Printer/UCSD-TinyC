@@ -106,6 +106,7 @@ P  flags:byte  name:string  segment:string  parmsz:word  rw:byte
 
    A global operand is always the 2-byte "big" form of II.0, so that any
    address fits: first byte 128 + the high 7 bits, then the low 8 bits.
+   The linker makes it short where it can (5., Sizes).
 
 D  strong:byte  name:string  words:word
    A global variable this module defines (extern, not static).
@@ -166,15 +167,28 @@ record reads the rest of a record.
           when any of its procedures or variables is used; then its
           init procedures are linked too, and so are what its U records
           name.
-  Layout  the globals start at word 3 of the program's base frame: each
-          linked module's static block, then every used variable.
+          Pass 2 also counts each variable's and module static block's
+          uses (relocations 3 and 4 of the linked procedures).
+  Layout  the globals start at word 3 of the program's base frame:
+          below word 128 first, one by one, the variable or static block
+          with the most uses for its size that still fits there; then
+          each linked module's static block, then every used variable.
           Segments get their numbers (main's segment is 1, the others
           7, 8, ... up to 10 segments), procedures their numbers within
           their segment (procedure 1 of segment 1 is the startup code).
+  Sizes   each linked procedure's image is read, its relocations are
+          filled in (patchproc) and its operands made short (relax): a
+          global operand below 128 becomes 1 byte (LDO of words 1..16
+          SLDO), and CGP proc NOP loses the NOP.  The code after each moves
+          up: relax decodes the procedure and writes it again, with its
+          jumps, case tables, long-jump table, EXITIC and the 0 byte
+          before LDC's and XJP's words (they are word-aligned) made
+          again; a procedure it cannot make shorter (more than 60 long
+          jumps) stays as it is.  So the segments' lengths are known
+          before block 0 is written.
   Pass 3  once for each segment: each linked procedure's image is read
-          again, its relocations are filled in (patchproc), its
-          procedure number is put at jtab, and it is written to the code
-          file.  The segment ends with its procedure dictionary (a
+          again and made as in Sizes, its procedure number is put at
+          jtab, and it is written to the code file.  The segment ends with its procedure dictionary (a
           self-relative word for each procedure, the highest number
           first), the segment number and the number of procedures.
 

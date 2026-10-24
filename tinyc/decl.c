@@ -311,13 +311,17 @@ struct Type *enumspec(void)
     next();
     v = 0;
     while (tok == T_ID) {
-        s = addsym(tokname, S_ENUMC, ty_int);
+        s = 0;
+        if (!insys || isref(tokname))       /* (one of an included file's that the
+                                               program never names is not kept) */
+            s = addsym(tokname, S_ENUMC, ty_int);
         next();
         if (tok == '=') {
             next();
             v = constexpr();
         }
-        s->offset = v;
+        if (s)
+            s->offset = v;
         v = W16(v + 1);
         if (tok != ',')
             break;

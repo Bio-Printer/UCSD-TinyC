@@ -5,5 +5,5 @@ TCVERIF:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   README.TEXT                   4  what is on this volume
   VERIFY.SCRIPT                50  the Tiny-C Verify script
   RMFILES.C                     4  removes the files named, one per line
-  RMFILES.CODE                 19    (ready to run)
+  RMFILES.CODE                 18    (ready to run)
   FILES.TEXT                    4  this list

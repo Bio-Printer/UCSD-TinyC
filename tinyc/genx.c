@@ -19,8 +19,9 @@ struct LV {
 };
 
 /* global variable access: operand is always two bytes so the linker can
-   fill it in -- R_GSTAT: module static (operand = offset in the module),
-   R_GNAME: named variable (operand = word offset within it) */
+   fill it in (and make it short) -- R_GSTAT: module static (operand =
+   offset in the module), R_GNAME: named variable (operand = word offset
+   within it) */
 static void gglob(int op, struct LV *lv, int add)
 {
     int v;

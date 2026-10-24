@@ -4,8 +4,9 @@
  * Each C function becomes one II.0 procedure: code, then its jump table
  * (long jumps), DATASZ, PARMSZ, EXITIC, ENTRIC and procnum/lexlevel at
  * JTAB.  Everything inside a procedure is self-relative, so procedures are
- * written to the object file as finished byte images; the linker only
- * fills in procedure numbers and CXP operands.
+ * written to the object file as finished byte images; the linker fills
+ * in procedure numbers, CXP operands and global operands, and makes the
+ * global operands short where it can (link.c, relax).
  *
  * Global initialisers are compiled into "init" procedures (one emitter
  * of their own) that the program runs once at startup.

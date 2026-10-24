@@ -26,6 +26,12 @@ compiler (disassembled with `tools/pdis.py`).
 * Frames: `MP` points at a 6-word mark stack; local word *n* (1-based) is
   at `MP+0x0A+2n` (`LDL/STL/LLA n`). Globals are the locals of the lex-0
   main procedure, reached from anywhere with `LDO/SRO/LAO n` (BASE).
+  The compiler writes their operands in the 2-byte form; the linker puts
+  the globals with the most uses for their size below word 128 and makes
+  those operands 1 byte (`SLDO` for words 1..16), dropping the `NOP` of a
+  same-segment `CGP p NOP` too, and writes each procedure again (jumps,
+  case tables, alignment: link.c, relax).  The Pascal compiler in Tiny-C
+  is 3.3 KB smaller for it (BODYPART 1150 bytes), CC 1.9 KB.
 * Calls: the caller pushes the parameters (the first ends up at the
   highest offset); the call copies `PARMSZ` bytes into the new frame.
   A function result is stored at local words 1..n and `RNP n` pushes it

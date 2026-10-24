@@ -664,9 +664,11 @@ void external(void)
 #pragma segment CINIT
 
 /* Collect every identifier the program itself uses: everything in the
-   main file, and whatever is inside braces (function bodies, structures,
-   initialisers) in included files.  Top-level declarations in included
-   files of names never mentioned are then not kept at all. */
+   main file, and in included files whatever is inside braces (function
+   bodies, structures, initialisers) or brackets (array sizes), and an enum
+   constant's value -- but not the names an enum defines.  Top-level
+   declarations in included files of names never mentioned, and their enum
+   constants, are then not kept at all. */
 void addref(char *name)
 {
     int a;
@@ -686,6 +688,10 @@ void scanrefs(char *src)
     int sys;
     int bol;
     int depth;
+    int brackets;
+    int en;                             /* in an included file: 1 after "enum", 2 at an enum
+                                           constant's name, 3 in its value, 0 elsewhere */
+    int endepth;                        /* the depth inside the enum's braces */
     char name[MAXNAME];
     fp = fopen(src, "r");
     if (!fp)
@@ -694,6 +700,9 @@ void scanrefs(char *src)
     sys = 0;
     bol = 1;
     depth = 0;
+    brackets = 0;
+    en = 0;
+    endepth = 0;
     c = getc(fp);
     while (c != EOF) {
         if (bol && c == '#') {
@@ -717,10 +726,29 @@ void scanrefs(char *src)
             continue;
         }
         bol = 0;
-        if (c == '{')
+        if (c == '{') {
             depth++;
-        else if (c == '}')
+            if (en == 1) {
+                en = 2;
+                endepth = depth;
+            }
+        } else if (c == '}') {
+            if (en && depth == endepth)
+                en = 0;
             depth--;
+        } else if (c == '[')
+            brackets++;
+        else if (c == ']')
+            brackets--;
+        if (en == 1 && c != '{' && c != ' ' && c != '\t' && c != '_' && !(c >= 'a' && c <= 'z')
+            && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9'))
+            en = 0;                     /* (enum TAG used as a type) */
+        else if (en >= 2 && depth == endepth) {
+            if (c == '=')
+                en = 3;
+            else if (c == ',')
+                en = 2;
+        }
         if (c == '"' || c == '\'') {
             q = c;
             c = getc(fp);
@@ -740,7 +768,11 @@ void scanrefs(char *src)
                 c = getc(fp);
             }
             name[n] = 0;
-            if (!sys || depth > 0)
+            if (sys && strcmp(name, "enum") == 0 && en == 0)
+                en = 1;
+            else if (sys && en == 2)
+                en = 4;                 /* (a constant defined: not a use) */
+            else if (!sys || ((depth > 0 || brackets > 0) && en != 1))
                 addref(name);
             continue;
         }

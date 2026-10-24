@@ -13,11 +13,15 @@
  * Everything reachable from main (and exit) is kept: a module is linked
  * when any of its procedures or variables is used, and then its
  * initialisers run too.  Globals are laid out from word 3 of the startup
- * frame: each linked module's statics, then every used variable.
+ * frame: below word 128 first those with the most uses for their size (a
+ * module's statics or a variable: its operands are short there), then
+ * each linked module's statics, then every used variable.
  * Then pass 1 runs again and keeps only what is linked: the rest of a
  * library takes no memory while the code is written.
  * Segments are numbered (main's is 1, the others 7..15), procedures
- * within them, and block 0 plus the segments are written in one go.
+ * within them; a pass over the code finds each procedure's length with
+ * short operands (relax), and block 0 plus the segments are written in
+ * one go.
  *
  * Segment 1 procedure 1 is the startup code generated here: zero the
  * globals, run the initialisers, call main, then exit(main's result).
@@ -57,7 +61,7 @@ struct LData {
     int words;
     int strong;
     int mod;                /* defining module, -1 = none yet */
-    int offset;
+    int offset;             /* (while linking: its uses) */
     int live;
     struct LData *hnext;
 };
@@ -91,7 +95,7 @@ static char **modnames;         /* [MAXMOD]: a static procedure's name is MODULE
    their place in the files (bits), 0 in the first */
 static struct PMark p1mark;
 static unsigned char *plive;
-static unsigned char *dlive;
+static unsigned char *duse;     /* a variable: 0 not linked, else 1 + its uses (at most 254) */
 static int nprecs;
 static FILE *lin;
 static unsigned char *lbuf;     /* the largest procedure (allocated after pass 1) */
@@ -425,6 +429,10 @@ static int markpass(int first)
     changed = 0;
     if (first)
         nuses = 0;
+    for (i = 0; i < nmods; i++)         /* (the uses of the globals, for their places) */
+        modbase[i] = 0;
+    for (i = 0; i < ndatas; i++)
+        DATA(i)->offset = 0;
     while ((c = nextrec()) != 0) {
         record(c, name, seg, &flags, &parmsz, &rw, &codelen, &jtab);
         if (c == 'U') {
@@ -474,12 +482,17 @@ static int markpass(int first)
                 if (!d || d->mod < 0) {
                     if (first)
                         error(114 /* undefined variable */, rname);
-                } else if (live && !d->live) {
-                    d->live = 1;
-                    modlive[d->mod] = 1;
-                    changed = 1;
+                } else if (live) {
+                    if (!d->live) {
+                        d->live = 1;
+                        modlive[d->mod] = 1;
+                        changed = 1;
+                    }
+                    if (d->offset < 254)
+                        d->offset++;
                 }
-            }
+            } else if (type == 3 && live && modbase[p->mod] < 254)
+                modbase[p->mod]++;
         }
     }
     for (i = 0; i < nuses; i++) {
@@ -516,7 +529,6 @@ static void ecall(struct LProc *p)
     if (segnum[p->seg] == 1) {
         eb(0xCF);               /* CGP */
         eb(p->procnum);
-        eb(0xD7);
     } else {
         eb(0xCD);               /* CXP */
         eb(segnum[p->seg]);
@@ -578,6 +590,8 @@ static void makeentry(struct LProc *mainp, struct LProc *exitp)
     eb(0);                              /* lex level 0 */
 }
 
+static int sized;               /* the sizes are known (error 116 said) */
+
 static void patchproc(struct LProc *p, int pos, int type, char *rname)
 {
     struct LProc *t;
@@ -616,10 +630,397 @@ static void patchproc(struct LProc *p, int pos, int type, char *rname)
     } else if (type == 5) {
         /* CGP p: the compiler took the callee to be in this segment (its
            definition, or a prototype under #pragma segment) */
-        if (t->seg != p->seg)
+        if (t->seg != p->seg && !sized)
             error(116 /* function is not in this segment */, rname);
         lbuf[pos + 1] = t->procnum;
     }
+}
+
+/* ---- short operands ----
+   The compiler writes every global operand (LDO, SRO, LAO) in its 2-byte
+   form and a call into a segment it does not know as 3 bytes (CGP p NOP
+   when it is the caller's own): the linker, which knows where each
+   variable is, makes a word below 128 a 1-byte operand (LDO of words 1..16
+   SLDO) and drops the NOP.  The code after each moves up, so the
+   procedure is written again: its jumps, case tables, long-jump table and
+   EXITIC, and the pad of LDC and XJP (their words are word-aligned).  A
+   procedure that would not fit then (60 long jumps) stays as it is. */
+#define MAXEDIT 192
+static int *edpos;              /* the edits of a procedure, in order: where (old code) */
+static int *edsum;              /* the change in length up to and with it */
+static int nedit;
+static int ei;                  /* the next edit (sweep) */
+static int *longt;              /* [MAXLONGJ] the new long-jump targets */
+static int nlongt;
+static int oend;                /* the old code's end (after its RNP) */
+static int ojtab;
+static int wp;                  /* the new code's position */
+
+static int get16(unsigned char *b, int pos)
+{
+    return b[pos] | (b[pos + 1] << 8);
+}
+
+/* the new position of old position x (an instruction) */
+static int newpos(int x)
+{
+    int lo;
+    int hi;
+    int m;
+    lo = 0;
+    hi = nedit;
+    while (lo < hi) {
+        m = (lo + hi) >> 1;
+        if (edpos[m] < x)
+            lo = m + 1;
+        else
+            hi = m;
+    }
+    return lo ? x + edsum[lo - 1] : x;
+}
+
+static int addedit(int pos, int d)
+{
+    if (nedit >= MAXEDIT)
+        return 0;
+    edpos[nedit] = pos;
+    edsum[nedit] = (nedit ? edsum[nedit - 1] : 0) + d;
+    nedit++;
+    return 1;
+}
+
+static void wb(int mode, int b)
+{
+    if (mode == 2)
+        lbuf[wp] = b;
+    wp++;
+}
+
+/* the operand byte of a jump at new position wp - 1 to old position t; -1 if
+   a 61st long jump */
+static int jumpbyte(int t)
+{
+    int k;
+    t = newpos(t);
+    if (t >= wp + 1 && t - (wp + 1) <= 127)
+        return t - (wp + 1);
+    for (k = 0; k < nlongt; k++)
+        if (longt[k] == t)
+            break;
+    if (k == nlongt) {
+        if (k >= MAXLONGJ)
+            return -1;
+        longt[nlongt++] = t;
+    }
+    return (256 - 10 - 2 * k) & 255;
+}
+
+/* a jump at old position r, written again (modes 1, 2); 0 if it cannot be */
+static int jumpop(int mode, int r)
+{
+    int v;
+    int e;
+    wb(mode, lbuf[r]);
+    v = lbuf[r + 1];
+    if (v < 128)
+        e = r + 2 + v;
+    else {
+        e = ojtab + v - 256;
+        e = e - get16(lbuf, e);
+    }
+    v = jumpbyte(e);
+    if (v < 0)
+        return 0;
+    wb(mode, v);
+    return 1;
+}
+
+/* the pad before LDC's or XJP's words, at old position r: as the new
+   position needs it; 0 if out of edits */
+static int align(int mode, int r)
+{
+    if (mode == 0 && (r & 1) != (wp & 1) && !addedit(r, (r & 1) ? -1 : 1))
+        return 0;
+    if (ei < nedit && edpos[ei] == r) {
+        ei++;
+        if (!(r & 1))
+            wb(mode, 0);
+        return r + (r & 1);
+    }
+    if (r & 1)
+        wb(mode, 0);
+    return r + (r & 1);
+}
+
+/* one pass over the old code: mode 0 finds the edits, 1 the long jumps,
+   2 writes the new code over the old (never ahead of what it reads);
+   0 if it cannot be done */
+static int sweep(int mode)
+{
+    /* operands of 0x80..0xD7: - none, U byte, B big, S jump, D byte and
+       big, V byte and big, W P 2 bytes, A string, C LDC, X XJP, T compare */
+    char *fmt;
+    int r;
+    int op;
+    int f;
+    int n;
+    int v;
+    int t;
+    fmt = "------------------------------U-USBBBBAVBBUBXUUTTTDCTTDTDS--UU--PUU---BW--B-BPUUAV-SSB--";
+    r = 0;
+    t = 0;
+    wp = 0;
+    ei = 0;
+    while (r < oend) {
+        op = lbuf[r];
+        f = op >= 0x80 && op < 0xD8 ? fmt[op - 0x80] : '-';
+        if (op == 0xA9 || op == 0xAB || op == 0xA5) {           /* LDO SRO LAO */
+            if (lbuf[r + 1] & 128) {
+                v = ((lbuf[r + 1] & 127) << 8) + lbuf[r + 2];
+                if (mode == 0 && v < 128 && nedit < MAXEDIT - 32) {
+                    if (op == 0xA9 && v >= 1 && v <= 16)
+                        addedit(r + 1, -2);
+                    else
+                        addedit(r + 2, -1);
+                }
+                if (ei < nedit && edpos[ei] <= r + 2) {
+                    if (edpos[ei] == r + 1)
+                        wb(mode, 0xE7 + v);             /* SLDO */
+                    else {
+                        wb(mode, op);
+                        wb(mode, v);
+                    }
+                    ei++;
+                    r = r + 3;
+                    continue;
+                }
+            }
+        } else if (op == 0xCF && lbuf[r + 2] == 0xD7) {         /* CGP p NOP */
+            if (mode == 0 && nedit < MAXEDIT - 32)
+                addedit(r + 2, -1);
+            wb(mode, op);
+            wb(mode, lbuf[r + 1]);
+            r = r + 2;
+            if (ei < nedit && edpos[ei] == r) {
+                ei++;
+                r++;
+            }
+            continue;
+        }
+        if (f == 'S' && mode > 0) {
+            if (!jumpop(mode, r))
+                return 0;
+            r = r + 2;
+            continue;
+        }
+        if (f == 'C' || f == 'X') {
+            wb(mode, op);
+            if (f == 'C') {
+                n = lbuf[r + 1];
+                wb(mode, n);
+                r++;
+            } else
+                n = 2;                                  /* lo, hi */
+            r = align(mode, r + 1);
+            if (!r)
+                return 0;
+            if (f == 'X')
+                t = W16(get16(lbuf, r + 2) - get16(lbuf, r)) + 1;
+            while (n-- > 0) {
+                wb(mode, lbuf[r]);
+                wb(mode, lbuf[r + 1]);
+                r = r + 2;
+            }
+            if (f == 'C')
+                continue;
+            if (mode > 0 && !jumpop(mode, r))           /* the else: a UJP */
+                return 0;
+            if (mode == 0) {
+                wb(mode, lbuf[r]);
+                wb(mode, lbuf[r + 1]);
+            }
+            r = r + 2;
+            while (t-- > 0) {                           /* the table: self-relative words */
+                v = get16(lbuf, r);
+                if (mode > 0)
+                    v = wp - newpos(W16(r - v));
+                wb(mode, v & 255);
+                wb(mode, (v >> 8) & 255);
+                r = r + 2;
+            }
+            continue;
+        }
+        n = 1;                                          /* the instruction's length */
+        if (f == 'U' || f == 'S')
+            n = 2;
+        else if (f == 'W' || f == 'P')
+            n = 3;
+        else if (f == 'A')
+            n = 2 + lbuf[r + 1];
+        else if (f == 'B')
+            n = 2 + (lbuf[r + 1] >> 7);
+        else if (f == 'D' || f == 'V' || (f == 'T' && (lbuf[r + 1] == 10 || lbuf[r + 1] == 12)))
+            n = 3 + (lbuf[r + 2] >> 7);
+        else if (f == 'T')
+            n = 2;
+        while (n-- > 0)
+            wb(mode, lbuf[r++]);
+    }
+    return 1;
+}
+
+/* the procedure in lbuf (code length codelen, its JTAB at jtab) with its
+   operands made short: its new length; pjtab its new JTAB */
+static int pjtab;
+
+static int relax(int codelen, int jtab)
+{
+    int datasz;
+    int parmsz;
+    int pl;
+    int oexit;
+    int k;
+    pjtab = jtab;
+    ojtab = jtab;
+    oexit = jtab - 4 - get16(lbuf, jtab - 4);
+    oend = oexit + 2;
+    nedit = 0;
+    nlongt = 0;
+    if (!sweep(0) || nedit == 0 || !sweep(1))
+        return codelen;
+    k = ((wp + 1) & ~1) + 2 * nlongt + 8;
+    if (k + 2 > codelen)
+        return codelen;
+    datasz = get16(lbuf, jtab - 8);
+    parmsz = get16(lbuf, jtab - 6);
+    pl = get16(lbuf, jtab);
+    oexit = newpos(oexit);
+    pjtab = k;
+    sweep(2);
+    if (wp & 1)
+        lbuf[wp++] = 0;
+    for (k = nlongt - 1; k >= 0; k--) {
+        put16(lbuf, wp, pjtab - 10 - 2 * k - longt[k]);
+        wp = wp + 2;
+    }
+    put16(lbuf, wp, datasz);
+    put16(lbuf, wp + 2, parmsz);
+    put16(lbuf, wp + 4, pjtab - 4 - oexit);
+    put16(lbuf, wp + 6, pjtab - 2);
+    put16(lbuf, wp + 8, pl);
+    return pjtab + 2;
+}
+
+/* the procedures of segment s (-1: all) in the order of the files: the
+   next one, its code in lbuf with its relocations done and its operands
+   made short (pclen bytes, JTAB at pjtab); 0 at the end */
+static int pclen;
+static int pi;                  /* its index in the table */
+static int pr;                  /* its index among the files' procedures */
+
+static void startprocs(void)
+{
+    rewindobjs();
+    pi = 0;
+    pr = 0;
+}
+
+static struct LProc *readproc(int s)
+{
+    char name[MAXNAME];
+    char seg[MAXNAME];
+    char rname[MAXNAME];
+    int flags;
+    int parmsz;
+    int rw;
+    int jtab;
+    int c;
+    int n;
+    int j;
+    int rpos;
+    int rtype;
+    struct LProc *p;
+    while ((c = nextrec()) != 0) {
+        record(c, name, seg, &flags, &parmsz, &rw, &pclen, &jtab);
+        if (c != 'P')
+            continue;
+        p = 0;
+        if (plive[pr >> 3] & (1 << (pr & 7))) {
+            p = PROC(pi);               /* (the table holds only what is linked) */
+            pi++;
+        }
+        pr++;
+        if (p && s >= 0 && p->seg != s)
+            p = 0;
+        n = rdw();
+        for (j = 0; j < n; j++) {
+            rpos = rdw();
+            rtype = rd();
+            rds(rname);
+            if (p)
+                patchproc(p, rpos, rtype, rname);
+        }
+        if (!p)
+            continue;
+        pjtab = jtab;
+        if (!linksys)
+            pclen = relax(pclen, jtab);
+        return p;
+    }
+    return 0;
+}
+
+/* globals: the linked modules' statics, then the used variables; but
+   first, below word 128 (short operands), those with the most uses for
+   their size */
+static void layout(void)
+{
+    struct LData *d;
+    int i;
+    int k;
+    int n;
+    int j;
+    int s;
+    int c;
+    globalwords = linksys ? 1 : 3;
+    while (!linksys) {
+        k = -1;
+        n = 0;
+        j = 1;
+        for (i = 0; i < nmods + ndatas; i++) {
+            if (i < nmods) {
+                s = modlive[i] && modbase[i] < 0 ? modstatic[i] : 0;
+                c = -1 - modbase[i];
+            } else {
+                d = DATA(i - nmods);
+                s = d->live && d->offset < 0 ? d->words : 0;
+                c = -1 - d->offset;
+            }
+            if (s > 0 && s <= 128 - globalwords && c * j > n * s) {
+                k = i;
+                n = c;
+                j = s;
+            }
+        }
+        if (k < 0)
+            break;
+        if (k < nmods)
+            modbase[k] = globalwords;
+        else
+            DATA(k - nmods)->offset = globalwords;
+        globalwords = globalwords + j;
+    }
+    for (i = 0; i < nmods; i++)
+        if (modbase[i] < 0) {
+            modbase[i] = globalwords;
+            if (modlive[i])
+                globalwords = globalwords + modstatic[i];
+        }
+    for (i = 0; i < ndatas; i++)
+        if (DATA(i)->live && DATA(i)->offset < 0) {
+            DATA(i)->offset = globalwords;
+            globalwords = globalwords + DATA(i)->words;
+        }
 }
 
 unsigned linkbytes;
@@ -644,18 +1045,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
     int pos;
     unsigned len;
     unsigned char *blk0;
-    char name[MAXNAME];
-    char seg[MAXNAME];
-    char rname[MAXNAME];
-    int flags;
-    int parmsz;
-    int rw;
     int codelen;
-    int jtab;
-    int c;
-    int rpos;
-    int rtype;
-    int r;
     int *jt;
     unsigned char *keep;
     objfiles = objs;
@@ -682,10 +1072,10 @@ int link(char **objs, int nobjs, char *code, char *progname)
         fatal(2 /* out of memory */, 0);
     nsegs = 0;
     segindex("");
-    plive = (unsigned char *)calloc((MAXPROC + 7) / 8 + (MAXDATA + 7) / 8, 1);
+    plive = (unsigned char *)calloc((MAXPROC + 7) / 8 + MAXDATA, 1);
     if (!plive)
         fatal(2 /* out of memory */, 0);
-    dlive = plive + (MAXPROC + 7) / 8;
+    duse = plive + (MAXPROC + 7) / 8;
     keep = plive;
     plive = 0;
     pmark(&p1mark);                     /* (pass 1's tables: made again with only what is linked) */
@@ -735,7 +1125,7 @@ int link(char **objs, int nobjs, char *code, char *progname)
             keep[i >> 3] = keep[i >> 3] | (1 << (i & 7));
     for (i = 0; i < ndatas; i++)
         if (DATA(i)->live)
-            dlive[i >> 3] = dlive[i >> 3] | (1 << (i & 7));
+            duse[i] = 1 + DATA(i)->offset;
     prelease(&p1mark);
     memset(lhash, 0, LHASH * sizeof(struct LProc *));
     memset(dhash, 0, LHASH * sizeof(struct LData *));
@@ -747,23 +1137,16 @@ int link(char **objs, int nobjs, char *code, char *progname)
     maxcode = 0;
     plive = keep;
     pass1();
-    for (i = 0; i < ndatas; i++)
-        DATA(i)->live = (dlive[i >> 3] >> (i & 7)) & 1;
+    for (i = 0; i < ndatas; i++) {
+        DATA(i)->live = duse[i] != 0;
+        DATA(i)->offset = -duse[i];     /* (not placed: -1 - its uses) */
+    }
+    for (i = 0; i < nmods; i++)
+        modbase[i] = -1 - modbase[i];
     mainp = findproc("main");
     callmp = mainparmsz >= 4 && !linksys ? findproc("__callmain") : 0;
     exitp = linksys ? 0 : findproc("exit");
-    /* globals: the linked modules' statics, then the used variables */
-    globalwords = linksys ? 1 : 3;
-    for (i = 0; i < nmods; i++) {
-        modbase[i] = globalwords;
-        if (modlive[i])
-            globalwords = globalwords + modstatic[i];
-    }
-    for (i = 0; i < ndatas; i++)
-        if (DATA(i)->live) {
-            DATA(i)->offset = globalwords;
-            globalwords = globalwords + DATA(i)->words;
-        }
+    layout();
     if (globalwords > 16000 || globalwords < 0)
         fatal(34 /* too many global variables */, 0);
     /* segment numbers: main's segment is 1 */
@@ -783,6 +1166,20 @@ int link(char **objs, int nobjs, char *code, char *progname)
             fatal(111 /* more than 10 segments */, segnames[p->seg]);
         segnum[p->seg] = linksys ? norder : norder + 6;
         order[norder++] = p->seg;
+    }
+    lbufsize = maxcode + 16;
+    lbuf = (unsigned char *)malloc(lbufsize);
+    edpos = (int *)malloc((2 * MAXEDIT + MAXLONGJ) * sizeof(int));
+    if (!lbuf || !edpos)
+        fatal(2 /* out of memory */, 0);
+    edsum = edpos + MAXEDIT;
+    longt = edsum + MAXEDIT;
+    sized = 0;
+    if (!linksys) {                     /* the procedures' lengths with short operands */
+        startprocs();
+        while ((p = readproc(-1)) != 0)
+            p->codelen = pclen;
+        sized = 1;
     }
     /* procedure numbers and segment lengths */
     pnum[mainp->seg] = 1;
@@ -816,11 +1213,6 @@ int link(char **objs, int nobjs, char *code, char *progname)
     out = fopen(code, "wb");
     if (!out)
         fatal(24 /* cannot create */, code);
-    lbufsize = maxcode;
-    lbufsize = lbufsize + 16;
-    lbuf = (unsigned char *)malloc(lbufsize);
-    if (!lbuf)
-        fatal(2 /* out of memory */, 0);
     blk0 = (unsigned char *)malloc(512);
     memset(blk0, 0, 512);
     if (linksys)                        /* the segment names blank, as the Pascal compiler leaves them */
@@ -853,39 +1245,19 @@ int link(char **objs, int nobjs, char *code, char *progname)
             jt[1] = entryjtab;
             len = entrylen;
         }
-        rewindobjs();
-        i = 0;
-        r = 0;
-        while ((c = nextrec()) != 0) {
-            record(c, name, seg, &flags, &parmsz, &rw, &codelen, &jtab);
-            if (c != 'P')
-                continue;
-            p = 0;
-            if (plive[r >> 3] & (1 << (r & 7))) {
-                p = PROC(i);            /* (the table holds only what is linked) */
-                i++;
-            }
-            r++;
-            n = rdw();
-            for (j = 0; j < n; j++) {
-                rpos = rdw();
-                rtype = rd();
-                rds(rname);
-                if (p && p->seg == s)
-                    patchproc(p, rpos, rtype, rname);
-            }
-            if (!p || p->seg != s)
-                continue;
-            lbuf[jtab] = p->procnum;
+        startprocs();
+        while ((p = readproc(s)) != 0) {
+            lbuf[pjtab] = p->procnum;
+            codelen = pclen;
 #ifndef __TINYC__
             if (getenv("TINYC_MAP"))
-                fprintf(stderr, "MAP %d %d %d %d %s%s%s\n", segnum[s], p->procnum, len, len + jtab,
+                fprintf(stderr, "MAP %d %d %d %d %s%s%s\n", segnum[s], p->procnum, len, len + pjtab,
                         p->bits & LP_STATIC ? modnames[p->mod] : "", p->bits & LP_STATIC ? "'" : "", p->name);
 #endif
             if (codelen & 1)
                 lbuf[codelen++] = 0;
             fwrite(lbuf, 1, codelen, out);
-            jt[p->procnum] = len + jtab;
+            jt[p->procnum] = len + pjtab;
             len = len + codelen;
         }
         /* procedure dictionary: self-relative pointers, highest number first */

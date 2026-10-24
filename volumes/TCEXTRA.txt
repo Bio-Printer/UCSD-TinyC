@@ -7,7 +7,7 @@ TCEXTRA:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   BOXES.C                       4  conio.h: clear the screen, draw boxes with gotoxy ...
   BOXES.CODE                    7    (ready to run)
   CALC.C                        6  a calculator: recursive descent over + - * / % ( ) ...
-  CALC.CODE                    17    (ready to run)
+  CALC.CODE                    16    (ready to run)
   DEMO.C                        4  the smallest program: no stdio.h (much less to link)
   DEMO.CODE                     9    (ready to run)
   GUESS.C                       4  guess the number: rand, scanf
@@ -29,5 +29,5 @@ TCEXTRA:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   MEMMARK.C                     6  the least free memory of another program
   MEMMARK.CODE                 21    (ready to run)
   SHELL.C                      94  a mini-shell: runs programs with pexec() and comes back
-  SHELL.CODE                   60    (ready to run)
+  SHELL.CODE                   59    (ready to run)
   FILES.TEXT                    8  this list

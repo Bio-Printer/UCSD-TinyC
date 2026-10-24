@@ -11,13 +11,18 @@ others.  With the prefix on SPARE: (an empty volume), X(ecute TINY-C:CC,
                           first): the same bytes as mkvolume's
   @SYS-C:BUILD            the operating system in C -> SYS-C:SYSTEM.C (removed
                           first): the same bytes as UCSD-SYSTEM-C's SYSTEM.C
+  @PASCALC:BUILD          the Pascal compiler in C -> PASCALC:PC.CODE (removed
+                          first): the same bytes as the host's build/psys/PC.CODE
+                          of UCSD-Pascal-compiler-written-in-C
 and every object is in TINY-C:/OBJ or TOOLS:/OBJ (the batch files' -O),
 none among the sources (TINY-C:/SRC/CC, TOOLS:/SRC/VI ...: the names in a
 batch file are looked for beside it) or on the prefix volume.
 
-Disks: #5 TINY-C:, #9 SPARE:, #11 TOOLS:, #12 TCEXTRA: (CMPCODE), #13 SYS-C:
-(UCSD-SYSTEM-C's build/SYS-C.BLK: ../UCSD-SYSTEM-C, or $SYSTEMC).  Uses the
-mode of PSYS_MODE (native or z80); about 25 minutes in Z80 mode.
+Disks: #5 TINY-C:, #9 SPARE:, #10 PASCALC: (UCSD-Pascal-compiler-written-in-C's
+build/PASCAL-C.BLK, from its tools/mkvolume.py: ../ucsd-pascal-compiler-written-in-c,
+or $PASCALC), #11 TOOLS:, #12 TCEXTRA: (CMPCODE), #13 SYS-C: (UCSD-SYSTEM-C's
+build/SYS-C.BLK: ../UCSD-SYSTEM-C, or $SYSTEMC).  Uses the
+mode of PSYS_MODE (native or z80); about 70 minutes in Z80 mode.
 """
 import os, sys, re, shutil, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -28,11 +33,12 @@ from psys import ensure_setup, BUILD
 from voltest import prefix, cmpcode
 from mkvolume import TOOLS, MODULES, LIBMODS_
 SYSTEMC = os.environ.get('SYSTEMC', os.path.join(os.path.dirname(ROOT), 'UCSD-SYSTEM-C'))
+PASCALC = os.environ.get('PASCALC', os.path.join(os.path.dirname(ROOT), 'ucsd-pascal-compiler-written-in-c'))
 
 # what the run prints, in turn
 WAITS = ['> @TINY-C:/SRC/CC/BUILD', '> -L TINY-C:CC2=', '> @TINY-C:/SRC/LIB/LIBS',
          'Joining TINY-C:/LIB/TCLIB2.OBJ', '> @TOOLS:/SRC/TOOLS', '> -L TOOLS:GREP=', '> @SYS-C:BUILD',
-         '> -L SYS-C:SYSTEM.C.=']
+         '> -L SYS-C:SYSTEM.C.=', '> @PASCALC:BUILD', '> -L PASCALC:PC=']
 
 
 def prepare(d):
@@ -40,7 +46,7 @@ def prepare(d):
     SPARE; the names of the tools' code files"""
     for v in ('TINY-C', 'TOOLS', 'TCEXTRA'):
         shutil.copy(os.path.join(BUILD, v + '.BLK'), d)
-    ucsdvol.main(['new', os.path.join(d, 'SPARE.BLK'), 'SPARE', '400'])
+    ucsdvol.main(['new', os.path.join(d, 'SPARE.BLK'), 'SPARE', '1000'])
     names = [name + '.CODE' for name, mods, hdrs, desc in TOOLS]
     tv = ucsdvol.Volume(os.path.join(d, 'TOOLS.BLK'))
     for n in names:
@@ -50,12 +56,16 @@ def prepare(d):
     sv = ucsdvol.Volume(os.path.join(d, 'SYS-C.BLK'))
     sv.remove('SYSTEM.C')
     sv.save()
+    shutil.copy(os.path.join(PASCALC, 'build', 'PASCAL-C.BLK'), d)
+    pv = ucsdvol.Volume(os.path.join(d, 'PASCAL-C.BLK'))
+    pv.remove('PC.CODE')
+    pv.save()
     return names
 
 
 def units(d):
     """run_verify's environment for the disks beyond #5 and #9"""
-    return {'VERIFY_UNIT11': os.path.join(d, 'TOOLS.BLK'), 'VERIFY_UNIT12': os.path.join(d, 'TCEXTRA.BLK'),
+    return {'VERIFY_UNIT10': os.path.join(d, 'PASCAL-C.BLK'), 'VERIFY_UNIT11': os.path.join(d, 'TOOLS.BLK'), 'VERIFY_UNIT12': os.path.join(d, 'TCEXTRA.BLK'),
             'VERIFY_UNIT13': os.path.join(d, 'SYS-C.BLK')}
 
 
@@ -63,13 +73,15 @@ def results(d, r, tr, names):
     """the checks of a run: the volumes as it left them (out/ has the first two units' images)"""
     vols = {}
     for f in [os.path.join(d, 'out', f) for f in os.listdir(os.path.join(d, 'out'))] + \
-             [os.path.join(d, v + '.BLK') for v in ('TOOLS', 'SYS-C')]:
+             [os.path.join(d, v + '.BLK') for v in ('TOOLS', 'SYS-C', 'PASCAL-C')]:
         if f.endswith('.BLK'):
             v = ucsdvol.Volume(f)
             vols.setdefault(v.volname, v)
     shipped = ucsdvol.Volume(os.path.join(BUILD, 'TOOLS.BLK'))
     tools, tinyc, spare, sysc = vols.get('TOOLS'), vols.get('TINY-C'), vols.get('SPARE'), vols.get('SYS-C')
+    pascalc = vols.get('PASCALC')
     system_c = open(os.path.join(SYSTEMC, 'SYSTEM.C'), 'rb').read()
+    pc_code = open(os.path.join(PASCALC, 'build', 'psys', 'PC.CODE'), 'rb').read()
 
     def at(v, path):
         try:
@@ -89,7 +101,7 @@ def results(d, r, tr, names):
     pos = [tr.find(w) for w in WAITS]
     checks = [
         ('the script completed', 'VERIFY SCRIPT COMPLETED' in r.stdout),
-        ('@TINY-C:ALL ran BUILD, LIBS, TOOLS and SYS-C:BUILD in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
+        ('@TINY-C:ALL ran BUILD, LIBS, TOOLS, SYS-C:BUILD and PASCALC:BUILD in turn', -1 not in pos and pos == sorted(pos) and 'Stopped' not in tr),
         ('TINY-C:CC2.CODE and TINY-C:/LIB/TCLIB2.OBJ IDENTICAL (CMPCODE)', tr.count('IDENTICAL') >= 2),
         ('every tool linked onto TOOLS:, as mkvolume made it', tools is not None
          and all(tools.find(n) and tools.read(n)[0] == shipped.read(n)[0] for n in names)),
@@ -103,6 +115,8 @@ def results(d, r, tr, names):
          and not any(e[3].endswith('.OBJ') for e in spare.entries)),
         ('SYS-C:SYSTEM.C made again, the same as UCSD-SYSTEM-C\'s SYSTEM.C (SYSC.OBJ beside SYSC.C)', sysc is not None
          and sysc.find('SYSTEM.C') is not None and sysc.read('SYSTEM.C')[0] == system_c and sysc.find('SYSC.OBJ') is not None),
+        ('PASCALC:PC.CODE made again, the same as the host\'s build/psys/PC.CODE', pascalc is not None
+         and pascalc.find('PC.CODE') is not None and pascalc.read('PC.CODE')[0] == pc_code),
     ]
     return checks
 
@@ -124,7 +138,7 @@ def main():
         env['VERIFY_RECLAIM'] = '1'
     r = subprocess.run([os.path.join(BUILD, 'run_verify'), os.path.join(BUILD, 'data'),
                         os.path.join(d, 'TINY-C.BLK'), os.path.join(d, 'SPARE.BLK'), sp, mode,
-                        os.path.join(d, 'out'), '', '3600'], capture_output=True, text=True, env=env)
+                        os.path.join(d, 'out'), '', '7200'], capture_output=True, text=True, env=env)
     tr = open(os.path.join(d, 'out', 'transcript.txt'), encoding='latin1').read()
     checks = results(d, r, tr, names)
     lw = [l for l in r.stdout.split('\n') if l.startswith('least free memory')]
