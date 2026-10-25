@@ -51,7 +51,7 @@ int svcanon(char *path, char *out);     /* path written out: VOL: or VOL:/A/B; 0
 int dirfree(int *dir, int nb);          /* the smallest free area for nb blocks: its first block, 0 none */
 int fileson(int u);                     /* a file of the program open on unit u */
 int dirkrunch(int u, int base, int *dir, int show);     /* files moved down, the free blocks at the end */
-int svresize(char *path, char *size, char *cmd);        /* GROW, SHRINK: +N, -N or N blocks */
+int svresize(char *path, char *size, char *cmd);        /* GROW, SHRINK: +N, -N or N blocks (a volume too) */
 /* dirs.c, a small code segment of its own (SVAT): stdio's opens and closes by a place */
 #pragma segment SVAT
 int dirwriteat(int u, int base, int *dir);  /* a directory back (GDIRP forgotten): 0 on a disk error */

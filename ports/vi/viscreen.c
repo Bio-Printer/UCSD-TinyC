@@ -72,8 +72,8 @@ static void sync_cursor(char *d, int *row, int *col)
 		// the screen's top line went out of the window: the same moves,
 		// counted in line numbers
 		ro = pg_toprow(ABSLINE(beg_cur), TOTLINES());
-		pg_top = 0;
 		screenbegin = pg_line(ro);
+		pg_top = screenbegin ? 0 : ro;	// (still out: a window smaller than a screen)
 		if (!screenbegin)
 			screenbegin = text;
 	} else

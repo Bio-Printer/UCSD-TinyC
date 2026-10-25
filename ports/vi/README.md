@@ -124,6 +124,16 @@ VI.SWAP has slots (every chunk has one).  (Bringing in part of a chunk when a wh
 not fit would centre exactly, but its code took about 450 bytes from the window: more than it
 gave.  In Z80 mode 687G in SYSTEM.LIST puts the line on row 18 of 44.)
 
+The smallest window (2 KB, `PG_SLOT + 2 * PG_ROOM`: a sub-volume with little memory) cannot
+hold a 45-line screen and the next chunk together.  So a `^F` that cannot bring the next chunk
+in first moves `screenbegin` over the lines the window has (the lines above it can then go
+out and the chunk come in), and a scroll that still cannot move line by line -- a `^B` whose
+chunk above does not fit beside the screen's lines, or any scroll while the screen's top is not
+in the window -- is a jump to where it goes, in line numbers (`pg_jump`: the top as `pg_top`
+when its line is not in, the cursor where the scroll leaves it); `sync_cursor` keeps `pg_top`
+while that line is still out.  With that the 2 KB window makes the same file as a whole one
+(before, a `^F` there stopped short at the window's end, and a `^B` 12 lines short).
+
 * Before every command (and every repeat of a counted one) a screen of lines is kept
   in memory on both sides of the cursor, and 512 bytes free for typing: `j`, `k`, `^F`,
   `^B`, `}` ... move the window as they reach its edge. Inserting more than fits writes

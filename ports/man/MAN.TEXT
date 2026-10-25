@@ -527,44 +527,53 @@ SEE ALSO
 
 %% GROW
 NAME
-    GROW - make a sub-volume bigger (or smaller)
+    GROW - make a sub-volume or a volume bigger (or smaller)
 SYNOPSIS
     GROW NAME +N | -N | N
 DESCRIPTION
-    The sub-volume NAME (made with the shell's MKDIR: A, #5:A, #5:/A/B)
-    becomes N blocks bigger (+N), N blocks smaller (-N) or N blocks (N).
-    Growing takes the free blocks right after it; when they are not free it
-    is moved, whole, to a free area that holds it, and when no area does
-    the volume that holds it is krunched first (as KRUNCH does) and then it
-    grows.  A smaller size works as SHRINK.  Exit status 0: done, 1: a bad
-    size, 2: NAME is not a sub-volume (or GROW's own output is on that disk),
-    3: no room, or a disk error.
+    The sub-volume NAME (made with the shell's MKDIR: A, #5:A, #5:/A/B) or
+    the volume NAME (#5:, WORK:) becomes N blocks bigger (+N), N blocks
+    smaller (-N) or N blocks (N).  A sub-volume grows into the free blocks
+    right after it; when they are not free it is moved, whole, to a free area
+    that holds it, and when no area does, what holds it (a sub-volume or the
+    volume) is krunched first (as KRUNCH does).  When even that leaves too
+    few free blocks, what holds it grows first, by what it lacks, in the same
+    way -- and so on up to the volume.  A volume grows its disk image on the
+    PC (emulator 2.09 or later).  Each step is shown with its full name
+    (WORK:/A/B).  A smaller size works as SHRINK.  Exit status 0: done, 1: a
+    bad size, 2: NAME is not a sub-volume or a volume (or GROW's own output
+    is on that disk), 3: no room (the PC's disk), or a disk error.
 EXAMPLES
     GROW WORK +100          100 blocks more for WORK
-    GROW #5:/A/B 400        B in A on unit 5: 400 blocks
+    GROW #5:/A/B 400        B in A on unit 5: 400 blocks (A, and the
+                            volume, grow first if they must)
+    GROW #5: +1000          the volume on unit 5 (and its disk image)
 SEE ALSO
     SHRINK, KRUNCH, SHELL (MKDIR, RMDIR)
 
 %% SHRINK
 NAME
-    SHRINK - make a sub-volume smaller (or bigger)
+    SHRINK - make a sub-volume or a volume smaller (or bigger)
 SYNOPSIS
     SHRINK NAME [-N | +N | N]
 DESCRIPTION
-    The sub-volume NAME (A, #5:A, #5:/A/B) becomes N blocks smaller (-N), N
-    bigger (+N) or N blocks (N), as GROW: the same size syntax.  Without a
-    size it becomes as small as its directory and files let it be: no free
-    blocks are left in it.  When its
+    The sub-volume NAME (A, #5:A, #5:/A/B) or the volume NAME (#5:, WORK:)
+    becomes N blocks smaller (-N), N bigger (+N) or N blocks (N), as GROW:
+    the same size syntax.  Without a size it becomes as small as its
+    directory and files let it be: no free blocks are left in it.  When its
     files reach past the new end it is krunched first (its files moved
     down, as KRUNCH does), and only then; it cannot be smaller than its
-    directory and its files (it says how many blocks they take), nor than 7
-    blocks.  The blocks it gives up are free on the volume that holds it.
-    Exit status 0: done, 1: a bad size, 2: NAME is not a sub-volume, 3: too
-    many files for the size, or a disk error.
+    directory and its files (it says how many blocks they take), and a
+    sub-volume not smaller than 7 blocks.  The blocks a sub-volume gives up
+    are free in what holds it; a volume's disk image on the PC is cut to
+    its new size (emulator 2.09 or later).  Exit status 0: done, 1: a bad
+    size, 2: NAME is not a sub-volume or a volume, 3: too many files for
+    the size, or a disk error.
 EXAMPLES
     SHRINK WORK -50         50 blocks fewer
     SHRINK #5:/A/B 60       B in A on unit 5: 60 blocks
     SHRINK WORK             WORK holds its files and no free blocks
+    SHRINK #5:              the volume on unit 5 too (and its disk image)
 SEE ALSO
     GROW, KRUNCH, SHELL (MKDIR, RMDIR)
 

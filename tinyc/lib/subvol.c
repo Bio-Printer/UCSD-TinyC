@@ -202,69 +202,103 @@ static int used(int *dir, int *last)
     return n;
 }
 
-/* GROW and SHRINK (cmd: their name, for the messages): the sub-volume at
-   path becomes size blocks: +N (N more), -N (N fewer) or N; "" (SHRINK NAME): as
-   small as its directory and files let it be, no free blocks left.  Growing takes
-   the blocks after it; when those are not free it moves to a free area that
-   holds it, and when there is none the volume that holds it is krunched
-   first.  Shrinking krunches the sub-volume first when its files reach past
-   the new end (only then).  The exit status: 0 done, 1 a bad size, 2 no such
-   sub-volume (or a file of the program open on its disk), 3 no room, too
-   many files for the size, or a disk error */
-int svresize(char *path, char *size, char *cmd)
+static int *rpdir;                      /* resize's directories, one pair for every level */
+static int *rsdir;
+
+/* a directory written back, or the message: 1, 0 on a disk error */
+static int putdir(int u, int base, int *dir, char *cmd, char *whose)
 {
-    int pdir[1024];                     /* the directory that holds it */
-    int sdir[1024];                     /* its own */
-    char leaf[16];
-    char *p;
-    int *e;
-    int u, pb, i, j, sb, len, cur, want, n, at, k, last;
-    p = size;
-    if (*p == '+' || *p == '-')
-        p++;
-    for (n = 0; isdigit(*p) && n < 3277; p++)
-        n = n * 10 + *p - '0';
-    if (*size && (*p || p == size || !isdigit(p[-1]))) {
-        fprintf(stderr, "%s: %s: the size is +N (N blocks more), -N (N fewer) or N blocks\n", cmd, size);
+    if (dirwriteat(u, base, dir))
         return 1;
+    fprintf(stderr, "%s: disk error %d writing %s directory\n", cmd, __cspi(34), whose);
+    return 0;
+}
+
+/* The volume or sub-volume cp (svcanon's: VOL: or VOL:/A/B) becomes want
+   blocks; want 0: as small as its files let it be.  A volume's disk image
+   follows its size (the emulator's CSP 139, UNITSIZE: version 2.09).  A
+   sub-volume that finds no room where it is grows the one that holds it
+   first, by what it lacks -- up to the volume, whose image grows -- and then
+   starts again (again: once only). */
+static int resize(char *cp, int want, char *cmd, int again)
+{
+    char leaf[16];
+    char up[80];
+    int *pdir;
+    int *sdir;
+    int *e;
+    char *c;
+    int u, pb, i, j, sb, len, cur, n, at, k, last, need;
+    pdir = rpdir;
+    sdir = rsdir;
+    if (!pathdir(cp, pdir, &u, &pb, leaf))
+        return 2;
+    if (!leaf[0]) {                             /* the volume itself */
+        memcpy(sdir, pdir, 2048);
+        cur = sdir[7];
+        len = __cspi(139, u, 0);                /* its disk image's blocks */
+        n = used(sdir, &last);
+        if (!want)
+            want = n;
+        if (want < n) {
+            fprintf(stderr, "%s: %s: its files and directory take %d blocks: not %d\n", cmd, cp, n, want);
+            return 3;
+        }
+        if (want == cur && want == len) {
+            printf("%s %d blocks already\n", cp, cur);
+            return 0;
+        }
+        if (want < last) {
+            printf("krunching %s first:\n", cp);
+            if (dirkrunch(u, 0, sdir, 1) < 0) {
+                fprintf(stderr, "%s: %s could not be krunched\n", cmd, cp);
+                return 3;
+            }
+        }
+        if (want > len && __cspi(139, u, want) != want) {
+            fprintf(stderr, "%s: %s: its disk image cannot be %d blocks (no room on the PC's disk?)\n", cmd, cp, want);
+            return 3;
+        }
+        sdir[7] = want;
+        if (!putdir(u, 0, sdir, cmd, "the volume's"))
+            return 3;
+        if (want < len)
+            __cspi(139, u, want);               /* (the image after the directory: never shorter) */
+        printf("%s %d blocks (it was %d)\n", cp, want, cur);
+        return 0;
     }
-    i = 0;
-    if (pathdir(path, pdir, &u, &pb, leaf) && leaf[0])
-        i = findname(pdir, leaf);
+    c = strrchr(cp, '/');                       /* what holds it (VOL:/A/B: VOL:/A; VOL:/A: VOL:) */
+    n = c - cp;
+    memcpy(up, cp, n);
+    up[n] = 0;
+    i = findname(pdir, leaf);
     k = i ? pdir[13 * i + 2] & 15 : -1;         /* a data (or untyped) file that holds a directory */
-    if ((k != 5 && k != 0) || !dirreadat(u, pb + pdir[13 * i], sdir) || sdir[7] > pdir[13 * i + 1] - pdir[13 * i]) {
-        fprintf(stderr, "%s: %s is not a sub-volume\n", cmd, path);
+    if ((k != 5 && k != 0) || !dirreadat(u, pb + pdir[13 * i], sdir) || sdir[7] > pdir[13 * i + 1] - pdir[13 * i])
         return 2;
-    }
-    if (fileson(u)) {
-        fprintf(stderr, "%s: a file of %s is open on that disk (its output?)\n", cmd, cmd);
-        return 2;
-    }
     e = pdir + 13 * i;
     sb = pb + e[0];
     len = e[1] - e[0];
     cur = sdir[7];
-    want = size[0] == '+' ? cur + n : size[0] == '-' ? cur - n : n;
-    if (!*size)                                 /* (no size: as small as its files let it be) */
-        want = used(sdir, &last) < 7 ? 7 : used(sdir, &last);
+    n = used(sdir, &last);
+    if (!want)                                  /* (no size: as small as its files let it be) */
+        want = n < 7 ? 7 : n;
     if (want < 7) {
-        fprintf(stderr, "%s: %s: %d blocks: a sub-volume has 7 at least\n", cmd, path, want);
+        fprintf(stderr, "%s: %s: %d blocks: a sub-volume has 7 at least\n", cmd, cp, want);
         return 3;
     }
     if (want == cur && want == len) {
-        printf("%s: %d blocks already\n", path, cur);
+        printf("%s: %d blocks already\n", cp, cur);
         return 0;
     }
     /* smaller: its files must end before the new end (a krunch if they do not) */
-    n = used(sdir, &last);
     if (want < last) {
         if (n > want) {
-            fprintf(stderr, "%s: %s: its files and directory take %d blocks: not %d\n", cmd, path, n, want);
+            fprintf(stderr, "%s: %s: its files and directory take %d blocks: not %d\n", cmd, cp, n, want);
             return 3;
         }
-        printf("krunching %s first:\n", path);
+        printf("krunching %s first:\n", cp);
         if (dirkrunch(u, sb, sdir, 1) < 0) {
-            fprintf(stderr, "%s: %s could not be krunched\n", cmd, path);
+            fprintf(stderr, "%s: %s could not be krunched\n", cmd, cp);
             return 3;
         }
     }
@@ -273,15 +307,21 @@ int svresize(char *path, char *size, char *cmd)
     if (want > len && k - e[0] < want) {
         at = dirfree(pdir, want);
         if (at == 0) {
-            n = pdir[7] - used(pdir, &last);
-            if (n < want - len) {
-                fprintf(stderr, "%s: %s: no room: %d blocks free where it is, %d more needed\n", cmd, path,
-                        n, want - len);
-                return 3;
+            /* krunched, the one that holds it has its free blocks at its end: after it
+               if it is the last there (it grows in place), else it moves to them */
+            need = (i == pdir[8] ? want - len : want) - (pdir[7] - used(pdir, &last));
+            if (need > 0) {
+                if (again) {
+                    fprintf(stderr, "%s: %s: no room after growing what holds it\n", cmd, cp);
+                    return 3;
+                }
+                printf("no room for %s: %s grows first, by %d blocks\n", cp, up, need);
+                k = resize(up, pdir[7] + need, cmd, 0);
+                return k ? k : resize(cp, want, cmd, 1);    /* (both directories again) */
             }
-            printf("krunching the volume that holds %s first:\n", path);
+            printf("krunching %s first (it holds %s):\n", up, cp);
             if (dirkrunch(u, pb, pdir, 1) < 0) {
-                fprintf(stderr, "%s: the volume that holds %s could not be krunched\n", cmd, path);
+                fprintf(stderr, "%s: the directory that holds %s could not be krunched\n", cmd, cp);
                 return 3;
             }
             i = findname(pdir, leaf);
@@ -291,13 +331,13 @@ int svresize(char *path, char *size, char *cmd)
             at = k - e[0] >= want ? e[0] : dirfree(pdir, want);
         }
         if (at == 0) {
-            fprintf(stderr, "%s: %s: no free area of %d blocks where it is\n", cmd, path, want);
+            fprintf(stderr, "%s: %s: no free area of %d blocks where it is\n", cmd, cp, want);
             return 3;
         }
         if (at != e[0]) {                       /* it moves there, whole */
             k = moveblocks(u, sb, pb + at, len);
             if (k <= 0) {
-                fprintf(stderr, k < 0 ? "%s: no memory\n" : "%s: disk error moving %s\n", cmd, path);
+                fprintf(stderr, k < 0 ? "%s: no memory\n" : "%s: disk error moving %s\n", cmd, cp);
                 return 3;
             }
             memcpy(sdir, e, 26);                /* (its entry, while the others close up) */
@@ -309,14 +349,12 @@ int svresize(char *path, char *size, char *cmd)
             memcpy(e, sdir, 26);
             e[0] = at;
             e[1] = at + len;
-            if (!dirwriteat(u, pb, pdir)) {
-                fprintf(stderr, "%s: disk error %d writing the directory\n", cmd, __cspi(34));
+            if (!putdir(u, pb, pdir, cmd, "the"))
                 return 3;
-            }
-            printf("  %s moved to block %d\n", path, at);
+            printf("  %s moved to block %d\n", cp, at);
             sb = pb + at;
             if (!dirreadat(u, sb, sdir)) {
-                fprintf(stderr, "%s: %s: its directory is not there after the move\n", cmd, path);
+                fprintf(stderr, "%s: %s: its directory is not there after the move\n", cmd, cp);
                 return 3;
             }
         }
@@ -326,24 +364,70 @@ int svresize(char *path, char *size, char *cmd)
     if (want > cur) {
         e[1] = e[0] + want;
         e[11] = 512;
-        if (!dirwriteat(u, pb, pdir)) {
-            fprintf(stderr, "%s: disk error %d writing the directory\n", cmd, __cspi(34));
+        if (!putdir(u, pb, pdir, cmd, "the"))
             return 3;
-        }
     }
     sdir[7] = want;
-    if (!dirwriteat(u, sb, sdir)) {
-        fprintf(stderr, "%s: disk error %d writing %s's directory\n", cmd, __cspi(34), path);
+    if (!putdir(u, sb, sdir, cmd, "its own"))
         return 3;
-    }
     if (want <= cur && e[1] != e[0] + want) {
         e[1] = e[0] + want;
         e[11] = 512;
-        if (!dirwriteat(u, pb, pdir)) {
-            fprintf(stderr, "%s: disk error %d writing the directory\n", cmd, __cspi(34));
+        if (!putdir(u, pb, pdir, cmd, "the"))
             return 3;
-        }
     }
-    printf("%s: %d blocks (it was %d)\n", path, want, cur);
+    printf("%s: %d blocks (it was %d)\n", cp, want, cur);
     return 0;
+}
+/* GROW and SHRINK (cmd: their name, for the messages): the sub-volume or volume
+   at path becomes size blocks: +N (N more), -N (N fewer) or N; "" (SHRINK NAME):
+   as small as its directory and files let it be, no free blocks left.  Growing
+   takes the blocks after it; when those are not free it moves to a free area that
+   holds it, and when there is none the directory that holds it is krunched first,
+   and if that leaves too few free blocks that one grows first, and so on up to
+   the volume.  A volume's disk image grows and shrinks with it (the emulator's
+   CSP 139: version 2.09).  Shrinking krunches first when the files reach past the
+   new end (only then).  The exit status: 0 done, 1 a bad size, 2 no such
+   sub-volume or volume (or a file of the program open on its disk), 3 no room,
+   too many files for the size, or a disk error */
+int svresize(char *path, char *size, char *cmd)
+{
+    int dirs[2048];                     /* resize's directories: the one that holds it, its own */
+    char cp[80];
+    char leaf[16];
+    char *p;
+    int u, pb, n, cur, r;
+    p = size;
+    if (*p == '+' || *p == '-')
+        p++;
+    for (n = 0; isdigit(*p) && n < 3277; p++)
+        n = n * 10 + *p - '0';
+    if (*size && (*p || p == size || !isdigit(p[-1]))) {
+        fprintf(stderr, "%s: %s: the size is +N (N blocks more), -N (N fewer) or N blocks\n", cmd, size);
+        return 1;
+    }
+    rpdir = dirs;
+    rsdir = dirs + 1024;
+    if (!svcanon(path, cp) || !pathdir(cp, dirs, &u, &pb, leaf)) {
+        fprintf(stderr, "%s: %s is not a sub-volume or a volume\n", cmd, path);
+        return 2;
+    }
+    if (fileson(u)) {
+        fprintf(stderr, "%s: a file of %s is open on that disk (its output?)\n", cmd, cmd);
+        return 2;
+    }
+    cur = 0;
+    if (!leaf[0])
+        cur = dirs[7];
+    else if ((r = findname(dirs, leaf)) != 0 && dirreadat(u, pb + dirs[13 * r], rsdir))
+        cur = rsdir[7];
+    n = size[0] == '+' ? cur + n : size[0] == '-' ? cur - n : n;
+    if (*size && n < 1) {
+        fprintf(stderr, "%s: %s: %d blocks: too few\n", cmd, path, n);
+        return 3;
+    }
+    r = resize(cp, *size ? n : 0, cmd, 0);
+    if (r == 2)
+        fprintf(stderr, "%s: %s is not a sub-volume or a volume\n", cmd, path);
+    return r;
 }

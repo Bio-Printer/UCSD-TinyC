@@ -435,6 +435,36 @@ void pg_edge(int dir)
 	}
 }
 
+/* a scroll the window cannot make line by line: the lines that stay on the screen
+   and the chunk to come in do not fit in it together (a small window), or the
+   screen's top line is not in it (pg_top) -- a jump to where the scroll goes from
+   top line t: the screen's top n lines up or down (pg_top when that line is not in
+   the window), the cursor kept on its line if it stays on the screen, else on the
+   screen's last line (backwards) or its first */
+static int pg_jump(int t, int n, int dir)
+{
+	int d;
+	int c;
+	t += dir < 0 ? -n : n;
+	if (t < 1)
+		t = 1;
+	d = pg_abs(dot);
+	c = (int)(dot - begin_line(dot));
+	if (dir < 0 ? d > t + rows - 2 : d < t) {
+		d = dir < 0 ? t + rows - 2 : t;
+		c = 0;
+	}
+	for (dot = pg_goto(d); c > 0 && *dot != '\n' && dot < end - 1; c--)
+		dot++;
+	if (t > pg_abs(dot))		/* (the file's end) */
+		t = pg_abs(dot);
+	screenbegin = pg_line(t);
+	pg_top = screenbegin ? 0 : t;
+	if (!screenbegin)
+		screenbegin = text;
+	return n;
+}
+
 /* a scroll by cnt lines: the lines screenbegin moves over, and a screen.  The
    window may hold less than that (a screen is 45 lines): screenbegin moves as
    far as the window allows with a whole screen below it (or above it, backwards),
@@ -449,6 +479,8 @@ int pg_scroll(int cnt, int dir)
 	int moved;
 	if (!pg_f || pg_lock)
 		return 0;
+	if (pg_top)
+		return pg_jump(pg_top, cnt, dir);
 	moved = 0;
 	for (;;) {
 		s = begin_line(screenbegin);
@@ -457,6 +489,9 @@ int pg_scroll(int cnt, int dir)
 			if (got >= cnt - moved + rows || !PG_MORE())
 				return moved;
 			n = got - rows;
+			if (n <= 0)	/* (a small window: less than a screen below it, and no room
+					   for more until the lines above it go: over those it has) */
+				n = got - 1 < cnt - moved ? got - 1 : cnt - moved;
 			if (n > 0) {
 				screenbegin = pg_down(s, n, &got);
 				moved += n;
@@ -485,7 +520,7 @@ int pg_scroll(int cnt, int dir)
 			if (dot >= k && k > text)
 				dot = begin_line(k - 1);
 			if (!pg_fill_top() && !pg_spill_bottom(k))
-				return moved;
+				return moved + pg_jump(pg_abs(s), cnt - moved, dir);
 		}
 	}
 }
