@@ -82,7 +82,8 @@ void __ptitle(char *name, char *p)
 }
 
 /* a UCSD text file (2-block header, 1K pages, DLE blank compression):
-   NAME.TEXT, and C sources NAME.C and headers NAME.H */
+   NAME.TEXT, C sources NAME.C and headers NAME.H, and BASIC sources NAME.BAS
+   (UCSD-BASIC; BIGGY 1.29's systems make a new one a text file) */
 int __istext(char *name)
 {
     int n;
@@ -91,6 +92,11 @@ int __istext(char *name)
     if (n >= 2) {
         s = name + n - 2;
         if (s[0] == '.' && ((s[1] | 32) == 'c' || (s[1] | 32) == 'h'))
+            return 1;
+    }
+    if (n >= 4) {
+        s = name + n - 4;
+        if (s[0] == '.' && (s[1] | 32) == 'b' && (s[2] | 32) == 'a' && (s[3] | 32) == 's')
             return 1;
     }
     if (n < 5)

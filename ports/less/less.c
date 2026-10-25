@@ -14,7 +14,7 @@
      :n :p :x  the next / previous / first file       = ^G :f  where you are
      r ^R ^L  draw again       h  help       q Q :q ZZ  quit
    The file is read as far as the keys need it and a sparse index of line starts lets you go
-   back anywhere at once: any size of file, a screen of memory.  .TEXT, .C and .H files are text;
+   back anywhere at once: any size of file, a screen of memory.  .TEXT, .C, .H and .BAS files are text;
    any other file is read as the bytes it holds (a line ends at a 0A).  Tabs go to a multiple of 8,
    control characters show as ^X, bytes of 128 and up as M-x.  When the output is not the screen
    (less >FILE) it is just the files.  Run it from the shell: LESS A.C, DIR | LESS -N. */

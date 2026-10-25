@@ -65,7 +65,7 @@
    then B with A's output as its input (A | B | C ...; up to 8).  Works for
    the shell's own commands (DIR *.C >LIST.TEXT) and for programs whose main
    has argc and argv (GREP PAT FILES >OUT.TEXT, DIR *.C | GREP TEST).  A name
-   ending in .TEXT is a text file (use it for anything you will TYPE or edit).
+   ending in .TEXT (.C, .H, .BAS) is a text file (use it for anything you will TYPE or edit).
    \> \< \| are ordinary characters (GREP p-\>q FILE).  A pipe's
    in-between files are #4:PIPE1.TEXT and PIPE2.TEXT; they go when it ends.
    The command line: Up and Down bring back the last 10 commands (kept in
@@ -1386,7 +1386,7 @@ void builtin(char *name, char *args)
    COMMAND >FILE (>>FILE appends) puts what the program writes (printf, puts, putchar) into
    FILE; COMMAND <FILE is its standard input.  A program takes them from its command line
    when its main has argc and argv; the shell does it for its own commands.  A name ending
-   in .TEXT is a text file, any other is raw bytes.  A | B | C runs the programs one after
+   in .TEXT (.C, .H, .BAS) is a text file, any other is raw bytes.  A | B | C runs the programs one after
    the other: the output of each is a text file (#4:PIPE1.TEXT, #4:PIPE2.TEXT) that the
    next one reads, and those go when the last one ends.  \> \< \| are ordinary characters. */
 

@@ -12,7 +12,7 @@
    the checksum: the two's complement of the bytes' sum), 16 data bytes a record, and the end
    record :00000001FF.
 
-   .TEXT, .C and .H files are text (a line ends in a CR on the disk and is a 0A here, the DLE
+   .TEXT, .C, .H and .BAS files are text (a line ends in a CR on the disk and is a 0A here, the DLE
    blanks are put back); any other file is read as the bytes it holds, whole 512-byte blocks.
    Run it from the shell: HEXDUMP A.CODE, HEXDUMP -i A.CODE >A.HEX, HEXDUMP A.C | GREP 0D. */
 #pragma segment MAIN	/* calls within the program: 2-byte CGPs, no NOP after them */

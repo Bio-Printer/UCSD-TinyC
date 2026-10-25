@@ -247,7 +247,7 @@ int pathdir(char *path, int *dir, int *up, int *bp, char *leaf)
     return 1;
 }
 
-/* the place's kind for a new file of its name: Text, Code, else Data */
+/* the place's kind for a new file of its name: Text (NAME.TEXT, NAME.BAS), Code, else Data */
 static void svkind(struct svat *at)
 {
     char *s;
@@ -255,6 +255,8 @@ static void svkind(struct svat *at)
     at->kind = 5;
     if (s - at->name > 5)
         at->kind = namesame(s - 5, ".TEXT") ? 3 : namesame(s - 5, ".CODE") ? 2 : 5;
+    if (s - at->name > 4 && namesame(s - 4, ".BAS"))
+        at->kind = 3;
 }
 
 /* the place of path's file (dirs.h); 0 if its sub-volume is not there */

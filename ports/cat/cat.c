@@ -11,7 +11,7 @@
    Several options in one word (-bn, -vET), -- ends the options.  Line numbers are
    6 wide, then a tab, and go on from one file to the next.
 
-   .TEXT, .C and .H files are text files (a line is what ends in a CR on the disk,
+   .TEXT, .C, .H and .BAS files are text files (a line is what ends in a CR on the disk,
    the DLE blanks are put back); any other file is read as the bytes it holds,
    whole 512-byte blocks.  Run it from the shell: CAT -n A.C, CAT A.C B.C >ALL.TEXT,
    DIR | CAT -n. */

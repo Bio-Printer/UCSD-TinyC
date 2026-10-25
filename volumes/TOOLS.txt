@@ -5,7 +5,7 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   README.TEXT                  20  what is on this volume
   VI.CODE                      77  vi, the screen editor: VI NAME.C from the shell
   GREP.CODE                    33  grep: GREP [-i] [-n] PATTERN FILES from the shell
-  CAT.CODE                     26  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
+  CAT.CODE                     27  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
   HEXDUMP.CODE                 26  hexdump: HEXDUMP [-i] [FILE ...] from the shell
   OBJCOPY.CODE                 28  objcopy: OBJCOPY [-I ihex|hexdump] [INFILE [OUTFILE]]: a hex dump back into a file
   MORE.CODE                    29  more: MORE [-N] [-s] [-i] [+N] [FILE ...] a screen at a time
@@ -17,7 +17,7 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   KRUNCH.CODE                  28  krunch: KRUNCH [-y] [-r] [VOL: | #n | PATH] the files moved down, the free blocks in one area
   GROW.CODE                    31  grow: GROW NAME +N | -N | N a sub-volume bigger (or smaller)
   SHRINK.CODE                  31  shrink: SHRINK NAME [-N | +N | N] a sub-volume smaller (no size: no free blocks left)
-  PATCH.CODE                   38  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
+  PATCH.CODE                   39  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
   MAN.CODE                     26  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
   BINDERC.CODE                 29  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
   MAN.TEXT                     68  the manual pages MAN shows (one %% NAME entry a program: edit and add here)

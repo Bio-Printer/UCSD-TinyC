@@ -17,7 +17,8 @@ K(runch) asks for a reboot when it moved the running system, SYSTEM.C or
 SYSTEM.PASCAL (UCSD-SYSTEM-C's tools/filer.py compiles it).  BIGGY 1.29:
 SYSTEM.PASCAL of U134.4_OS_SOURCE_v1.15 (UCSD-SYSTEM-C's tools/ospascal.py
 compiles it) and a SYSTEM.C to match: a new NAME.BAS (a BASIC source,
-UCSD-BASIC) is a text file, as NAME.TEXT is.
+UCSD-BASIC) is a text file, as NAME.TEXT is.  BIGGY 1.30: SYSTEM.SHELL with
+the library that takes NAME.BAS for a text file (TYPE).
 The 8-byte doubles (CSP 100..137) are in the emulator itself (build it
 from UCSD-Pascal---P-Machine_work-v1.88.zip); nothing on the disk is needed
 for them."""
@@ -103,6 +104,13 @@ def main():
         assert end in text
         text = text.replace(end, end + '                 1.29: a new NAME.BAS (a BASIC source) is a text\n'
                             '                 file, as NAME.TEXT is; SYSTEM.C as well\n')
+    if 'revision 1.29 ' in text:
+        text = text.replace('BIGGY boot volume, revision 1.29  (25-Oct-26)', 'BIGGY boot volume, revision 1.30  (25-Oct-26)')
+        shell = ('                 1.23: built with the library that reads and writes a block at\n'
+                 '                 a time (fgets, fread, fwrite to the console)\n')
+        assert shell in text
+        text = text.replace(shell, shell + '                 1.30: built with the library that takes NAME.BAS (a\n'
+                            '                 BASIC source) for a text file, as NAME.TEXT (TYPE)\n')
     put('VERSION.TEXT', ucsdvol.text_to_ucsd(text), 3)
     if changed:
         v.save()

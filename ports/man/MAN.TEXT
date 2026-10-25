@@ -137,10 +137,11 @@ SYNOPSIS
     CAT [-AbeEnstTuv] [FILE ...]
 DESCRIPTION
     Puts each FILE on the standard output.  No FILE, or a FILE that is -, is
-    the standard input.  .TEXT, .C and .H files are text; any other file is
-    read as the bytes it holds, in whole 512-byte blocks.  Line numbers (-n,
-    -b) go on from one file to the next.  Several options may be joined (-bn).
-    -- ends the options.  The long options of cat(1) (--show-all, ...) are not here.
+    the standard input.  .TEXT, .C, .H and .BAS files are text; any other file
+    is read as the bytes it holds, in whole 512-byte blocks.  Line numbers
+    (-n, -b) go on from one file to the next.  Several options may be joined
+    (-bn).  -- ends the options.  The long options of cat(1) (--show-all, ...)
+    are not here.
 OPTIONS
     -A   show all: the same as -vET
     -b   number the non-empty output lines (beats -n)
@@ -172,8 +173,8 @@ DESCRIPTION
     in hex, 16 bytes in hex with a blank between them (two more blanks after
     the 8th), then the same bytes as characters (a . for the unprintable ones):
         00000000  48 65 6C 6C 6F 20 77 6F   72 6C 64 0A 00 01 02 03  Hello world.....
-    .TEXT, .C and .H files are text (a line ends in 0A here); any other file
-    is read as the bytes it holds, in whole 512-byte blocks.
+    .TEXT, .C, .H and .BAS files are text (a line ends in 0A here); any
+    other file is read as the bytes it holds, in whole 512-byte blocks.
 OPTIONS
     -i   Intel Hex instead:  :LLAAAATTDD...CC  16 data bytes a line (LL their
          number, AAAA the address in the 64 KB segment, TT 00 data, 04 extended
@@ -246,11 +247,11 @@ DESCRIPTION
     Shows the files on the screen and lets you move in them in both
     directions: a file of any size (it reads 1 KB pages as the keys need them
     and keeps a sparse index of line starts).  No FILE: the standard input
-    when it was redirected (DIR | LESS, LESS <FILE).  .TEXT, .C and .H files
-    are text; any other file is read as the bytes it holds (a line ends at a
-    0A).  Tabs go to a multiple of 8, control characters show as ^X, bytes of
-    128 and up as M-x.  When the output is not the screen it is just the
-    files.  Needs emulator 2.04 (the console's scroll codes).
+    when it was redirected (DIR | LESS, LESS <FILE).  .TEXT, .C, .H and .BAS
+    files are text; any other file is read as the bytes it holds (a line ends
+    at a 0A).  Tabs go to a multiple of 8, control characters show as ^X,
+    bytes of 128 and up as M-x.  When the output is not the screen it is just
+    the files.  Needs emulator 2.04 (the console's scroll codes).
 OPTIONS
     -N   line numbers
     -S   chop long lines (else they wrap)
@@ -436,12 +437,12 @@ DESCRIPTION
     Compares FILE1 and FILE2 line by line and prints what must change in FILE1
     to get FILE2.  One of the two may be - (the standard input).  Exit status
     0: the same, 1: different, 2: trouble (a file that cannot be opened, a bad
-    option).  Files that are not text (.TEXT, .C and .H are text) are compared
-    byte for byte: "Binary files A and B differ".  The files are read once, a
-    window at a time (any size): the next lines two files have in common are
-    looked for 40 lines ahead, a larger change comes out as that much deleted and
-    added, one piece after another; the diff is always correct (PATCH-style) but
-    not always the shortest.
+    option).  Files that are not text (.TEXT, .C, .H and .BAS are text) are
+    compared byte for byte: "Binary files A and B differ".  The files are read
+    once, a window at a time (any size): the next lines two files have in common
+    are looked for 40 lines ahead, a larger change comes out as that much deleted
+    and added, one piece after another; the diff is always correct (PATCH-style)
+    but not always the shortest.
 OUTPUT FORMS
     (none)     normal: 3c3, 5a6,7 or 8,9d7, then the lines: < FILE1's, > FILE2's
     -u  -U N   unified: --- FILE1  +++ FILE2  and @@ -a,b +c,d @@ hunks, lines with a
@@ -475,9 +476,10 @@ DESCRIPTION
     counts are right-aligned in the width of the largest one, in the order
     lines, words, characters, bytes, longest line; the file name follows.  A
     line is what ends in a newline, a word is a run of characters that are not
-    blanks (space, tab, CR, VT, FF).  .TEXT, .C and .H files are text files
-    (counted as the lines are read); other files are read as the bytes they
-    hold, whole 512-byte blocks.  Exit status 1 when a file cannot be opened.
+    blanks (space, tab, CR, VT, FF).  .TEXT, .C, .H and .BAS files are text
+    files (counted as the lines are read); other files are read as the bytes
+    they hold, whole 512-byte blocks.  Exit status 1 when a file cannot be
+    opened.
 OPTIONS
     -l   the lines          -w   the words
     -c   the bytes          -m   the characters (the same: one byte each)

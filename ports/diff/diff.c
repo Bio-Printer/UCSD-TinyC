@@ -8,7 +8,7 @@
    Comparing  -i  ignore case   -w  ignore all blanks   -b  ignore changes in the amount of blanks
               -B  ignore the lines that are empty (added or removed)
    Exit status 0 same, 1 different, 2 trouble.  "-" is the standard input (for one of the files).
-   Files that are not text (.TEXT, .C and .H are) are compared byte by byte: Binary files ... differ.
+   Files that are not text (.TEXT, .C, .H and .BAS are) are compared byte by byte: Binary files ... differ.
 
    The files are read once, a window of lines at a time: files of any size, little memory.  When the two
    differ in a place it looks ahead 40 lines in each for the next lines they have in common; a change

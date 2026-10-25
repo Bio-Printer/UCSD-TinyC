@@ -9,7 +9,7 @@
    count, and the file name after them; with more than one FILE a line "total"
    ends the list.  No FILE or a FILE "-" is the standard input.
 
-   .TEXT, .C and .H files are text files (a line is what ends in a CR on the disk,
+   .TEXT, .C, .H and .BAS files are text files (a line is what ends in a CR on the disk,
    the DLE blanks are put back); any other file is read as the bytes it holds,
    whole 512-byte blocks.  Run it from the shell: WC A.C, WC -l A.C B.C,
    DIR | WC -l.
