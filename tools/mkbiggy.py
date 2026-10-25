@@ -14,7 +14,10 @@ SYSTEM.MICRO with the boot that chooses between them (a key within 2 seconds:
 SYSTEM.PASCAL), both from UCSD-SYSTEM-C (../UCSD-SYSTEM-C, or $SYSTEMC: its
 build.py makes them).  BIGGY 1.28: SYSTEM.FILER of U134.4_OS_SOURCE_v1.14, whose
 K(runch) asks for a reboot when it moved the running system, SYSTEM.C or
-SYSTEM.PASCAL (UCSD-SYSTEM-C's tools/filer.py compiles it).
+SYSTEM.PASCAL (UCSD-SYSTEM-C's tools/filer.py compiles it).  BIGGY 1.29:
+SYSTEM.PASCAL of U134.4_OS_SOURCE_v1.15 (UCSD-SYSTEM-C's tools/ospascal.py
+compiles it) and a SYSTEM.C to match: a new NAME.BAS (a BASIC source,
+UCSD-BASIC) is a text file, as NAME.TEXT is.
 The 8-byte doubles (CSP 100..137) are in the emulator itself (build it
 from UCSD-Pascal---P-Machine_work-v1.88.zip); nothing on the disk is needed
 for them."""
@@ -69,11 +72,12 @@ def main():
         data = bytearray(data)
         data[84] = ord('`')
         put(name, bytes(data), kind)
-    # BIGGY 1.27: SYSTEM.C (the OS in C) and the boot that chooses it or SYSTEM.PASCAL
-    for name in ('SYSTEM.C', 'SYSTEM.MICRO', 'SYSTEM.FILER'):
+    # BIGGY 1.27: SYSTEM.C (the OS in C) and the boot that chooses it or SYSTEM.PASCAL;
+    # 1.29: SYSTEM.PASCAL of the OS source v1.15
+    for name in ('SYSTEM.PASCAL', 'SYSTEM.C', 'SYSTEM.MICRO', 'SYSTEM.FILER'):
         path = os.path.join(SYSTEMC, name)
         if not os.path.exists(path):
-            raise SystemExit('no %s (UCSD-SYSTEM-C: build.py, tools/filer.py)' % path)
+            raise SystemExit('no %s (UCSD-SYSTEM-C: build.py, tools/filer.py, tools/ospascal.py)' % path)
         put(name, open(path, 'rb').read(), 2)
     text = ucsdvol.ucsd_to_text(v.read('VERSION.TEXT')[0])
     if '  SYSTEM.C ' not in text:
@@ -90,7 +94,16 @@ def main():
                             '  SYSTEM.MICRO   the interpreter, with the boot that asks for that key\n'
                             '                 (emulator 2.08 waits; source SYS-C:BOOTC.TEXT)\n'
                             '  SYSTEM.FILER ', 1)
-        put('VERSION.TEXT', ucsdvol.text_to_ucsd(text), 3)
+    if 'revision 1.28 ' in text:
+        text = text.replace('BIGGY boot volume, revision 1.28  (17-Oct-26)', 'BIGGY boot volume, revision 1.29  (25-Oct-26)')
+        old_os = '  SYSTEM.PASCAL  the OS from U134.4_OS_SOURCE_v1.13 (MAXUNIT = 14:\n'
+        assert old_os in text
+        text = text.replace(old_os, '  SYSTEM.PASCAL  the OS from U134.4_OS_SOURCE_v1.15 (MAXUNIT = 14:\n')
+        end = '                 FGOTOXY is MYGOTOXY.TEXT\'s (132 x 45): no BINDER needed\n'
+        assert end in text
+        text = text.replace(end, end + '                 1.29: a new NAME.BAS (a BASIC source) is a text\n'
+                            '                 file, as NAME.TEXT is; SYSTEM.C as well\n')
+    put('VERSION.TEXT', ucsdvol.text_to_ucsd(text), 3)
     if changed:
         v.save()
         print('updated on BIGGY:', ', '.join(changed))
