@@ -42,7 +42,8 @@
                              kind, date and length as they were; a whole
                              sub-volume copies as one file
      MOVE SRC DEST           the same, then SRC goes (in its own
-                             directory: only its name changes)
+                             directory: only its name changes, and an
+                             old file of the new name goes, as with COPY)
      RENAME [VOL: | #n: | PATH]NAME NEW   one file's name, where it is
      MKDIR NAME [BLOCKS]     a sub-volume: a data file NAME (100 blocks
                              unless BLOCKS) that holds a volume of its own
@@ -60,6 +61,12 @@
                              (VOL:/A/B) or the prefix volume (VOL:); the
                              prompt shows it too (BIGGY:/A/B> )
      MEM                     the shell's free memory
+     @FILE                   a batch file: each line of FILE (FILE.TEXT
+                             when the name has no '.') runs as if typed,
+                             shown after the prompt; an empty line or one
+                             that starts with ' is a comment; @OTHER in it
+                             runs OTHER there.  A program that ends with an
+                             exit status other than 0 stops it
      BYE                     back to the Command: prompt
    Redirection and pipes: COMMAND >FILE puts what the command writes into FILE
    (>>FILE appends), COMMAND <FILE is its standard input, and A | B runs A,
@@ -972,19 +979,29 @@ int unlinkat(int u, int base, char *name)
     return dirwriteat(u, base, dir);
 }
 
-/* entry name in the directory at block base of unit u becomes new; 1 if done */
-int renameone(int u, int base, char *vol, char *name, char *new)
+/* entry name in the directory at block base of unit u becomes new (replace: a
+   file new that is there goes, as with COPY); 1 if done */
+int renameone(int u, int base, char *vol, char *name, char *new, int replace)
 {
     int dir[1024];
     unsigned char *t;
-    int i;
+    int i, j;
     if (!dirreadat(u, base, dir) || (i = findname(dir, name)) == 0) {
         printf("%s%s: not there\n", vol, name);
         return 0;
     }
-    if (findname(dir, new)) {
-        printf("%s%s is there already\n", vol, new);
-        return 0;
+    if ((j = findname(dir, new)) != 0) {
+        if (!replace) {
+            printf("%s%s is there already\n", vol, new);
+            return 0;
+        }
+        if (issub(u, base, dir, j)) {
+            printf("%s%s is a sub-volume: not replaced (RMDIR it first)\n", vol, new);
+            return 0;
+        }
+        unentry(dir, j);
+        if (j < i)
+            i--;
     }
     t = (unsigned char *)dir + 26 * i + 6;      /* DTID */
     memset(t, 0, 16);
@@ -994,7 +1011,7 @@ int renameone(int u, int base, char *vol, char *name, char *new)
         printf("%s cannot write its directory\n", vol);
         return 0;
     }
-    printf("%s%s -> %s%s\n", vol, name, vol, new);
+    printf("%s%s -> %s%s%s\n", vol, name, vol, new, j ? " (replaced)" : "");
     return 1;
 }
 
@@ -1100,7 +1117,7 @@ void copy(char *arg, int move)
                 continue;
             }
             if (move) {                 /* only its name changes */
-                renameone(su, sb, svol, names[k], dname);
+                renameone(su, sb, svol, names[k], dname, 1);
                 continue;
             }
         }
@@ -1170,7 +1187,7 @@ void rename(char *arg)
         printf("rename: the shell's path is in %s (CD .. first)\n", path);
         return;
     }
-    renameone(u, base, vol, name, new);
+    renameone(u, base, vol, name, new, 0);
 }
 
 /* MKDIR NAME [BLOCKS]: a sub-volume: a data file NAME (BLOCKS long, 100
@@ -1286,6 +1303,146 @@ int onpath(char *name)
     return (dir[13 * i + 2] & 15) == 2;
 }
 
+/* ---- batch files ----
+   @FILE runs the lines of FILE (FILE.TEXT when its name has no '.') one after the other, each
+   as if it were typed; an empty line, or one that starts with ', is a comment, and a line
+   @OTHER runs OTHER's lines there (4 deep at most).  Each batch file's name (with its volume,
+   or its path) and the lines of it done are in #4:SYSTEM.BATCH while a program runs: pexec
+   ends the shell.  A program that ends with an exit status other than 0 stops them all. */
+
+#define BATCHFILE "#4:SYSTEM.BATCH"
+#define MAXBATCH 4
+
+char bname[MAXBATCH][80];
+int bline[MAXBATCH];
+int nbatch;
+
+void batch_save(void)
+{
+    FILE *f;
+    int i;
+    remove(BATCHFILE);
+    if (nbatch == 0)
+        return;
+    f = fopen(BATCHFILE, "wb");
+    if (!f)
+        return;
+    for (i = 0; i < nbatch; i++)
+        fprintf(f, "%d %s\n", bline[i], bname[i]);
+    fputc(0, f);
+    fclose(f);
+}
+
+/* the places saved before a program ran (and the file goes) */
+void batch_load(void)
+{
+    FILE *f;
+    char buf[100];
+    char *p;
+    int n;
+    nbatch = 0;
+    f = fopen(BATCHFILE, "rb");
+    if (!f)
+        return;
+    while (nbatch < MAXBATCH && fgets(buf, sizeof buf, f) && buf[0] != 0) {
+        bline[nbatch] = atoi(buf);
+        p = strchr(buf, ' ');
+        if (!p)
+            break;
+        p++;
+        n = strlen(p);
+        while (n > 0 && (p[n - 1] == '\n' || p[n - 1] == '\r'))
+            p[--n] = 0;
+        strcpy(bname[nbatch++], p);
+    }
+    fclose(f);
+    remove(BATCHFILE);
+}
+
+/* @NAME: its lines next */
+void batch_start(char *arg)
+{
+    char name[80];
+    char *leaf;
+    FILE *f;
+    int n;
+    while (*arg == ' ')
+        arg++;
+    n = strlen(arg);
+    while (n > 0 && arg[n - 1] == ' ')
+        n--;
+    if (n == 0) {
+        printf("@: which batch file? (@INSTALL: the commands in INSTALL.TEXT)\n");
+        return;
+    }
+    if (nbatch >= MAXBATCH) {
+        printf("@: batch files 4 deep at most\n");
+        nbatch = 0;
+        return;
+    }
+    name[0] = 0;
+    if (!strchr(arg, ':') && arg[0] != '#') {   /* where it is now: a CD in it changes the path */
+        where(name);
+        if (name[strlen(name) - 1] != ':')
+            strcat(name, "/");
+    }
+    if (strlen(name) + n + 6 > 79) {
+        printf("@: the name is too long\n");
+        return;
+    }
+    strncat(name, arg, n);
+    slashes(name);
+    leaf = name;
+    for (n = 0; name[n]; n++)
+        if (name[n] == ':' || name[n] == '/')
+            leaf = name + n + 1;
+    if (!strchr(leaf, '.'))
+        strcat(name, ".TEXT");
+    f = fopen(name, "r");
+    if (!f) {
+        printf("@: no file %s\n", name);
+        return;
+    }
+    fclose(f);
+    strcpy(bname[nbatch], name);
+    bline[nbatch++] = 0;
+}
+
+/* the next command of the batch files: 0 when they are done */
+int batch_next(char *line)
+{
+    FILE *f;
+    char buf[LINEMAX + 2];
+    char *p;
+    int i, n;
+    while (nbatch > 0) {
+        f = fopen(bname[nbatch - 1], "r");
+        if (!f)
+            printf("@: cannot open %s\n", bname[nbatch - 1]);
+        else {
+            for (i = 0; i < bline[nbatch - 1] && fgets(buf, sizeof buf, f); i++)
+                ;
+            while (fgets(buf, sizeof buf, f)) {
+                bline[nbatch - 1]++;
+                n = strlen(buf);
+                while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r' || buf[n - 1] == ' '))
+                    buf[--n] = 0;
+                p = buf;
+                while (*p == ' ' || *p == '\t')
+                    p++;
+                if (*p && *p != '\'') {
+                    strcpy(line, p);
+                    fclose(f);
+                    return 1;
+                }
+            }
+            fclose(f);
+        }
+        nbatch--;
+    }
+    return 0;
+}
+
 /* run NAME (with its arguments ARGS); returns only when it cannot */
 void run(char *name, char *args)
 {
@@ -1323,6 +1480,7 @@ void run(char *name, char *args)
         strcat(cmd, " ");
         strcat(cmd, args);
     }
+    batch_save();                       /* (pexec ends the shell: the batch files' places) */
     switch (pexec(cmd)) {
     case -1: printf("%s: no such program\n", name); break;
     case -2: printf("%s: not linked\n", name); break;
@@ -1674,17 +1832,37 @@ void runline(char *line)
 int main(void)
 {
     char line[130];                     /* more than pexec takes (80): it says so */
+    char here[80];
     char *name;
     int n, back;
     back = pexec_returned();
-    if (!back)
+    if (!back) {
         pipe_finish();                  /* a pipe a break left behind */
-    else if (pipe_load() <= 0)
-        printf("[exit status %d]\n", pexec_status());
+        remove(BATCHFILE);              /* (and batch files) */
+    } else {
+        batch_load();
+        if (pipe_load() <= 0)
+            printf("[exit status %d]\n", pexec_status());
+        if (nbatch && pexec_status() != 0) {
+            printf("@: stopped: exit status %d\n", pexec_status());
+            nbatch = 0;
+        }
+    }
     loadhist();
     for (;;) {
         if (pipe_next(line)) {          /* the next program of a pipe */
             runline(line);
+            continue;
+        }
+        if (batch_next(line)) {         /* the next line of a batch file, shown as if typed */
+            where(here);
+            printf("%s> %s\n", here, line);
+            if (isbye(line))
+                return 0;
+            if (*line == '@')
+                batch_start(line + 1);
+            else
+                runline(line);
             continue;
         }
         where(line);
@@ -1702,6 +1880,9 @@ int main(void)
             savehist(name);             /* before it runs: pexec ends the shell */
         if (isbye(name))
             return 0;
-        runline(name);
+        if (*name == '@')
+            batch_start(name + 1);
+        else
+            runline(name);
     }
 }

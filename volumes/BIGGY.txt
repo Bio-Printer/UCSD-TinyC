@@ -2,7 +2,7 @@ BIGGY:  37 files  (the boot volume, with the Tiny-C shell)
 
   Z80T.MICRO          19
   MYGOTOXY.CODE        2
-  VERSION.TEXT         8
+  VERSION.TEXT        10
   SYSORIG.EDITOR      45
   SYSTEM.LINKER       22
   SYSOLD.PASCAL       33
@@ -29,7 +29,7 @@ BIGGY:  37 files  (the boot volume, with the Tiny-C shell)
   MYGOTOXY.TEXT        4
   SYSTEM.C            33
   132X45.PASCAL       34
-  SYSTEM.SHELL        61
+  SYSTEM.SHELL        64
   SYSORIG.FILER       28
   SYSTEM.FILER        30
   SYSL2.EDITOR        59

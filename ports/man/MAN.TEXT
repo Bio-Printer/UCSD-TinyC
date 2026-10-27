@@ -299,7 +299,7 @@ EXAMPLES
 NAME
     SHELL - the command line (S at the Command: prompt; SYSTEM.SHELL)
 SYNOPSIS
-    COMMAND [ARGS] [<FILE] [>FILE | >>FILE]    A | B | C
+    COMMAND [ARGS] [<FILE] [>FILE | >>FILE]    A | B | C    @FILE
 DESCRIPTION
     The prompt is where names without a volume are: the path (BIGGY:/A/B> )
     or the prefix volume (BIGGY:> ).
@@ -327,7 +327,8 @@ COMMANDS (upper or lower case)
     COPY SRC [DEST]            copy (DEST a volume, a sub-volume or, for one
                                file, a name; no DEST: here; a sub-volume
                                copies whole)
-    MOVE SRC DEST              copy, then SRC goes
+    MOVE SRC DEST              copy, then SRC goes (a file of the new name
+                               that is there is replaced, as with COPY)
     RENAME [VOL: | #n: | PATH]NAME NEW   one file's new name
     MKDIR NAME [BLOCKS]        a sub-volume: a data file (100 blocks) that
                                holds a volume of its own (77 files)
@@ -335,6 +336,12 @@ COMMANDS (upper or lower case)
                                the shell's path); DELETE leaves them alone
     PWD                        where names without a volume are (the prompt)
     MEM                        the shell's free memory
+    @FILE                      a batch file: the lines of FILE (FILE.TEXT when
+                               the name has no '.') run one after the other, as
+                               if typed; empty lines and lines that start with
+                               ' are comments; @OTHER in it runs OTHER there (4
+                               deep); a program that ends with an exit status
+                               other than 0 stops it
     BYE                        back to the Command: prompt
 REDIRECTION AND PIPES
     COMMAND >FILE     what the command writes goes into FILE (.TEXT: a text file)
@@ -362,6 +369,7 @@ KEYS WHILE A PROGRAM RUNS (emulator 2.06)
 EXAMPLES
     DIR #5:= >LIST.TEXT        GREP int *.C | MORE        CAT A.C B.C >ALL.TEXT
     MKDIR #5:WORK 300          CD #5:/WORK                CAT X.C >WORK/X.C
+    @BASIC:INSTALL             (BASIC:INSTALL.TEXT: MOVE BASIC:BC2.CODE BASIC:BC.CODE ...)
 SEE ALSO
     MAN GREP, CAT, LESS
 

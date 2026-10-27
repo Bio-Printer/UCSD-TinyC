@@ -20,7 +20,7 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   PATCH.CODE                   39  patch: PATCH [-RsbClN] [-F N] [-pN] [-o OUT] [-i PATCHFILE] [FILE]
   MAN.CODE                     26  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
   BINDERC.CODE                 29  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
-  MAN.TEXT                     68  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
+  MAN.TEXT                     70  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
   SRC/                       1749  sub-volume: the tools' sources (a sub-volume each) and TOOLS.TEXT
   SRC/README.TEXT               8  how to rebuild the tools
   SRC/TOOLS.TEXT                6  CC @TOOLS:/SRC/TOOLS: rebuilds every tool
