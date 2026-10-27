@@ -41,9 +41,11 @@ SYNOPSIS
     VI [FILE ...]
 DESCRIPTION
     A vi: moving, inserting, deleting, searching and substituting on a screen.
-    FILE is a text file as typed (.C, .H and .TEXT files are text files).  In
-    another file (a compiler's .LIST) a CR ends a line, and it is written back
-    with CRs.  A file larger than memory is edited through a window (the rest
+    FILE is a text file as typed (.C, .H, .BAS and .TEXT files are text
+    files).  In another file (a compiler's .LIST, BC's NAME.LST) a CR ends a
+    line, and it is written back with CRs; one with a NUL in it before the
+    NULs that fill out its last block (a code file) is not loaded.  A file
+    larger than memory is edited through a window (the rest
     is kept in a temporary file VI.SWAP on the prefix volume, the file's size
     and 32 KB, so a save on that volume finds room; the prefix volume even
     after a CD into a sub-volume: a file there is found once, when vi starts,
@@ -317,7 +319,8 @@ COMMANDS (upper or lower case)
                                ? any one); -E: first block, bytes in the last,
                                unused areas; -S by size (largest first), -N by
                                name (else in the order of their blocks)
-    TYPE [VOL: | #n:]NAME      a text file on the console (wildcards: each one)
+    TYPE [VOL: | #n:]NAME      a text file on the console (wildcards: each one);
+                               a data file of lines ending in CR (NAME.LST) too
     DELETE [VOL: | #n:]PAT     delete (with wildcards it lists them and asks, Y)
     WHEREIS [VOL: | #n:]PAT    which disks have the file, in which sub-volume
     VOLUMES                    every disk on line: unit, volume, files, blocks

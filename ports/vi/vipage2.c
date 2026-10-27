@@ -331,12 +331,15 @@ void pg_start(const char *fn)
 #ifdef __UCSD__
 	/* A new file takes the largest free area of the volume: VI.SWAP's last slot is written, it is
 	   closed (the rest of the area is free again, so a :w on the same volume finds room) and
-	   opened again to read and write */
+	   opened again to read and write.  When that slot cannot be written (no room for VI.SWAP on
+	   the prefix volume) there is no VI.SWAP: the whole file in memory */
 	if (pg_f) {
 		fseek(pg_f, (long)(pg_slots - 1) * PG_SLOT, SEEK_SET);
-		fwrite(pg_buf, 1, PG_SLOT, pg_f);
-		fclose(pg_f);
-		pg_f = fopen(PG_SWAP, "r+b");
+		if ((int)fwrite(pg_buf, 1, PG_SLOT, pg_f) != PG_SLOT | fclose(pg_f) == EOF) {
+			remove(PG_SWAP);
+			pg_f = NULL;
+		} else
+			pg_f = fopen(PG_SWAP, "r+b");
 	}
 #endif
 }
@@ -397,6 +400,24 @@ void pg_abandon(const char *fn, const char *why)
    search, a : command, saving: pg_complete).  pg_lines() counts what is
    loaded, pg_total() all of it. */
 
+/* A file that is not a UCSD text file is taken as lines that end in CR (a
+   compiler's listing, NAME.LST) when it has no NUL before the NULs that fill
+   out its last block: 0 if b (len bytes, the end of the file when atend) has
+   one, a binary file (a code file) that vi does not load */
+static int pg_lines_ok(char *b, int len, int atend)
+{
+	int i;
+	if (atend)
+		while (len > 0 && b[len - 1] == 0)
+			len--;
+	for (i = 0; i < len; i++)
+		if (b[i] == 0)
+			return 0;
+	return 1;
+}
+
+static int pg_fresh;		/* the next chunk is the file's first */
+
 /* the next chunk of the file onto the bottom of the after stack; 0 when
    there is no more to read (or it cannot be: pg_bad) */
 int pg_more(void)
@@ -409,6 +430,11 @@ int pg_more(void)
 		return 0;
 	n = fread(pg_buf + pg_carry, 1, PG_SLOT - pg_carry, pg_rf);
 	len = pg_carry + n;
+	if (pg_fresh) {
+		pg_fresh = 0;
+		if (!pg_lines_ok(pg_buf, len, n < PG_SLOT))
+			pg_abandon(current_filename, "not a file of lines (a binary file)");
+	}
 	for (last = pg_carry; last < len; last++)
 		if (pg_buf[last] == '\r') {    /* (a text file's come as '\n': a data file's, as in a listing) */
 			pg_buf[last] = '\n';
@@ -494,6 +520,7 @@ int pg_load(const char *fn)
 {
 	FILE *f;
 	int len;
+	int k;
 	pg_reset();
 	end = dot = screenbegin = text;
 #ifdef __UCSD__
@@ -518,6 +545,15 @@ int pg_load(const char *fn)
 #ifdef __UCSD__
 		ucsd_reserve();
 #endif
+		if (!pg_lines_ok(text, len, 1))
+			pg_abandon(fn, "not a file of lines (a binary file)");
+		while (len > 0 && text[len - 1] == 0)
+			len--;                          /* (a data file's last block is filled out with NULs) */
+		for (k = 0; k < len; k++)
+			if (text[k] == '\r') {         /* (lines that end in CR: a data file, as a listing) */
+				text[k] = '\n';
+				pg_cr = 1;
+			}
 		if (len > 0 && text[len - 1] != '\n')
 			text[len++] = '\n';             /* the last line gets its end */
 		end = text + len;
@@ -525,6 +561,7 @@ int pg_load(const char *fn)
 	}
 	pg_rf = f;
 	pg_carry = 0;
+	pg_fresh = 1;
 	pg_fix();                               /* the window, and what it needs in */
 	return 1;
 }

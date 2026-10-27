@@ -416,8 +416,8 @@ int file_write(char *fn, char *first, char *last)
 		return -1;
 	}
 	cnt = last - first + 1;
-	for (p = first; p <= last; p++)
-		if (putc(*p, f) == EOF)
+	for (p = first; p <= last; p++)		/* (a file read with CR line ends gets them back) */
+		if (putc(pg_cr && *p == '\n' ? '\r' : *p, f) == EOF)
 			break;
 	if (fclose(f) == EOF || p <= last)
 		cnt = 0;

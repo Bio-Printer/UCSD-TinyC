@@ -18,7 +18,8 @@ SYSTEM.PASCAL (UCSD-SYSTEM-C's tools/filer.py compiles it).  BIGGY 1.29:
 SYSTEM.PASCAL of U134.4_OS_SOURCE_v1.15 (UCSD-SYSTEM-C's tools/ospascal.py
 compiles it) and a SYSTEM.C to match: a new NAME.BAS (a BASIC source,
 UCSD-BASIC) is a text file, as NAME.TEXT is.  BIGGY 1.30: SYSTEM.SHELL with
-the library that takes NAME.BAS for a text file (TYPE).
+the library that takes NAME.BAS for a text file (TYPE).  BIGGY 1.31: the
+shell's TYPE shows a data file of lines that end in CR (a listing, NAME.LST).
 The 8-byte doubles (CSP 100..137) are in the emulator itself (build it
 from UCSD-Pascal---P-Machine_work-v1.88.zip); nothing on the disk is needed
 for them."""
@@ -111,6 +112,12 @@ def main():
         assert shell in text
         text = text.replace(shell, shell + '                 1.30: built with the library that takes NAME.BAS (a\n'
                             '                 BASIC source) for a text file, as NAME.TEXT (TYPE)\n')
+    if 'revision 1.30 ' in text:
+        text = text.replace('BIGGY boot volume, revision 1.30  (25-Oct-26)', 'BIGGY boot volume, revision 1.31  (27-Oct-26)')
+        shell = ('                 BASIC source) for a text file, as NAME.TEXT (TYPE)\n')
+        assert shell in text
+        text = text.replace(shell, shell + '                 1.31: TYPE shows a data file of lines that end in\n'
+                            '                 CR too (a compiler\'s listing: BC\'s NAME.LST)\n')
     put('VERSION.TEXT', ucsdvol.text_to_ucsd(text), 3)
     if changed:
         v.save()

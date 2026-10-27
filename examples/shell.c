@@ -24,7 +24,8 @@
                              last block, and the unused areas; -S sorts by
                              size (the largest first), -N by name
      TYPE [VOL: | #n:]NAME   a text file on the console (with wildcards:
-                             each file that matches, under its name)
+                             each file that matches, under its name); a data
+                             file of lines ending in CR (a listing) too
      DELETE [VOL: | #n:]PAT  the files that match (with wildcards it lists
                              them and asks first, one key: Y deletes)
      WHEREIS [VOL: | #n:]PAT the files that match on every disk on line, in
@@ -725,7 +726,9 @@ void volumes(void)
     }
 }
 
-/* TYPE [VOL: | #n:]NAME: a text file on the console */
+/* TYPE [VOL: | #n:]NAME: a text file on the console; or a data file of lines that end in CR
+   (a compiler's listing, NAME.LST), up to a NUL that is not one of those that fill out its last
+   block (a binary file) */
 void type(char *arg)
 {
     int dir[1024];
@@ -735,7 +738,7 @@ void type(char *arg)
     char line[256];
     char *pat;
     FILE *f;
-    int u, i, nf, found;
+    int u, i, nf, found, c, z, n, k;
     if (!*arg) {
         printf("type: which file?\n");
         return;
@@ -752,18 +755,47 @@ void type(char *arg)
         found++;
         if (wild(pat))
             printf("--- %s%s\n", vol, name);
-        if ((dir[13 * i + 2] & 15) != 3) {
+        if ((dir[13 * i + 2] & 15) == 2) {
             printf("%s: not a text file\n", name);
             continue;
         }
         sprintf(path, "%s%s", tfile, name);
-        f = fopen(path, "r");
+        f = fopen(path, (dir[13 * i + 2] & 15) == 3 ? "r" : "rb");
         if (!f) {
             printf("%s: cannot open it\n", name);
             continue;
         }
-        while (fgets(line, sizeof line, f))
-            fputs(line, stdout);
+        if ((dir[13 * i + 2] & 15) == 3) {
+            while (fgets(line, sizeof line, f))
+                fputs(line, stdout);
+        } else {
+            /* its first 256 bytes looked at before any is shown: a NUL before a byte
+               that is not one is a binary file's */
+            n = fread(line, 1, sizeof line, f);
+            for (k = z = 0; k < n; k++)
+                if (line[k] == 0)
+                    z = 1;
+                else if (z)
+                    break;
+            if (k < n) {
+                printf("%s: not a text file\n", name);
+                fclose(f);
+                continue;
+            }
+            for (k = z = 0; ; ) {
+                if (k < n)
+                    c = line[k++];
+                else if ((c = fgetc(f)) == EOF)
+                    break;
+                if (c == 0)
+                    z++;
+                else if (z) {
+                    printf("\n%s: not a text file\n", name);
+                    break;
+                } else
+                    putchar(c == '\r' ? '\n' : c);
+            }
+        }
         fclose(f);
     }
     if (!found)

@@ -30,8 +30,10 @@ and links them (`-L VI=...`): the same VI.CODE byte for byte, in Z80 mode and th
 normal layout too (`tools/vitest.py --build`). In one piece, vi.c needed P-Code mode
 with the Harvard layout, the only one with the memory to compile it.
 
-Run: from the shell, `VI NAME.C` (the name as typed: `.C`, `.H` and `.TEXT` files are
-UCSD text files); from X(ecute) it asks for the file.
+Run: from the shell, `VI NAME.C` (the name as typed: `.C`, `.H`, `.BAS` and `.TEXT` files are
+UCSD text files; any other is taken as lines that end in CR, as a compiler's listing
+(NAME.LST), written back so, unless it has a NUL before the NULs that fill out its last
+block: a binary file is not loaded); from X(ecute) it asks for the file.
 
 ## What was changed in vi
 
