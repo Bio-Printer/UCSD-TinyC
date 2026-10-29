@@ -3,7 +3,7 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   FILE                     BLOCKS  WHAT
 
   README.TEXT                  20  what is on this volume
-  VI.CODE                      78  vi, the screen editor: VI NAME.C from the shell
+  VI.CODE                      83  vi, the screen editor: VI NAME.C from the shell
   GREP.CODE                    33  grep: GREP [-i] [-n] PATTERN FILES from the shell
   CAT.CODE                     27  cat: CAT [-AbeEnstTuv] [FILE ...] from the shell
   HEXDUMP.CODE                 26  hexdump: HEXDUMP [-i] [FILE ...] from the shell
@@ -21,19 +21,19 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   MAN.CODE                     26  man: MAN [-k WORD] [NAME ...] the manual pages (MAN.TEXT)
   BINDERC.CODE                 29  BINDERC [FILE]: the Binder (puts your GOTOXY into SYSTEM.PASCAL)
   MAN.TEXT                     70  the manual pages MAN shows (one %% NAME entry a program: edit and add here)
-  SRC/                       1749  sub-volume: the tools' sources (a sub-volume each) and TOOLS.TEXT
+  SRC/                       1784  sub-volume: the tools' sources (a sub-volume each) and TOOLS.TEXT
   SRC/README.TEXT               8  how to rebuild the tools
   SRC/TOOLS.TEXT                6  CC @TOOLS:/SRC/TOOLS: rebuilds every tool
-  SRC/VI/                     496  sub-volume: vi's source
-  SRC/VI/VIMAIN.C              36  vi: start, main loop, keys, files, the terminal (Linux)
+  SRC/VI/                     531  sub-volume: vi's source
+  SRC/VI/VIMAIN.C              38  vi: start, main loop, keys, files, the terminal (Linux)
   SRC/VI/VISCREEN.C            48  vi: the screen, the status line, the cursor
-  SRC/VI/VITEXT.C              40  vi: moving in and changing the text, searching ...
+  SRC/VI/VITEXT.C              52  vi: moving in and changing the text, searching ...
   SRC/VI/VICOLON.C             34  vi: the : commands
-  SRC/VI/VICMD.C               52  vi: the vi commands
+  SRC/VI/VICMD.C               54  vi: the vi commands
   SRC/VI/VIPAGE.C              30  vi: a window into big files (see vipage.h)
-  SRC/VI/VIPAGE2.C             38  vi: the rest of the window into big files: jumps ...
-  SRC/VI/VIUCSD.C              30  vi on UCSD Pascal II.0 with Tiny-C: the routines that
-  SRC/VI/VI.H                  38  vi's modules share this: configuration, globals
+  SRC/VI/VIPAGE2.C             42  vi: the rest of the window into big files: jumps ...
+  SRC/VI/VIUCSD.C              34  vi on UCSD Pascal II.0 with Tiny-C: the routines that
+  SRC/VI/VI.H                  42  vi's modules share this: configuration, globals
   SRC/VI/VIPAGE.H              14  vi's window into big files (VI.SWAP)
   SRC/GREP/                    76  sub-volume: grep's source
   SRC/GREP/GREP.C              24  GREP [-i] [-n] PATTERN [VOL: | #n: | PATH]FILES  ...
@@ -69,5 +69,5 @@ TOOLS:  every file, the sub-volumes' too (A/NAME: NAME in the sub-volume A)
   SRC/MAN/MAN.C                14  MAN [-k WORD] [-l] [NAME ...]: the manual pages of the ...
   SRC/BINDERC/                 66  sub-volume: binderc's source
   SRC/BINDERC/BINDERC.C        16  BINDERC [FILE]: the Pascal System Binder, in Tiny-C
-  OBJ/                        700  sub-volume: empty: the objects TOOLS.TEXT makes (-O TOOLS:/OBJ)
+  OBJ/                        716  sub-volume: empty: the objects TOOLS.TEXT makes (-O TOOLS:/OBJ)
   FILES.TEXT                   14  this list
