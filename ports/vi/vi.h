@@ -29,7 +29,7 @@
  *	   it would be easier to change the mark when add/delete lines
  *	More intelligence in refresh()
  *	":r !cmd"  and  "!cmd"  to filter text through an external command
- *	A true "undo" facility
+ *	More than one level of undo (u undoes the last change: vitext.c)
  *	An "ex" line oriented mode- maybe using "cmdedit"
  */
 
@@ -54,7 +54,13 @@
 
 #define CONFIG_FEATURE_VI_MAX_LEN 132
 #define TEXT_SLACK 1024	// free room in the text buffer: memory is small
-#define PG_RESERVE 1024	// memory left out of the window: yanks, and so on
+#define PG_RESERVE 1536	// memory left out of the window: yanks, u, and so on
+/* The OS's open (and close) of a file NEWs its 2 KB directory (GDIRP) when it has none, and keeps
+   it until the next NEW takes it back: a save that finds no room meets the stack (STK OFLOW).  So
+   the window lends it 2 KB (pg_lend), and the save needs only the open's stack */
+#define PG_DIRW 1014	// words: the OS's directory (no VI.SWAP: no window to lend)
+#define PG_OPENW 300	// words: the stack of the OS's open (an open is refused with less)
+#define PG_SAVEW 500	// words kept free for a save: the open's stack, from :w (deeper), and some (and u's segment)
 #define PG_SVAT 1300	// ... and for a file in a sub-volume: the library's SVAT segment (its load, its save) and its stack
 #include <limits.h>
 /* The P-System opens an include file with a 2K buffer on the stack, so the
@@ -395,6 +401,17 @@ char *prev_line(char *p);
 char *next_line(char *p);
 char *end_screen(void);
 int count_lines(char *start, char *stop);
+extern int u_new;			// u: a command starts, its first change starts a new record
+void undo_mod(char *p, char *q, int d);	// u: p .. q are about to change, by d bytes
+void undo_lines(int d);			// u: the change made d lines more
+void undo_reset(void);
+#ifdef __UCSD__
+#pragma segment VIUNDO
+#endif
+void undo_cmd(void);			// (a segment of its own: less than PG_SAVEW with its calls)
+#ifdef __UCSD__
+#pragma segment MAIN
+#endif
 char *find_line(int li);
 void dot_left(void);
 void dot_right(void);
@@ -442,6 +459,11 @@ void ucsd_reserve(void);
 void ucsd_unreserve(void);
 /* the file being edited, in a sub-volume: by its place (viucsd.c) */
 extern struct svat *ucsd_at;
+int ucsd_fclose(FILE *f);	// fclose of what ucsd_fopen opened
+int pg_lend(int lend, int keep);	// the window's 2 KB for the OS's directory, and back
+extern char *ucsd_sp;		// the stack of vi's main loop (edit_file)
+int ucsd_avail(void);		// free words to it, with the OS's directory the next NEW takes back
+int ucsd_room(size_t n);	// can malloc(n) be had and a save still find its room
 int ucsd_isat(const char *fn);
 #define SV_NEED 2300			// words: DIRS, a 2 KB directory, their stack (and VISTART: ucsd_place)
 FILE *ucsd_fopen(const char *fn, char *mode, char *dir);

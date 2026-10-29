@@ -4,10 +4,11 @@
 P-System (from the mini-shell: VI #5:X.C; the file paged through VI.SWAP),
 and the files they save must be identical:
   * 60 commands on a small file (moves, deletes, yank/put, change, join,
-    marks, search, :s, :set, :w NAME, ZZ, ...); dG and dgg on it
+    marks, search, :s, :set, :w NAME, ZZ, ...); dG and dgg on it; u (undo,
+    and u again: redo) after deletes, puts, inserts, J, r, ~, :s, :d
   * a 1500-line file, many times VI's window: G, gg, NG, searches both
     ways and wrapping, j over window edges, ^F ^B, marks, ranges, dG and
-    dgg (the window emptied by dG: the lines before it come in), ZZ
+    dgg (the window emptied by dG: the lines before it come in), u, ZZ
   * the PC's Page Up, Page Down, Home, End, Insert and Delete keys, in
     command and insert mode, and the mouse wheel (Linux: the terminal's
     sequences, ^Y / ^E for a notch; the P-System: the one-byte codes the
@@ -42,6 +43,10 @@ KEYS = ["3j", "dd", "p", "2k", "yy", "P", "w", "cw", "CHANGED", "\x1b", "$", "x"
         "\x1b", "I", "start ", "\x1b", "~~~~", "rX", "xp", "ddp", "U", "15|", "i", "MID", "\x1b",
         "e", "b", "B", "W", "E", ":set ts=4\r", ":w #5:Y.C\r", ":1\r", "x", "ZZ"]
 
+# u: each change undone, some redone (u u); the last u leaves 3dd undone
+UKEYS = ["dd", "u", "3j", "5x", "u", "u", "o", "new\rlines", "\x1b", "u", "J", "u", "u", "rZ", "~", "u",
+         "G", "dd", "u", "u", ":3,5d\r", "u", "10G", "yy", "P", "u", "cwNEW", "\x1b", "u", "A", " end", "\x1b",
+         "j", ".", "u", ":s/quick/QUICK/\r", "u", "u", "gg", "3dd", "G", "p", "u", "u", "ZZ"]
 
 BIG = "".join("line %d: %s\n" % (i, " ".join(["alpha", "beta", "gamma", "delta"][(i * j) % 4]
                                                 for j in range(1 + i % 7))) if i % 13 else "\n"
@@ -49,7 +54,7 @@ BIG = "".join("line %d: %s\n" % (i, " ".join(["alpha", "beta", "gamma", "delta"]
 BIGKEYS = ["G", "o", "the end", "\x1b", "gg", "O", "the start", "\x1b", "700G", "dd", "x",
            "/line 1234:\r", "x", "n", "?line 99:\r", "dw", "1400G", "yy", "gg", "p"] + ["j"] * 60 + \
           ["x"] + ["\x06"] * 20 + ["dd"] + ["\x02"] * 7 + ["x", ":1000,1010d\r", "500G", "ma", "900G",
-           "'a", "x", ":1450\r", "5dd", "/line 3:\r", "x", "1440G", "dG", "8G", "dgg", "ZZ"]
+           "'a", "x", ":1450\r", "5dd", "/line 3:\r", "x", "1440G", "dG", "8G", "dgg", "u", "u", "u", "ZZ"]
 # the PC's Page Up ... Delete keys: on Linux the terminal's sequences; on the
 # P-System one code each (psys.h KEY_PGUP ...: what the emulator sends while
 # vi has set SYSCOM->expansion[1] = PX_KEYS)
@@ -64,7 +69,8 @@ KEYKEYS = ["<PGDN>", "x", "<PGUP>", "j", "<END>", "x", "<HOME>", "x", "3j", "<DE
            "i", "<WHDN-INSERT>", "wheel", "\x1b", "ZZ"]
 SESSIONS = [('small file', TEXT, KEYS, True), ('save after x', TEXT, ["x", ":w\r", "dd", "ZZ"], False),
             ('save after dd', TEXT, ["dd", ":w\r", "ZZ"], False),
-            ('dG, dgg', TEXT, ["G", "k", "dG", "5G", "dgg", "3G", "2dgg", "4G", "2dG", "ZZ"], False), ('1500 lines', BIG, BIGKEYS, False),
+            ('dG, dgg', TEXT, ["G", "k", "dG", "5G", "dgg", "3G", "2dgg", "4G", "2dG", "ZZ"], False),
+            ('u', TEXT, UKEYS, False), ('1500 lines', BIG, BIGKEYS, False),
             ('PC keys', BIG, KEYKEYS, False)]
 
 

@@ -247,6 +247,7 @@ int init_text_buffer(char *fn)
 	}
 	(file_modified = 0, scr_gen++);
 	last_file_modified = -1;
+	undo_reset();
 	/* init the marks. */
 	memset(mark, 0, sizeof(mark));
 	memset(markl, 0, sizeof(markl));
@@ -259,6 +260,9 @@ static void edit_file(char *fn)
 #define cur_line edit_file__cur_line
 	char c;
 	editing = 1;	// 0 = exit, 1 = one file, 2 = multiple files
+#ifdef __UCSD__
+	ucsd_sp = &c;	// (free memory is counted to here: ucsd_avail)
+#endif
 	if (rawmode()) {
 		perror("vi");
 		exit(5);
@@ -323,11 +327,14 @@ static void edit_file(char *fn)
 		) {
 			start_new_cmd_q(c);
 		}
+		if ((cmd_mode & CMODES) == CMODE_COMMAND)
+			u_new = 1;	// (a change now starts u's new record; an insert's keys add to it)
 		do_cmd(c);		// execute the user command
 	}
 	//-------------------------------------------------------------------
 #ifdef __UCSD__
 	if (!file_modified && current_filename) {	// saved, or not changed: where it was left, for next time
+		pg_rdone();
 		ucsd_unreserve();
 		hdr_write(current_filename, ABSLINE(dot), dot - begin_line(dot));
 		ucsd_reserve();
@@ -640,6 +647,8 @@ int file_insert(const char *fn, char *p
 		return -1;
 	}
 	cnt = safe_read(fd, p, size);
+	if (cnt > 0)
+		undo_lines(pg_count(p, p + cnt));
 	if (cnt < 0) {
 		status_line_bold("\"%s\" %s", fn, strerror(errno));
 		p = text_hole_delete(p, p + size - 1);	// un-do buffer insert

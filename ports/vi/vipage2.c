@@ -285,11 +285,23 @@ int pg_find_line(const char *pat)
    reserve, or the save finds none and its fopen takes the memory the stack needs */
 static void pg_rclose(void)
 {
+#ifdef __UCSD__
+	ucsd_fclose(pg_rf);
+#else
 	fclose(pg_rf);
+#endif
 	pg_rf = NULL;
 #ifdef __UCSD__
 	ucsd_reserve();
 #endif
+}
+
+/* the file being loaded closed (vi ends with it): its blocks back to the reserve */
+void pg_rdone(void)
+{
+	if (pg_rf) {
+		pg_rclose();
+	}
 }
 
 void pg_close(void)
@@ -298,9 +310,17 @@ void pg_close(void)
 		pg_rclose();
 	}
 	if (pg_f) {
+#ifdef __UCSD__
+		int lent;
+		lent = pg_lend(1, 0);		/* (the window is done with: as it is) */
+#endif
 		fclose(pg_f);
 		remove(PG_SWAP);
 		pg_f = NULL;
+#ifdef __UCSD__
+		if (lent)
+			pg_lend(0, 0);
+#endif
 	}
 }
 
@@ -352,9 +372,10 @@ void pg_init(const char *fn)
 	long cap;
 	pg_start(fn);
 #ifdef __UCSD__
-	/* MEMAVAIL words, less malloc's room for the stack and some for yanks; for a file in a
-	   sub-volume also the library's SVAT segment its load and save bring in, and its stack */
-	cap = 2L * __cspi(40) - 600 - PG_RESERVE;
+	/* the free words (ucsd_avail), less a save's room (the OS's open's stack: the window lends
+	   it the directory) and some for yanks; for a file in a sub-volume also the library's SVAT
+	   segment its load and save bring in, and its stack */
+	cap = 2L * (ucsd_avail() - PG_SAVEW) - PG_RESERVE;
 	if (__svname((char *)fn)) {
 		cap = cap - PG_SVAT;
 		if (cap < PG_SLOT + 2 * PG_ROOM)	/* (the window would be gone) */
@@ -531,7 +552,10 @@ int pg_load(const char *fn)
 	}
 	ucsd_unreserve();
 	f = ucsd_fopen(fn, "r", NULL);		/* (in a sub-volume: by its place) */
-	ucsd_reserve();
+	if (!f)
+		ucsd_reserve();
+	/* (else its page and FIB are the reserve's blocks, back to it when it is closed: everything
+	   that opens another file (a : command, a save) first loads it all, and closes it) */
 #else
 	f = fopen(fn, "r");
 #endif
@@ -541,9 +565,11 @@ int pg_load(const char *fn)
 		len = fread(text, 1, pg_cap - 1, f);
 		if (len >= pg_cap - 1 && fgetc(f) != EOF)
 			pg_abandon(fn, "too big for memory (no " PG_SWAP ")");
-		fclose(f);
 #ifdef __UCSD__
+		ucsd_fclose(f);
 		ucsd_reserve();
+#else
+		fclose(f);
 #endif
 		if (!pg_lines_ok(text, len, 1))
 			pg_abandon(fn, "not a file of lines (a binary file)");
@@ -584,6 +610,35 @@ static int pg_put(char *b, int len, FILE *f)
 static int pg_stash(int park)
 {
 	return !pg_io(pg_slots - 2, text, 1024, park) && !pg_io(pg_slots - 1, text + 1024, 1024, park);
+}
+
+/* The OS's open and close of a file read its volume's directory into SYSCOM->gdirp; when that is
+   NIL they NEW 2 KB for it, kept until the next NEW takes it back: memory the stack then does
+   not have (a save's STK OFLOW).  So while the OS opens or closes a file the window lends its
+   first 2 KB (parked in VI.SWAP; keep 0: the window is done with, as it is): pg_lend(1, keep)
+   before, pg_lend(0, keep) after; 0 if it cannot.  Nothing may NEW meanwhile (the heap would go
+   back to the window); if the OS gives the directory up (RELEASE: a bad one) the heap is put
+   back where it was */
+static char *pg_gdir;
+static char *pg_hmark;
+
+int pg_lend(int lend, int keep)
+{
+	if (lend) {
+		if (!text || pg_cap < 2048 || (keep && (!pg_f || !pg_stash(1))))
+			return 0;
+		text[6] = 0;			/* (its volume name: none, so the OS reads the directory) */
+		__cspv(32, &pg_hmark);		/* MARK */
+		pg_gdir = SYSCOM->gdirp;
+		SYSCOM->gdirp = text;
+		return 1;
+	}
+	if (SYSCOM->gdirp != text)
+		__cspv(33, &pg_hmark);		/* RELEASE */
+	SYSCOM->gdirp = pg_gdir;
+	if (keep)
+		pg_stash(0);
+	return 1;
 }
 #endif
 
@@ -631,7 +686,7 @@ int pg_save(const char *fn)
 		ok = 0;
 	}
 	__svat = d ? ucsd_at : NULL;		/* (by the place: the directory into the window again) */
-	if (fclose(f) == EOF)
+	if (ucsd_fclose(f) == EOF)
 		ok = 0;
 	__svat = NULL;
 	if (d)

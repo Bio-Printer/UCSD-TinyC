@@ -90,7 +90,7 @@ emulator instead with `ENGINE_DIR=/path/to/UCSD-Pascal_Windows_Emulator tools/se
 | `pexectest.py` | `pexec()` with the mini-shell (needs BIGGY 1.11; pexec itself works from 1.10): a program started from the shell has exactly the free memory it has from X(ecute; exit statuses, errors; the shell's CD, DIR, TYPE, DELETE, WHEREIS, VOLUMES, COPY, MOVE and RENAME, its command history and line editing; `S` at the Command: prompt |
 | `voltest.py` | on the volumes: `@TINY-C:/SRC/LIB/LIBS`, `@TINY-C:/SRC/CC/BUILD` (from the shell), `@DEMOS`, `@TESTS`, CMPCODE checks; reports least free memory |
 | `mkverify.py`, `tcverify.py [native\|z80]` | build / run the Tiny-C Verify pack (`TCV_MAX=seconds` for Z80 mode) |
-| `vitest.py [--build]` | `ports/vi`: the same 60-command editing session on Linux and on the P-System (from the shell); the saved files must be identical. `--build`: `@TOOLS:/SRC/TOOLS` (P-Code mode, Harvard layout) must make TOOLS:VI.CODE byte for byte |
+| `vitest.py [--build]` | `ports/vi`: the same 60-command editing session on Linux and on the P-System (from the shell), and shorter ones (dG, dgg; u and u again after many kinds of change); the saved files must be identical. `--build`: `@TOOLS:/SRC/TOOLS` (P-Code mode, Harvard layout) must make TOOLS:VI.CODE byte for byte |
 | `modes.py prog.c` | run a program in Z80 and P-Code mode and compare (engine bug hunting) |
 | `pdis.py FILE.CODE` | P-code disassembler |
 | `pcensus.py FILE.CODE\|VOL.BLK` | static P-code census: instructions, and the inline constants/tables (`LSA LPA LDC XJP`), `--check` validates every jump target, `--selfpatch` lists the old self-modifying indirect calls |

@@ -96,6 +96,7 @@ char *pg_makeroom(char *p, int size);
 char *pg_search(const char *pat, int dir, int far);
 int pg_find_line(const char *pat);
 void pg_close(void);
+void pg_rdone(void);
 void pg_init(const char *fn);
 #pragma segment VISTART
 void pg_start(const char *fn);

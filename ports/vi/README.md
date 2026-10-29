@@ -58,6 +58,13 @@ block: a binary file is not loaded); from X(ecute) it asks for the file.
 * Screen size from SYSCOM's CRTINFO; standout (bold status line) with the console's
   reverse/normal video codes 15 and 14 instead of ANSI escapes.
 * The text buffer keeps 1 KB of free room instead of 10 KB (`TEXT_SLACK`).
+* `u` undoes the last change -- a command, with what its insert typed -- and `u` again
+  redoes it (classic vi; upstream's undo stack was taken out, `u` did nothing).  The
+  record is the changed lines as numbers and their old text (`undo_mod` before the
+  primitives change a line, `undo_lines` for lines made and taken away), so it holds
+  while the window moves; undoing takes the lines out a line at a time and puts the old
+  ones back in pieces.  A change too big for the memory left has no undo (a message).
+  `tools/vitest.py` compares it with Linux, and `vim -C` gave the same files.
 * Fixes to upstream: the marks (`ma`, `''`) now move with the text when the buffer is
   reallocated (they were left pointing into the freed buffer); `:set` built its
   status line with `printf` instead of `sprintf`; `p`/`P` with an empty register
@@ -82,6 +89,23 @@ block: a binary file is not loaded); from X(ecute) it asks for the file.
 * Files: UCSD text files through stdio. The memory `fopen` needs (1 KB + 80 bytes) is
   set aside at the start and given back only around opening a file, so a file whose
   text has taken all other memory can still be saved.
+* The OS's directory: the OS's open and close of a file read the volume's directory
+  into SYSCOM->gdirp, and when that is NIL they NEW 2 KB for it, kept until the next
+  NEW takes it back.  A save then took 1,014 words more than the stack had: STK OFLOW
+  in a `ZZ` after some editing (yanks, searches) in the normal layout.  So while the OS
+  opens or closes a file, the window lends it its first 2 KB (parked in VI.SWAP's last
+  two slots meanwhile, as for a file in a sub-volume: `pg_lend`); nothing NEWs then
+  (fopen's malloc gets the reserve's blocks), and if the OS gives the directory up (a
+  bad one: RELEASE) the heap is put back where it was.  A save now needs only the
+  open's stack: the window leaves `PG_SAVEW` (500 words; also what `u`'s own segment needs) for it, counted from where
+  vi's main loop runs (`ucsd_avail`: the depth of a command does not change it), and a
+  yank or an undo that would take that room is refused (`ucsd_room`; Tiny-C's malloc
+  never gives memory back to the stack).  Without VI.SWAP (no window to lend) an open
+  that would not have the directory's room is refused, not crashed.
+* The file being loaded holds the reserve's two blocks (its page and FIB) until it is
+  closed; whatever opens another file (a `:` command, a save, the end of vi) first loads
+  it all or closes it, and the blocks go back to the reserve.  (A second reserve, taken
+  while it loaded, was 1.1 KB less window.)
 * The screen is kept as one checksum per row (90 bytes) instead of a copy (132 x 45 =
   6 KB), on Linux too: a row whose checksum changed is written again whole.
 * Line numbers in addresses are parsed by hand: `sscanf` would bring the library's
@@ -182,7 +206,8 @@ to save it.
 
 ### Memory
 
-vi is one resident code segment: every byte of code is a byte less for the
+vi is one resident code segment (and `u`'s own, VIUNDO: 478 bytes, in memory only
+while `u` runs): every byte of code is a byte less for the
 window (Z80 mode: 2.8 KB; below about 2.7 KB the paging misplaces the cursor
 after some ^B). `#pragma segment MAIN` at the top of vi.h makes every call
 within the segment a 2-byte CGP: the compiler puts a NOP after a call whose

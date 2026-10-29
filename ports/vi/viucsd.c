@@ -183,6 +183,7 @@ int vi_printf(const char *fmt, ...)
    taken all the rest, the file can still be saved.  Tiny-C's malloc hands
    out free blocks whole (best fit), so these are the blocks fopen gets. */
 static char *ucsd_res[2];
+static int ucsd_freed;		/* both given back (and not taken again): fopen's malloc gets them, it NEWs nothing */
 
 void ucsd_reserve(void)
 {
@@ -190,13 +191,45 @@ void ucsd_reserve(void)
 		ucsd_res[0] = malloc(1024);
 	if (!ucsd_res[1])
 		ucsd_res[1] = malloc(80);
+	ucsd_freed = 0;
 }
 
 void ucsd_unreserve(void)
 {
+	if (ucsd_res[0] && ucsd_res[1])
+		ucsd_freed = 1;
 	free(ucsd_res[1]);
 	free(ucsd_res[0]);
 	ucsd_res[0] = ucsd_res[1] = NULL;
+}
+
+/* the free words between the heap's top and the stack where vi's main loop runs (edit_file:
+   ucsd_sp; a command deeper in has less: PG_SAVEW allows for :w's), and the OS's directory: an
+   open NEWs it, the next NEW takes it back */
+char *ucsd_sp;
+
+int ucsd_avail(void)
+{
+	char *h;
+	int n;
+	__cspv(32, &h);				/* MARK: the heap's top */
+	n = ucsd_sp ? (int)(((unsigned)ucsd_sp - (unsigned)h) / 2) : __cspi(40);
+	return n + ((unsigned)SYSCOM->gdirp > 1 ? PG_DIRW : 0);
+}
+
+/* can malloc(n) be had, and leave a save its room (PG_SAVEW): malloc hands out a free block
+   that is big enough, or NEWs one (Tiny-C's malloc never gives memory back to the stack) */
+extern unsigned *__freelist;	/* (malloc's free blocks: stdlib.c) */
+
+int ucsd_room(size_t n)
+{
+	unsigned *p;
+	int w;
+	w = (n + 1) / 2 + 2;
+	for (p = __freelist; p; p = (unsigned *)p[1])
+		if (p[0] >= (unsigned)w)
+			return 1;
+	return ucsd_avail() - w >= PG_SAVEW;
 }
 
 /* ---- a file in a sub-volume ----
@@ -218,18 +251,47 @@ int ucsd_isat(const char *fn)
 
 /* fopen: the file being edited by its place, to read (its directory read a block at a time),
    or to write when dir is given (2 KB for its directory when it is closed: with __svat =
-   ucsd_at, pg_save); another file in a sub-volume only if DIRS still fits (else NULL) */
+   ucsd_at, pg_save); another file in a sub-volume only if DIRS still fits (else NULL).  Any
+   other: the OS's directory in the window's 2 KB when the reserve was given back (fopen's
+   malloc gets it: a NEW would take the heap back to the directory); else it needs the room */
 FILE *ucsd_fopen(const char *fn, char *mode, char *dir)
 {
 	FILE *f;
+	int lent;
+	lent = 0;
 	if (ucsd_isat(fn) && (dir || *mode == 'r')) {
 		ucsd_at->dir = (int *)dir;
 		__svat = ucsd_at;
-	} else if (__svname((char *)fn) && __cspi(40) < SV_NEED)
-		return NULL;
+	} else if (__svname((char *)fn)) {
+		if (__cspi(40) < SV_NEED)
+			return NULL;
+	} else {
+		lent = ucsd_freed && pg_lend(1, 1);
+		if (__cspi(40) < (lent || (unsigned)SYSCOM->gdirp > 1 ? 0 : PG_DIRW) + PG_OPENW) {
+			if (lent)
+				pg_lend(0, 1);
+			return NULL;		/* (no memory: the OS's open would meet the heap) */
+		}
+	}
 	f = fopen((char *)fn, mode);
 	__svat = NULL;
+	if (lent)
+		pg_lend(0, 1);
+	if (f)
+		ucsd_freed = 0;		/* (its malloc took them) */
 	return f;
+}
+
+/* fclose: a file ucsd_fopen opened (the OS's directory in the window's 2 KB) */
+int ucsd_fclose(FILE *f)
+{
+	int lent;
+	int r;
+	lent = !(f->flags & __F_SUB) && pg_lend(1, 1);
+	r = fclose(f);
+	if (lent)
+		pg_lend(0, 1);
+	return r;
 }
 
 /* The console is always "raw" for vi: getch() reads keys unechoed, one at
@@ -352,7 +414,7 @@ int file_size(const char *fn)
 	if (f) {
 		while ((c = getc(f)) != EOF)
 			n++;
-		fclose(f);
+		ucsd_fclose(f);
 	}
 	ucsd_reserve();
 	if (!f)
@@ -384,7 +446,8 @@ int file_insert(const char *fn, char *p, int update_ro_status)
 	if (f) {
 		for (; cnt < size && (c = getc(f)) != EOF; cnt++)
 			p[cnt] = c;
-		fclose(f);
+		ucsd_fclose(f);
+		undo_lines(pg_count(p, p + cnt));
 	}
 	ucsd_reserve();
 	if (cnt < size) {
@@ -419,7 +482,7 @@ int file_write(char *fn, char *first, char *last)
 	for (p = first; p <= last; p++)		/* (a file read with CR line ends gets them back) */
 		if (putc(pg_cr && *p == '\n' ? '\r' : *p, f) == EOF)
 			break;
-	if (fclose(f) == EOF || p <= last)
+	if (ucsd_fclose(f) == EOF || p <= last)
 		cnt = 0;
 	ucsd_reserve();
 	return cnt;
@@ -466,9 +529,12 @@ static int hdr_io(const char *fn, int rd)
 	FILE *f;
 	int *r;
 	int u, b, n;
+	ucsd_unreserve();			/* (its open takes the reserve's blocks, and gives them back) */
 	f = ucsd_fopen(fn, "r", NULL);
-	if (!f)
+	if (!f) {
+		ucsd_reserve();
 		return 0;
+	}
 	r = (int *)f->fib;
 	if (f->flags & __F_SUB) {			/* (its record: dirs.c) */
 		u = r[0];
@@ -479,7 +545,8 @@ static int hdr_io(const char *fn, int rd)
 		b = r[16];
 		n = r[17] - b;
 	}
-	fclose(f);
+	ucsd_fclose(f);
+	ucsd_reserve();
 	if (rd)
 		hdr_blocks = n;
 	if (!__istext((char *)fn) || n < 2)
@@ -498,9 +565,7 @@ void hdr_read(const char *fn)
 	int n;
 	r = (unsigned char *)pg_buf + HDR_OFF;
 	hdr_line = hdr_col = hdr_blocks = 0;
-	ucsd_unreserve();			/* (its open takes the reserve's blocks, and gives them back) */
 	n = hdr_io(fn, 1);
-	ucsd_reserve();
 	if (n && r[0] == 'V' && r[1] == 'I' && r[2] == 1) {
 		hdr_col = r[3];
 		hdr_line = r[4] + 256 * r[5];

@@ -338,6 +338,7 @@ char *char_insert(char *p, char c) // insert the char c at 'p'
 		p--;			// backup onto ^
 		refresh();		// show the ^
 		c = get_one_char();
+		undo_lines(c == '\n');
 		*p = c;
 		p++;
 		(file_modified++, scr_gen++);
@@ -388,6 +389,7 @@ static char *stupid_insert(char *p, char c) // stupidly insert the char c at 'p'
 		return p;	// no room: the character is dropped
 	p = q;
 	*p = c;
+	undo_lines(c == '\n');
 	//(file_modified++, scr_gen++); - done by text_hole_make()
 	if (c != '\n' && scr_gen == g + 1) {
 		scr_gen = g;		// only the row of this line changes
@@ -596,6 +598,7 @@ char *text_hole_make(char *p, int size)	// at "p", make a 'size' byte hole
 		if (!p)
 			return NULL;
 	}
+	undo_mod(p, p, size);
 	end += size;		// adjust the new END
 	if (end >= (text + text_size)) {
 		char *new_text;
@@ -646,6 +649,8 @@ char *text_hole_delete(char *p, char *q) // delete "p" through "q", inclusive
 		goto thd0;
 	if (dest < text || dest >= end)
 		goto thd0;
+	undo_mod(dest, dest + hole_size - 1, -hole_size);
+	undo_lines(-pg_count(dest, dest + hole_size));
 	if (src >= end)
 		goto thd_atend;	// just delete the end of the buffer
 	memmove(dest, src, cnt);
@@ -738,6 +743,7 @@ char *string_insert(char *p, char *s) // insert the string at 'p'
 		if (*s == '\n')
 			cnt++;
 	}
+	undo_lines(cnt);
 	status_line("Put %d lines (%d chars) from [%c]", cnt, i, what_reg());
 	return p;
 }
@@ -755,7 +761,11 @@ char *text_yank(char *p, char *q, int dest)	// copy text into a register
 	cnt = q - p + 1;
 	t = reg[dest];
 	free(t);		//  if already a yank register, free it
+#ifdef __UCSD__
+	t = ucsd_room(cnt + 1) ? malloc(cnt + 1) : NULL;	// (a save keeps its room)
+#else
 	t = malloc(cnt + 1);	// get a new register
+#endif
 	reg[dest] = t;
 	if (!t) {
 		status_line_bold("Too much to yank for memory");
@@ -835,3 +845,198 @@ char *swap_context(char *p) // goto new context for '' command make this the cur
 	}
 	return p;
 }
+
+/* ---- u: the last change undone, and u again redoes it ----
+   A change (one command, with the text an insert types) touches the lines ua .. ua+un-1 as
+   they are now (u_cur bytes); u_old holds what they were, whole lines (u_len bytes).  Lines
+   are numbers (the window moves); a line comes into the record before it is first changed,
+   and the change keeps un and u_cur counting the lines and bytes it makes and takes away.  u
+   swaps u_old with those lines.  A change too big for memory, or one whose lines leave the
+   window, has no undo. */
+static char *u_old;
+static int u_len, ua, un, u_cur;
+static int u_on;		// 1: a record; 0: none; -1: the change could not be kept
+static int u_busy;		// (u itself changes the text)
+int u_new;
+
+static char *u_alloc(int n)
+{
+#ifdef __UCSD__
+	return ucsd_room(n) ? malloc(n) : NULL;	// (a save keeps its room)
+#else
+	return malloc(n);
+#endif
+}
+
+/* the start of the line after p's (end after the last; next_line stops at its newline) */
+static char *u_next(char *p)
+{
+	p = end_line(p);
+	return p < end ? p + 1 : end;
+}
+
+/* the record grows by a .. b-1 (in the window): before it, or after it */
+static void u_add(char *a, char *b, int before)
+{
+	char *t;
+	int n;
+	n = b - a;
+	if (n <= 0)
+		return;
+	t = u_alloc(u_len + n);
+	if (!t) {
+		undo_reset();
+		u_on = -1;
+		return;
+	}
+	if (before) {
+		memcpy(t, a, n);
+		memcpy(t + n, u_old, u_len);
+	} else {
+		memcpy(t, u_old, u_len);
+		memcpy(t + u_len, a, n);
+	}
+	free(u_old);
+	u_old = t;
+	u_len += n;
+	u_cur += n;
+}
+
+void undo_reset(void)
+{
+	free(u_old);
+	u_old = NULL;
+	u_len = un = u_cur = 0;
+	u_on = 0;
+	u_new = 1;
+}
+
+void undo_mod(char *p, char *q, int d)
+{
+	int x, y, k;
+	char *a;
+	if (u_busy)
+		return;
+	if (u_new) {
+		undo_reset();
+		u_new = 0;
+		u_on = 1;
+		ua = pg_abs(p);
+	}
+	if (u_on <= 0)
+		return;
+	if (q >= end)
+		q = end - 1;
+	x = pg_abs(p);
+	y = q < p ? x - 1 : x + pg_count(p, begin_line(q));	// (at the end: no line yet)
+	if (un == 0 && u_len == 0 && x != ua) {
+		ua = x;		// (nothing kept yet: the record starts here)
+	}
+	if (x < ua) {		// lines x .. ua-1 before it
+		a = begin_line(p);
+		for (k = ua - x; k > 0 && a < end; k--)
+			a = u_next(a);
+		if (k > 0)
+			goto lost;
+		u_add(begin_line(p), a, 1);
+		un += ua - x;
+		ua = x;
+	}
+	if (u_on > 0 && y >= ua + un) {	// lines ua+un .. y after it
+		a = begin_line(q);
+		for (k = y - (ua + un); k > 0 && a > text; k--)
+			a = prev_line(a);
+		if (k > 0)
+			goto lost;
+		u_add(a, u_next(q), 0);
+		un = y - ua + 1;
+	}
+	u_cur += d;
+	return;
+ lost:
+	undo_reset();
+	u_on = -1;
+	u_new = 0;
+}
+
+void undo_lines(int d)
+{
+	if (!u_busy && u_on > 0)
+		un += d;
+}
+
+/* u itself: a code segment of its own, in memory only while u runs (vi's resident code is
+   memory the window does not have) */
+#ifdef __UCSD__
+#pragma segment VIUNDO
+#endif
+
+/* the start of line li, brought into the window; end if li is after the last line */
+static char *u_line(int li)
+{
+	int k;
+	k = TOTLINES();
+	if (li <= k)
+		return find_line(li);
+	if (k > 0)
+		find_line(k);	// (the last line in: nothing after the window)
+	return end;
+}
+
+/* s (len bytes) in at line ua, a piece at a time (a hole the window can make) */
+static void u_put(char *s, int len)
+{
+	char *p, *q;
+	int i, k;
+	p = u_line(ua);
+	for (i = 0; i < len; i += k) {
+		k = len - i < 256 ? len - i : 256;
+		q = text_hole_make(p, k);
+		if (!q)
+			break;
+		memcpy(q, s + i, k);
+		p = q + k;
+	}
+}
+
+void undo_cmd(void)
+{
+	char *p, *q, *t;
+	int n, tl, i;
+	if (u_on <= 0) {
+		status_line_bold(u_on ? "Cannot undo: the change was too big" : "Nothing to undo");
+		return;
+	}
+	t = u_alloc(u_cur + 1);		// (the room it leaves, a save's, holds this segment and its calls)
+	if (!t) {
+		status_line_bold("Cannot undo: no memory");
+		return;
+	}
+	n = pg_count(u_old, u_old + u_len);	// (the lines u puts back)
+	u_busy = 1;
+	/* the lines there now (un, u_cur bytes) out, a line at a time (the window moves): the
+	   record for u again */
+	tl = 0;
+	for (i = 0; i < un; i++) {
+		p = u_line(ua);
+		q = u_next(p);
+		if (p >= end || tl + (q - p) > u_cur)
+			break;
+		memcpy(t + tl, p, q - p);
+		tl += q - p;
+		text_hole_delete(p, q - 1);
+	}
+	u_put(u_old, u_len);		/* the record's lines in */
+	u_busy = 0;
+	/* what u took out is the record now: u again puts it back */
+	free(u_old);
+	u_old = t;
+	u_cur = u_len;
+	u_len = tl;
+	un = n;
+	p = u_line(ua);
+	dot = p < end ? p : end > text ? begin_line(end - 1) : text;
+}
+#ifdef __UCSD__
+#pragma segment MAIN
+#endif

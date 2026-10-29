@@ -179,6 +179,8 @@ dc_i:
 	case 'J':			// J- join current and next lines together
 		dot_end();		// move to NL
 		if (dot < end - 1) {	// make sure not last char in text[]
+			undo_mod(dot, dot + 1, 0);
+			undo_lines(-1);
 			*dot++ = ' ';	// replace NL with space
 			(file_modified++, scr_gen++);
 			while (isblank(*dot)) {	// delete leading WS
@@ -373,6 +375,8 @@ dc5:
 	case 'r':			// r- replace the current char with user input
 		c1 = get_one_char();	// get the replacement char
 		if (*dot != '\n') {
+			undo_mod(dot, dot, 0);
+			undo_lines(c1 == '\n');
 			*dot = c1;
 			(file_modified++, scr_gen++);
 		}
@@ -411,6 +415,8 @@ dc5:
 		dot = move_to_col(dot, cmdcnt - 1);	// try to move to column
 		break;
 	case '~':			// ~- flip the case of letters   a-z -> A-Z
+		if (isalpha(*dot))
+			undo_mod(dot, dot, 0);
 		if (islower(*dot)) {
 			*dot = toupper(*dot);
 			(file_modified++, scr_gen++);
@@ -545,7 +551,6 @@ again:
 		//case ']':	// ]-
 		//case '_':	// _-
 		//case '`':	// `-
-		//case 'u':	// u- FIXME- there is no undo
 		//case 'v':	// v-
 	case 0x00:			// nul- ignore
 		break;
@@ -677,6 +682,9 @@ repeat:
 		}
 		dot = string_insert(dot, p);	// insert the string
 		end_cmd_q();	// stop adding to q
+		break;
+	case 'u':			// u- undo the last change (u again: redo it)
+		undo_cmd();
 		break;
 	case 'U':			// U- Undo; replace current line with original version
 		if (reg[Ureg] != 0) {
