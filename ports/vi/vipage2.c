@@ -375,7 +375,7 @@ void pg_init(const char *fn)
 	/* the free words (ucsd_avail), less a save's room (the OS's open's stack: the window lends
 	   it the directory) and some for yanks; for a file in a sub-volume also the library's SVAT
 	   segment its load and save bring in, and its stack */
-	cap = 2L * (ucsd_avail() - PG_SAVEW) - PG_RESERVE;
+	cap = 2L * (ucsd_avail() - PG_SAVEW - (pg_f ? 0 : PG_DIRW)) - PG_RESERVE;	/* (no VI.SWAP: no window to lend) */
 	if (__svname((char *)fn)) {
 		cap = cap - PG_SVAT;
 		if (cap < PG_SLOT + 2 * PG_ROOM)	/* (the window would be gone) */

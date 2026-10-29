@@ -97,7 +97,7 @@ block: a binary file is not loaded); from X(ecute) it asks for the file.
   two slots meanwhile, as for a file in a sub-volume: `pg_lend`); nothing NEWs then
   (fopen's malloc gets the reserve's blocks), and if the OS gives the directory up (a
   bad one: RELEASE) the heap is put back where it was.  A save now needs only the
-  open's stack: the window leaves `PG_SAVEW` (500 words; also what `u`'s own segment needs) for it, counted from where
+  open's stack: the window leaves `PG_SAVEW` (600 words; also what `u`'s own segment needs) for it, counted from where
   vi's main loop runs (`ucsd_avail`: the depth of a command does not change it), and a
   yank or an undo that would take that room is refused (`ucsd_room`; Tiny-C's malloc
   never gives memory back to the stack).  Without VI.SWAP (no window to lend) an open

@@ -59,8 +59,8 @@
    it until the next NEW takes it back: a save that finds no room meets the stack (STK OFLOW).  So
    the window lends it 2 KB (pg_lend), and the save needs only the open's stack */
 #define PG_DIRW 1014	// words: the OS's directory (no VI.SWAP: no window to lend)
-#define PG_OPENW 200	// words: the stack of the OS's open (an open is refused with less)
-#define PG_SAVEW 500	// words kept free for a save: the open's stack, from :w (deeper), and some (and u's segment)
+#define PG_OPENW 300	// words: the stack of the OS's open (214 crashed, 262 did not; an open is refused with less)
+#define PG_SAVEW 600	// words kept free for a save: the open's stack, from :w (deeper), and some (and u's segment)
 #define PG_SVAT 1300	// ... and for a file in a sub-volume: the library's SVAT segment (its load, its save) and its stack
 #include <limits.h>
 /* The P-System opens an include file with a 2K buffer on the stack, so the
