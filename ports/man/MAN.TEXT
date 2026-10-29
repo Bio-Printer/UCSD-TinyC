@@ -70,6 +70,7 @@ CHANGING
     i a I A o O               insert (before, after, at the line's start, end, a new line below, above)
     x X  r  R  s  ~           delete a character, replace one, replace many, substitute, change case
     dd D  dw  d$  d motion    delete: line, to the end of the line, word, ... (a count first: 3dd)
+    dG  dgg  NdG              delete to the last line, the first line, line N (also c y > <)
     cc C  cw  c motion        change; yy Y  y motion  copy (yank); p P  put after, before
     J  .  u  U                join lines, repeat the last change, undo, undo the changes to a line
     > <  >> <<                shift lines right, left

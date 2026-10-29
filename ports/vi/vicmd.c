@@ -12,6 +12,11 @@ static void shift_cmd(char c)
 
 	cnt = ABSLINE(dot);	// remember what line we are on
 	c1 = get_one_char();	// get the type of thing to delete
+	if (c1 == 'g' && get_one_char() != 'g') {	// (gg: to the first line)
+		indicate_error(c1);
+		end_cmd_q();
+		return;
+	}
 	find_range(&p, &q, c1);
 	if (pg_over) {
 		status_line_bold("Too many lines for memory");
@@ -290,6 +295,8 @@ dc5:
 		c1 = 'y';
 		if (c != 'Y')
 			c1 = get_one_char();	// get the type of thing to delete
+		if (c1 == 'g' && get_one_char() != 'g')
+			c1 = '?';	// (gg: to the first line; dg alone: not known)
 		// determine range, and whether it spans lines
 		ml = find_range(&p, &q, c1);
 		if (pg_over) {
@@ -312,7 +319,7 @@ dc5:
 		} else if (strchr("^0bBeEft%$ lh\b\177", c1)) {
 			// partial line copy text into a register and delete
 			dot = yank_delete(p, q, ml, yf);	// delete word
-		} else if (strchr("cdykjHL+-{}\r\n", c1)) {
+		} else if (strchr("cdykjHL+-{}gG\r\n", c1)) {
 			// whole line copy text into a register and delete
 			dot = yank_delete(p, q, ml, yf);	// delete lines
 			whole = 1;
@@ -826,8 +833,11 @@ dc2:
 	}
 
 dc1:
-	// if text[] just became empty, add back an empty line
-	if (end == text) {
+	// if text[] just became empty: a big file's next line (or its last)
+	// into the window, else add back an empty line
+	if (end == text && pg_f && TOTLINES() > 0) {
+		dot = find_line(pg_lb < TOTLINES() ? pg_lb + 1 : TOTLINES());
+	} else if (end == text) {
 		char_insert(text, '\n');	// start empty buf with dummy line
 		dot = text;
 	}

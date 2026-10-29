@@ -399,8 +399,11 @@ static char *stupid_insert(char *p, char c) // stupidly insert the char c at 'p'
 int find_range(char **start, char **stop, char c)
 {
 	char *save_dot, *p, *q, *t;
-	int cnt, multiline = 0;
+	int cnt, multiline = 0, gl;
 
+	// G, gg (the caller read the second g): the lines to the last line, the
+	// first one, or line cmdcnt
+	gl = c == 'G' && cmdcnt == 0 ? TOTLINES() : cmdcnt > 0 ? cmdcnt : 1;
 	{
 		int n, l, ok;
 		n = cmdcnt > 1 ? cmdcnt : 1;
@@ -413,6 +416,8 @@ int find_range(char **start, char **stop, char c)
 			ok = pg_hold(l, l + n);
 		else if (strchr("H-k{", c))
 			ok = pg_hold(l - n, l);
+		else if (c == 'G' || c == 'g')
+			ok = pg_hold(l, gl);
 		if (!ok) {
 			pg_over = 1;
 			*start = *stop = dot;
@@ -446,6 +451,16 @@ int find_range(char **start, char **stop, char c)
 		if (dot > text && *dot == '\n')
 			dot--;		// stay off NL
 		q = dot;
+	} else if (c == 'G' || c == 'g') {
+		// whole lines, from this one to line gl (its lines are held)
+		q = find_line(gl);
+		if (q < dot) {
+			p = begin_line(q);
+			q = end_line(dot);
+		} else {
+			p = begin_line(dot);
+			q = end_line(q);
+		}
 	} else if (strchr("H-k{", c)) {
 		// these operate on multi-lines backwards
 		q = end_line(dot);	// find NL
